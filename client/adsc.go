@@ -20,14 +20,23 @@ func makeADSC(addr string, client int, prefix int) error {
 	fmt.Println("Connected:", ip)
 	con.Watch()
 	fmt.Println("Got Initial Update:", ip)
-	return nil
+	for {
+		u := <-con.Updates
+		if u == "close" {
+			fmt.Println("Closing:", ip)
+			return nil
+		}
+	}
 }
 
 func RunLoad(pilotAddress string, clients int, prefix int) error {
 	wg := sync.WaitGroup{}
-	wg.Add(1)
 	for cur := 0; cur < clients; cur++ {
-		go makeADSC(pilotAddress, cur, prefix)
+		wg.Add(1)
+		go func() {
+			makeADSC(pilotAddress, cur, prefix)
+			wg.Done()
+		}()
 		time.Sleep(time.Millisecond * 100)
 	}
 	wg.Wait()

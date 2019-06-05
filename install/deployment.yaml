@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pilot-load
+  labels:
+    app: pilot-load
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: pilot-load
+      annotations:
+        "sidecar.istio.io/inject": "false"
+      labels:
+        app: pilot-load
+    spec:
+      containers:
+        - name: pilot-load
+          image: gcr.io/howardjohn-istio/pilot-load
+          imagePullPolicy: Always
+          command:
+            - "pilot-load"
+            - "--clients"
+            - "100"
+            - "--pilot-address"
+            - "istio-pilot.istio-system:15010"
+  selector:
+    matchLabels:
+      app: pilot-load
