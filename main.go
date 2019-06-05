@@ -1,13 +1,7 @@
 package main
 
 import (
-	"os"
-
-	"github.com/howardjohn/file-based-istio/cmd"
-)
-
-var (
-	OUTDIR = os.Getenv("OUTDIR")
+	"github.com/howardjohn/pilot-load/cmd"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/howardjohn/file-based-istio
+module github.com/howardjohn/pilot-load
 
 go 1.12
 
