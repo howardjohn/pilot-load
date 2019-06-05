@@ -1,0 +1,216 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-bootstrap
+data:
+  bootstrap.yaml: |
+    node:
+      metadata:
+        ISTIO_PROXY_VERSION: 1.1.3
+        NODE_UID: node.default
+        NODE_NAMESPACE: default
+      id: node
+      cluster: envoy
+    admin:
+      access_log_path: /dev/stdout
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 15000
+
+    dynamic_resources:
+      lds_config:
+        path: /etc/config/config/lds.yaml
+      cds_config:
+        path:  /etc/config/config/cds.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fake-cert
+data:
+  root-cert.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIIC3TCCAcWgAwIBAgIQSqjAaC3173FEy1bv1ul8vTANBgkqhkiG9w0BAQsFADAY
+    MRYwFAYDVQQKEw1jbHVzdGVyLmxvY2FsMB4XDTE5MDMxMzEwMTIyN1oXDTIwMDMx
+    MjEwMTIyN1owGDEWMBQGA1UEChMNY2x1c3Rlci5sb2NhbDCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBALGVT+KzRLw25sZNWN+Wj7X9Q5BBWBeoQ8E3NhtA
+    TMiSOBj3bAon+z+w6bwU8YWYHzLXaBwGClQh/BpQxvrPp/cgeYS0MvO1zCeNYQAW
+    j8RRNIXhew8W8BjjXiuC+IWoeymypXsAiLzT77PZEDxv40Xnacbi575mFK9kVizw
+    IGN0hOPg/oI9LK1WiqpvFlH21apMQZ0WPD/BRIXfJTaAmSLX9uINcxg19RIjCjmW
+    NL/pujS3AcOphAUVhThdFWoL9qdYfzjK2NDdEuAn8UCFpxUlH0Iw9ABUn/gevA+P
+    8+pQaiDQSrp+rPh+CglAyRzvGEwtH28FwkyRivlq9wvYmMcCAwEAAaMjMCEwDgYD
+    VR0PAQH/BAQDAgIEMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+    AC1zr0qerG6/Hmfu+LHhN0th6DoFTrGEFPh+O3z7Wj9n4TmSaL9Ba763ZaSt3Ink
+    S52ozPmupFS0p6Jvm1+84g4v8u+rwjvKiTIeKbQb871QdB2b5dR256ohqwKdqP9y
+    Yn5cwO9HeGrXiFQ0wwuLhQNz/uTCWNo8fJ8KI0aD49GaL5647sliR6jeBUc3JRi+
+    3lVa7RO6hhgV08qm9cZBHgbJugeViiKJ32QRCHL9bLSKhh7MmK3FJ3W7n40JkOmk
+    GJlSkmTxBbjrWHTFPpgCDi1y5EWdL/UOtkn0PlKBKQvj4AzEG/wiOXL2PGGxwohR
+    v3lUnvcV4g6wy3yTbeHJqMI=
+    -----END CERTIFICATE-----
+
+  key.pem: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEArR/U06VfGos81IZbMkRnzMhdMZGJ5+6bZkNoJViPL2k7dMF4
+    hxXJVJa3r+shWc8VPY8U9+ONmaYw1jHErP/3ATf3EWnszyRbwri13l2vN2iluH0b
+    QvrDRRFzPJuQBJRICRQXIlClH/Itf+1sUTOlDg+hq5YWuJXuvePStckDouz+16B0
+    St/HCyFhGIQw0tIDM45wRuuxH8pIZvGCvGEyMXmENDL1k6n52PEA+XhbYtNqiY9q
+    L+0O8KzcCcWOpsbscsC8tfqUSmvF4S3Ft7js3ApyQP055CpK3jaD5jOjREahZkCN
+    IM1j7IXiqqS2jvNa3WF6Xlyyf3ZHMNdbjx1lzwIDAQABAoIBAQCOJV6n0FaAAucV
+    UKO8aDIaEEGEm4zxpBZwJtRyJX6bXPn2aYw+zgKas41qodKmXMOB4eNDjdEL4Uqj
+    9AUaTqhOldcEs0Y+5gl5nhOl2qItCn1XN1GU8zQ1l5hYoRnkyKNE4PwFrtWFn2EA
+    cr7HBXJ2UxtZOUi6klCOFWtC2yNjN30SsZKQ5RPDE3KXfLWbBA/LTL2duCrZzuF/
+    qPH17n5nSi9SGf7WzXc2UZ9LrITIPYoYME0R48JXgHKd4NBqjwn+aZG/zYku3rir
+    gpyBQTVEXkamplI2lw8ExC5QWSdlZzY4ikEtqvU5SRwYX/NA1b0FngfWI1knj99s
+    QqAIO3jxAoGBAOXhwI85TQfjlKMI6PLGRAeFpJV86ojf5rram3ybhj2z95dN6c/k
+    aaJuoI2HisA5Q0DOLO78yR2jTRK2M45LmoV39vVZvVJP56Hk2wSZcP2BSLTEGYjj
+    953dmReuU/+UxQehdHY68g5EPE3jUAXHr7qd6OgQD7cJK8Lc2gtzU0GtAoGBAMDL
+    QQbrr7UFNFwK/Ee+//CgQcmcxXx3crCUZxEpWZj59dy95eH2epeMEcI7dLT0LFSZ
+    IQMoes211czHYS3BR/R4Prnye+FoyRaRhXDD3Jgfld8SPbo0+KypI2DzNOd3rdjV
+    x3dtcb4rJSROA84+Ep/mIUirNWrF9HfrgWhgjAzrAoGAcxcKG+qZOUjkQpeUYO+I
+    Yae0Fa97kFlgn84QqFsI4111qMe2NoHprQvrz8+7VK+Wjxxp/KCMZA086hBUUXpi
+    e03rUzzBfzNICZKVYIEdw511dCL1kcZoUx39ppB9t2iZGE/qCcNLKn9ZHbmfd7VY
+    snqaf4yDAaVSxnVhqPftB+UCgYAHnb/y4wqs7wizfiebOftoaRxQN6ZBlYJtYV90
+    +Ro2BeHll4bmV1Nee0UUVD73CxJZQTdhpY68Y6uPjGzVXuZVzQ5FUEP+kqInBxar
+    bsFfLRhBmLnhikgsof3ozZLQdhTjFQbtO+Cbb57nAUH7Os6HjJLSCRlyH2HZ/u68
+    zduagwKBgQDIrFkIrgniePD6IaF3em3bfnkuhu3Jiu8EfCZHRy7H1FBcPE6BX9yD
+    dU/Qmro33xLq8kDRrwj18fnNEuxEFbvneCjocyXZQBY9NrxUPtjnJ2ylmsX/KHMA
+    OCE+zVh9IY0BOSU8blYzyoJWdzd0rqa8jUW3FmeyP9idYRO1JQgnEg==
+    -----END RSA PRIVATE KEY-----
+
+  cert-chain.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIIDHTCCAgWgAwIBAgIRAL86biSLwVLnHP61W6fURuUwDQYJKoZIhvcNAQELBQAw
+    GDEWMBQGA1UEChMNY2x1c3Rlci5sb2NhbDAgFw0xOTA0MTEwNjI1MDVaGA8yMTE5
+    MDMxODA2MjUwNVowADCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAK0f
+    1NOlXxqLPNSGWzJEZ8zIXTGRiefum2ZDaCVYjy9pO3TBeIcVyVSWt6/rIVnPFT2P
+    FPfjjZmmMNYxxKz/9wE39xFp7M8kW8K4td5drzdopbh9G0L6w0URczybkASUSAkU
+    FyJQpR/yLX/tbFEzpQ4PoauWFriV7r3j0rXJA6Ls/tegdErfxwshYRiEMNLSAzOO
+    cEbrsR/KSGbxgrxhMjF5hDQy9ZOp+djxAPl4W2LTaomPai/tDvCs3AnFjqbG7HLA
+    vLX6lEprxeEtxbe47NwKckD9OeQqSt42g+Yzo0RGoWZAjSDNY+yF4qqkto7zWt1h
+    el5csn92RzDXW48dZc8CAwEAAaN4MHYwDgYDVR0PAQH/BAQDAgWgMB0GA1UdJQQW
+    MBQGCCsGAQUFBwMBBggrBgEFBQcDAjAMBgNVHRMBAf8EAjAAMDcGA1UdEQQwMC6G
+    LHNwaWZmZTovL2NsdXN0ZXIubG9jYWwvbnMvZGVmYXVsdC9zYS9kZWZhdWx0MA0G
+    CSqGSIb3DQEBCwUAA4IBAQAO4hyyllSFpJGRq425tOrh0tru1eFqMDKbJf5LMHr7
+    AiVk6PCCMidMR3kUjbTK0XFdc+JT1in9Idvcy3lYES0oSHCom26y2B695/8wJOXn
+    KHsvFxrARdolsDIVNyroiRwK8ds0MJIiUkcSUT80Hc9BtxvpVxMEWzqlYsyjo0+E
+    DegF4GsrAjnHUU/u4wOUH/lLkQcX17L6GWLRthYXl33bC1xjbzF244tJ3e4RxmUP
+    z5/I3+7wBy4KGnGIf5R+E81gwG1ugaLtEx+qqMepzZfwGQfmcyKS+opieuYccbEH
+    w4kidbehyhZ3et2w0Rdjlpgb1c3TJ6xwA+FJmG8aiCzA
+    -----END CERTIFICATE-----
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-config
+data:
+{{- (.Files.Glob "files/*").AsConfig | nindent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-eds
+data:
+{{- (.Files.Glob "files/eds/*").AsConfig | nindent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-rds
+data:
+{{- (.Files.Glob "files/rds/*").AsConfig | nindent 2 }}
+---
+{{ range $s := until (int .Values.services) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-{{ $s }}
+spec:
+
+  selector:
+    matchLabels:
+      name: envoy-{{ $s }}
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: envoy
+        name: envoy-{{ $s }}
+    spec:
+      initContainers:
+      - name: init-sysctl
+        image: busybox:1.29
+        securityContext:
+          privileged: true
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            sysctl -w fs.inotify.max_user_watches=524288
+            sysctl -w user.max_inotify_watches=524288
+            sysctl -w user.max_inotify_instances=8192
+        resources:
+          requests:
+            cpu: 1m
+            memory: 1Mi
+      containers:
+        - name: istio-proxy
+{{- if $.Values.istioProxy }}
+          image: istio/proxyv2:1.1.7
+{{- else }}
+          image: envoyproxy/envoy-dev:829b905ca0fdc85233c3969247e53a62a52ac627
+{{- end}}
+          command:
+            - /usr/local/bin/envoy
+            - -c
+            - /etc/config/bootstrap/bootstrap.yaml
+            - --restart-epoch
+            - "0"
+            - --drain-time-s
+            - "45"
+            - --log-level
+            - info
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /etc/config/bootstrap
+            - name: config
+              mountPath: /etc/config/config
+            - name: rds
+              mountPath: /etc/config/rds
+            - name: eds
+              mountPath: /etc/config/eds
+            - name: fake-cert
+              mountPath: /etc/certs/
+      volumes:
+        - name: bootstrap
+          configMap:
+            name: envoy-bootstrap
+        - name: config
+          configMap:
+            name: envoy-config
+        - name: rds
+          configMap:
+            name: envoy-rds
+        - name: eds
+          configMap:
+            name: envoy-eds
+        - name: fake-cert
+          configMap:
+            name: fake-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-{{ $s }}
+spec:
+  selector:
+    name: envoy-{{ $s }}
+  ports:
+    - port: 80
+      name: http
+    - port: 15000
+      name: admin
+---
+{{ end }}

@@ -1,0 +1,2 @@
+services: 1
+istioProxy: true
