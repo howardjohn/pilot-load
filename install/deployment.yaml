@@ -16,15 +16,19 @@ spec:
     spec:
       restartPolicy: Always
       containers:
-        - name: pilot-load
-          image: gcr.io/howardjohn-istio/pilot-load
-          imagePullPolicy: Always
-          command:
-            - "pilot-load"
-            - "--clients"
-            - "100"
-            - "--pilot-address"
-            - "istio-pilot.istio-system:15010"
+      - name: pilot-load
+        image: gcr.io/howardjohn-istio/pilot-load
+        imagePullPolicy: Always
+        command:
+          - "pilot-load"
+          - "--clients"
+          - "100"
+          - "--pilot-address"
+          - "istio-pilot.istio-system:15010"
+        resources:
+          requests:
+            cpu: 40m
+            memory: 128Mi
   selector:
     matchLabels:
       app: pilot-load
