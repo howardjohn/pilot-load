@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"istio.io/istio/pkg/adsc"
+	"github.com/howardjohn/pilot-load/adsc"
 )
 
 func makeADSC(addr string, client int, prefix int) error {
