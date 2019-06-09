@@ -16,7 +16,6 @@ import (
 	xdsapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	ads "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
-	xdsutil "github.com/envoyproxy/go-control-plane/pkg/util"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -64,24 +63,6 @@ type ADSC struct {
 
 	// InitialLoad tracks the time to receive the initial configuration.
 	InitialLoad time.Duration
-
-	// HTTPListeners contains received listeners with a http_connection_manager filter.
-	HTTPListeners map[string]*xdsapi.Listener
-
-	// TCPListeners contains all listeners of type TCP (not-HTTP)
-	TCPListeners map[string]*xdsapi.Listener
-
-	// All received clusters of type EDS, keyed by name
-	EDSClusters map[string]*xdsapi.Cluster
-
-	// All received clusters of no-EDS type, keyed by name
-	Clusters map[string]*xdsapi.Cluster
-
-	// All received routes, keyed by route name
-	Routes map[string]*xdsapi.RouteConfiguration
-
-	// All received endpoints, keyed by cluster name
-	EDS map[string]*xdsapi.ClusterLoadAssignment
 
 	// DumpCfg will print all received config
 	DumpCfg bool
@@ -314,12 +295,7 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 		}
 		if f0.Name == "envoy.tcp_proxy" {
 			lt[l.Name] = l
-			config := f0.GetConfig()
-			if config == nil {
-				config, _ = xdsutil.MessageToStruct(f0.GetTypedConfig())
-			}
-			c := config.Fields["cluster"].GetStringValue()
-			log.Printf("TCP: %s -> %s", l.Name, c)
+			log.Printf("TCP: %s", l.Name)
 		} else if f0.Name == "envoy.http_connection_manager" {
 			lh[l.Name] = l
 
@@ -350,8 +326,6 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 	if len(routes) > 0 {
 		a.sendRsc(routeType, routes)
 	}
-	a.HTTPListeners = lh
-	a.TCPListeners = lt
 
 	select {
 	case a.Updates <- "lds":
@@ -387,60 +361,6 @@ type Endpoint struct {
 	Weight int
 }
 
-// Save will save the json configs to files, using the base directory
-func (a *ADSC) Save(base string) error {
-	strResponse, err := json.MarshalIndent(a.TCPListeners, "  ", "  ")
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(base+"_lds_tcp.json", strResponse, 0644)
-	if err != nil {
-		return err
-	}
-	strResponse, err = json.MarshalIndent(a.HTTPListeners, "  ", "  ")
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(base+"_lds_http.json", strResponse, 0644)
-	if err != nil {
-		return err
-	}
-	strResponse, err = json.MarshalIndent(a.Routes, "  ", "  ")
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(base+"_rds.json", strResponse, 0644)
-	if err != nil {
-		return err
-	}
-	strResponse, err = json.MarshalIndent(a.EDSClusters, "  ", "  ")
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(base+"_ecds.json", strResponse, 0644)
-	if err != nil {
-		return err
-	}
-	strResponse, err = json.MarshalIndent(a.Clusters, "  ", "  ")
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(base+"_cds.json", strResponse, 0644)
-	if err != nil {
-		return err
-	}
-	strResponse, err = json.MarshalIndent(a.EDS, "  ", "  ")
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(base+"_eds.json", strResponse, 0644)
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
 func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 
 	cn := []string{}
@@ -472,8 +392,6 @@ func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	a.EDSClusters = edscds
-	a.Clusters = cds
 
 	select {
 	case a.Updates <- "cds":
@@ -535,7 +453,6 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	a.EDS = la
 
 	select {
 	case a.Updates <- "eds":
@@ -575,10 +492,6 @@ func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
 		log.Println(string(b))
 	}
 
-	a.mutex.Lock()
-	a.Routes = rds
-	a.mutex.Unlock()
-
 	select {
 	case a.Updates <- "rds":
 	default:
@@ -612,12 +525,6 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 			return "", ErrTimeout
 		}
 	}
-}
-
-// EndpointsJSON returns the endpoints, formatted as JSON, for debugging.
-func (a *ADSC) EndpointsJSON() string {
-	out, _ := json.MarshalIndent(a.EDS, " ", " ")
-	return string(out)
 }
 
 // Watch will start watching resources, starting with LDS. Based on the LDS response
