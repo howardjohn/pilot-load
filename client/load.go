@@ -13,6 +13,9 @@ func makeADSC(addr string, client int, prefix int) error {
 	fmt.Println("Connecting:", ip)
 	con, err := adsc.Dial(addr, "", &adsc.Config{
 		IP: ip,
+		Meta: map[string]string{
+			"ISTIO_PROXY_VERSION": "1.1.3",
+		},
 	})
 	if err != nil {
 		return err
