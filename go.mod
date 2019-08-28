@@ -11,6 +11,7 @@ replace github.com/spf13/viper => github.com/istio/viper v1.3.3-0.20190515210538
 require (
 	github.com/envoyproxy/go-control-plane v0.8.0
 	github.com/gogo/protobuf v1.2.1
+	github.com/spf13/cobra v0.0.3
 	google.golang.org/grpc v1.20.1
 	istio.io/istio v0.0.0-20190525042921-d8a34e3aa93f
 )
