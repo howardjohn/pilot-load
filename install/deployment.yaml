@@ -19,8 +19,7 @@ spec:
       - name: pilot-load
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
-        command:
-          - "pilot-load"
+        args:
           - "--clients"
           - "100"
           - "--pilot-address"

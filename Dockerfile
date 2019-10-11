@@ -1,7 +1,11 @@
-FROM golang:1.12
+FROM golang:1.13-alpine as builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o pilot-load .
 
-ADD . /go/src/github.com/howardjohn/pilot-load
-
-RUN go install github.com/howardjohn/pilot-load
-
-CMD /go/bin/pilot-load
+FROM alpine
+COPY --from=builder /app/pilot-load /app/pilot-load
+EXPOSE 9901
+ENTRYPOINT ["/app/pilot-load"]

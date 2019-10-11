@@ -14,7 +14,7 @@ func makeADSC(addr string, client int, prefix int) error {
 	con, err := adsc.Dial(addr, "", &adsc.Config{
 		IP: ip,
 		Meta: map[string]string{
-			"ISTIO_PROXY_VERSION": "1.1.3",
+			"ISTIO_VERSION": "1.9.0",
 		},
 	})
 	if err != nil {
@@ -37,7 +37,13 @@ func RunLoad(pilotAddress string, clients int, prefix int) error {
 	for cur := 0; cur < clients; cur++ {
 		wg.Add(1)
 		go func() {
-			makeADSC(pilotAddress, cur, prefix)
+			for {
+				err := makeADSC(pilotAddress, cur, prefix)
+				if err != nil {
+					break
+				}
+				fmt.Println("connecton ended")
+			}
 			wg.Done()
 		}()
 		time.Sleep(time.Millisecond * 100)
