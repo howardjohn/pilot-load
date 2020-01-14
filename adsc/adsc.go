@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,14 +13,16 @@ import (
 	"time"
 
 	xdsapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	ads "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+var marshal = &jsonpb.Marshaler{OrigName: true, Indent: "  "}
 
 // Config for the ADS connection.
 type Config struct {
@@ -40,6 +41,9 @@ type Config struct {
 	// IP is currently the primary key used to locate inbound configs. It is sent by client,
 	// must match a known endpoint IP. Tests can use a ServiceEntry to register fake IPs.
 	IP string
+
+	// If true, will dump outputs
+	Verbose bool
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -59,21 +63,16 @@ type ADSC struct {
 	certDir string
 	url     string
 
-	watchTime time.Time
+	verbose bool
 
-	// InitialLoad tracks the time to receive the initial configuration.
-	InitialLoad time.Duration
-
-	// DumpCfg will print all received config
-	DumpCfg bool
+	InitialLoad bool
 
 	// Metadata has the node metadata to send to pilot.
 	// If nil, the defaults will be used.
 	Metadata map[string]string
 
 	// Updates includes the type of the last update received from the server.
-	Updates     chan string
-	VersionInfo map[string]string
+	Updates chan string
 
 	mutex sync.Mutex
 }
@@ -101,11 +100,11 @@ var (
 // Dial connects to a ADS server, with optional MTLS authentication if a cert dir is specified.
 func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
-		done:        make(chan error),
-		Updates:     make(chan string, 100),
-		VersionInfo: map[string]string{},
-		certDir:     certDir,
-		url:         url,
+		done:    make(chan error),
+		Updates: make(chan string, 100),
+		certDir: certDir,
+		url:     url,
+		verbose: opts.Verbose,
 	}
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
@@ -186,8 +185,6 @@ func (a *ADSC) Close() {
 
 // Run will run the ADS client.
 func (a *ADSC) Run() error {
-
-	// TODO: pass version info, nonce properly
 	var err error
 	if len(a.certDir) > 0 {
 		tlsCfg, err := tlsConfig(a.certDir)
@@ -236,8 +233,7 @@ func (a *ADSC) handleRecv() {
 		clusters := []*xdsapi.Cluster{}
 		routes := []*xdsapi.RouteConfiguration{}
 		eds := []*xdsapi.ClusterLoadAssignment{}
-		for _, rsc := range msg.Resources { // Any
-			a.VersionInfo[rsc.TypeUrl] = msg.VersionInfo
+		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
 			if rsc.TypeUrl == listenerType {
 				ll := &xdsapi.Listener{}
@@ -281,23 +277,10 @@ func (a *ADSC) handleRecv() {
 
 // nolint: staticcheck
 func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
-	lh := map[string]*xdsapi.Listener{}
-	lt := map[string]*xdsapi.Listener{}
-
 	routes := []string{}
-	ldsSize := 0
-
 	for _, l := range ll {
-		ldsSize += l.Size()
 		f0 := l.FilterChains[0].Filters[0]
-		if f0.Name == "mixer" {
-			f0 = l.FilterChains[0].Filters[1]
-		}
-		if f0.Name == "envoy.tcp_proxy" {
-			lt[l.Name] = l
-			log.Printf("TCP: %s", l.Name)
-		} else if f0.Name == "envoy.http_connection_manager" {
-			lh[l.Name] = l
+		if f0.Name == "envoy.http_connection_manager" {
 
 			// Getting from config is too painful..
 			port := l.Address.GetSocketAddress().GetPortValue()
@@ -306,20 +289,17 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 			} else {
 				routes = append(routes, fmt.Sprintf("%d", port))
 			}
-		} else if f0.Name == "envoy.mongo_proxy" {
-			// ignore for now
-		} else if f0.Name == "envoy.filters.network.mysql_proxy" {
-			// ignore for now
-		} else {
-			tm := &jsonpb.Marshaler{Indent: "  "}
-			log.Println(tm.MarshalToString(l))
 		}
 	}
 
-	log.Println("LDS: http=", len(lh), "tcp=", len(lt), "size=", ldsSize)
-	if a.DumpCfg {
-		b, _ := json.MarshalIndent(ll, " ", " ")
-		log.Println(string(b))
+	if a.verbose {
+		for i, l := range ll {
+			b, err := marshal.MarshalToString(l)
+			if err != nil {
+				log.Println("Error in LDS: ", err)
+			}
+			log.Println(i, b)
+		}
 	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -362,32 +342,22 @@ type Endpoint struct {
 }
 
 func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
-
 	cn := []string{}
-	cdsSize := 0
-	edscds := map[string]*xdsapi.Cluster{}
-	cds := map[string]*xdsapi.Cluster{}
 	for _, c := range ll {
-		cdsSize += c.Size()
-		switch v := c.ClusterDiscoveryType.(type) {
-		case *xdsapi.Cluster_Type:
-			if v.Type != xdsapi.Cluster_EDS {
-				cds[c.Name] = c
-				continue
-			}
-		}
 		cn = append(cn, c.Name)
-		edscds[c.Name] = c
 	}
-
-	log.Println("CDS: ", len(cn), "size=", cdsSize)
 
 	if len(cn) > 0 {
 		a.sendRsc(endpointType, cn)
 	}
-	if a.DumpCfg {
-		b, _ := json.MarshalIndent(ll, " ", " ")
-		log.Println(string(b))
+	if a.verbose {
+		for i, c := range ll {
+			b, err := marshal.MarshalToString(c)
+			if err != nil {
+				log.Println("Error in CDS: ", err)
+			}
+			log.Println(i, b)
+		}
 	}
 
 	a.mutex.Lock()
@@ -404,17 +374,17 @@ func (a *ADSC) node() *core.Node {
 		Id: a.nodeID,
 	}
 	if a.Metadata == nil {
-		n.Metadata = &types.Struct{
-			Fields: map[string]*types.Value{
-				"ISTIO_PROXY_VERSION": {Kind: &types.Value_StringValue{StringValue: "1.0"}},
+		n.Metadata = &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"ISTIO_PROXY_VERSION": {Kind: &structpb.Value_StringValue{StringValue: "1.0"}},
 			}}
 	} else {
-		f := map[string]*types.Value{}
+		f := map[string]*structpb.Value{}
 
 		for k, v := range a.Metadata {
-			f[k] = &types.Value{Kind: &types.Value_StringValue{StringValue: v}}
+			f[k] = &structpb.Value{Kind: &structpb.Value_StringValue{StringValue: v}}
 		}
-		n.Metadata = &types.Struct{
+		n.Metadata = &structpb.Struct{
 			Fields: f,
 		}
 	}
@@ -428,21 +398,19 @@ func (a *ADSC) Send(req *xdsapi.DiscoveryRequest) error {
 }
 
 func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
-	la := map[string]*xdsapi.ClusterLoadAssignment{}
-	edsSize := 0
-	ep := 0
-	for _, cla := range eds {
-		edsSize += cla.Size()
-		la[cla.ClusterName] = cla
-		ep += len(cla.Endpoints)
-	}
+	if a.verbose {
+		if a.verbose {
+			for i, e := range eds {
+				b, err := marshal.MarshalToString(e)
+				if err != nil {
+					log.Println("Error in EDS: ", err)
+				}
+				log.Println(i, b)
+			}
+		}
 
-	log.Println("EDS: ", len(eds), "size=", edsSize, "ep=", ep)
-	if a.DumpCfg {
-		b, _ := json.MarshalIndent(eds, " ", " ")
-		log.Println(string(b))
 	}
-	if a.InitialLoad == 0 {
+	if !a.InitialLoad {
 		// first load - Envoy loads listeners after endpoints
 		_ = a.stream.Send(&xdsapi.DiscoveryRequest{
 			ResponseNonce: time.Now().String(),
@@ -462,34 +430,24 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 
 func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
 
-	vh := 0
-	rcount := 0
-	size := 0
-
 	rds := map[string]*xdsapi.RouteConfiguration{}
 
 	for _, r := range configurations {
-		for _, h := range r.VirtualHosts {
-			vh++
-			for _, rt := range h.Routes {
-				rcount++
-				// Example: match:<prefix:"/" > route:<cluster:"outbound|9154||load-se-154.local" ...
-				log.Println(h.Name, rt.Match.PathSpecifier, rt.GetRoute().GetCluster())
-			}
-		}
 		rds[r.Name] = r
-		size += r.Size()
-	}
-	if a.InitialLoad == 0 {
-		a.InitialLoad = time.Since(a.watchTime)
-		log.Println("RDS: ", len(configurations), "size=", size, "vhosts=", vh, "routes=", rcount, " time=", a.InitialLoad)
-	} else {
-		log.Println("RDS: ", len(configurations), "size=", size, "vhosts=", vh, "routes=", rcount)
 	}
 
-	if a.DumpCfg {
-		b, _ := json.MarshalIndent(configurations, " ", " ")
-		log.Println(string(b))
+	if !a.InitialLoad {
+		a.InitialLoad = true
+	}
+
+	if a.verbose {
+		for i, r := range configurations {
+			b, err := marshal.MarshalToString(r)
+			if err != nil {
+				log.Println("Error in RDS: ", err)
+			}
+			log.Println(i, b)
+		}
 	}
 
 	select {
@@ -530,12 +488,14 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 // Watch will start watching resources, starting with LDS. Based on the LDS response
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
-	a.watchTime = time.Now()
-	_ = a.stream.Send(&xdsapi.DiscoveryRequest{
+	err := a.stream.Send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: time.Now().String(),
 		Node:          a.node(),
 		TypeUrl:       clusterType,
 	})
+	if err != nil {
+		log.Println("Error sending request: ", err)
+	}
 }
 
 func (a *ADSC) sendRsc(typeurl string, rsc []string) {

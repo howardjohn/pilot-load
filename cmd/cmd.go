@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -29,11 +27,7 @@ var rootCmd = &cobra.Command{
 	Use:   "pilot-load",
 	Short: "open XDS connections to pilot",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if !verbose {
-			log.SetFlags(0)
-			log.SetOutput(ioutil.Discard)
-		}
-		return client.RunLoad(pilotAddress, clients, prefix)
+		return client.RunLoad(pilotAddress, clients, prefix, verbose)
 	},
 }
 
