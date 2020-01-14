@@ -1,0 +1,20 @@
+version: '3'
+services:
+  etcd:
+    image: gcr.io/google_containers/etcd:3.4.3
+    command:
+    - etcd
+    ports:
+    - "2379:2379"
+    network_mode: host
+
+  apiserver:
+    image: k8s.gcr.io/kube-apiserver:v1.17.0
+    command:
+    - kube-apiserver
+    - --etcd-servers=http://127.0.0.1:2379
+    - --port
+    - 8080
+    - --insecure-bind-address
+    - 0.0.0.0
+    network_mode: host
