@@ -13,8 +13,11 @@ services:
     command:
     - kube-apiserver
     - --etcd-servers=http://127.0.0.1:2379
+    - --disable-admission-plugins="ServiceAccount"
     - --port
-    - 8080
+    - "8080"
     - --insecure-bind-address
     - 0.0.0.0
+    environment:
+    - KUBE_ADMISSION_CONTROL=""
     network_mode: host
