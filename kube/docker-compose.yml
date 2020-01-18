@@ -18,6 +18,8 @@ services:
     - "18090"
     - --insecure-bind-address
     - 0.0.0.0
+    - --service-cluster-ip-range
+    - "10.0.0.0/16"
     environment:
     - KUBE_ADMISSION_CONTROL=""
     network_mode: host

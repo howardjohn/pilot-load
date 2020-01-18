@@ -9,10 +9,25 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+
+	"golang.org/x/sync/errgroup"
 )
 
-
 type Runner func(ctx context.Context) error
+
+func (r Runner) Append(o Runner) Runner {
+	return func(ctx context.Context) error {
+		g, c := errgroup.WithContext(ctx)
+		g.Go(func() error {
+			return r(c)
+		})
+		g.Go(func() error {
+			return o(c)
+		})
+
+		return g.Wait()
+	}
+}
 
 type Simulation interface {
 	Run(Args) (Runner, error)
@@ -49,7 +64,7 @@ func genUID() string {
 
 var (
 	ipMutex sync.Mutex
-	nextIp = net.ParseIP("10.0.0.10")
+	nextIp  = net.ParseIP("10.0.0.10")
 )
 
 func getIp() string {

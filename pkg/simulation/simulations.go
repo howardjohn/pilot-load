@@ -19,6 +19,7 @@ func Simple(a Args) error {
 		Node:           "node",
 		Namespace:      "workload",
 		ServiceAccount: "default",
+		Instances:      3,
 	}
 	run, err := wl.Run(a)
 	if err != nil {
