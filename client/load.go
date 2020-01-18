@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -30,6 +31,36 @@ func makeADSC(addr string, client int, prefix int, verbose bool) error {
 		log.Println("Got update: ", u, " for ", ip)
 		if u == "close" {
 			log.Println("Closing:", ip)
+			return nil
+		}
+	}
+}
+
+func Connect(ctx context.Context, pilotAddress string, ip string) error {
+	log.Println("Connecting:", ip)
+	con, err := adsc.Dial(pilotAddress, "", &adsc.Config{
+		IP: ip,
+		Meta: map[string]string{
+			"ISTIO_VERSION": "1.5.0",
+		},
+		Verbose: false,
+	})
+	if err != nil {
+		return err
+	}
+	log.Println("Connected:", ip)
+	con.Watch()
+
+	log.Println("Got Initial Update:", ip)
+	for {
+		select {
+		case u := <-con.Updates:
+			log.Println("Got update: ", u, " for ", ip)
+			if u == "close" {
+				log.Println("Closing:", ip)
+				return nil
+			}
+		case <-ctx.Done():
 			return nil
 		}
 	}

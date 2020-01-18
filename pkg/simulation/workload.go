@@ -1,6 +1,33 @@
 package simulation
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+
+	"github.com/howardjohn/pilot-load/client"
+)
+
+var (
+	namespaceYml = `
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    istio-injection: enabled
+  name: {{.Name}}
+spec:
+status:
+  phase: Active
+`
+)
+
+type NamespaceSpec struct {
+	Name string
+}
+
+func (s NamespaceSpec) Generate() string {
+	return render(namespaceYml, s)
+}
 
 var (
 	podYml = `
@@ -48,7 +75,7 @@ type PodSpec struct {
 	IP             string
 }
 
-func generatePod(s PodSpec) string {
+func (s PodSpec) Generate() string {
 	if s.UID == "" {
 		s.UID = genUID()
 	}
@@ -139,37 +166,56 @@ func (s ServiceAccountSpec) Generate() string {
 	return render(serviceAccountYml, s)
 }
 
-func CreateWorkload() {
-	app := "foo"
-	node := "node1"
-	ns := "default"
-	san := "sa"
+type Workload struct {
+	App            string
+	Node           string
+	Namespace      string
+	ServiceAccount string
+}
+
+func (w Workload) Run(a Args) (func(context.Context) error, error) {
+	run := func(ctx context.Context) error {
+		config, ip := createWorkload(w)
+		if err := applyConfig(config); err != nil {
+			return fmt.Errorf("failed to apply config: %v", err)
+		}
+		defer deleteNamespace(w.Namespace)
+		defer deleteConfig(config)
+		return client.Connect(ctx, a.PilotAddress, ip)
+	}
+	return run, nil
+}
+
+func createWorkload(w Workload) (string, string) {
 	ip := getIp()
 
-	sa := ServiceAccountSpec{
-		App:       app,
-		Namespace: ns,
-		Name:      san,
+	ns := NamespaceSpec{
+		Name: w.Namespace,
 	}.Generate()
-	pod := generatePod(PodSpec{
-		ServiceAccount: san,
-		Node:           node,
-		App:            app,
-		Namespace:      ns,
+	sa := ServiceAccountSpec{
+		App:       w.App,
+		Namespace: w.Namespace,
+		Name:      w.ServiceAccount,
+	}.Generate()
+	pod := PodSpec{
+		ServiceAccount: w.ServiceAccount,
+		Node:           w.Node,
+		App:            w.App,
+		Namespace:      w.Namespace,
 		IP:             ip,
-	})
+	}.Generate()
 	svc := ServiceSpec{
-		App:       app,
-		Namespace: ns,
+		App:       w.App,
+		Namespace: w.Namespace,
 		IP:        getIp(),
 	}.Generate()
 	ep := EndpointSpec{
-		Node:      node,
-		App:       app,
-		Namespace: ns,
+		Node:      w.Node,
+		App:       w.App,
+		Namespace: w.Namespace,
 		IPs:       []string{ip},
 	}.Generate()
 
-	workload := combineYaml(sa, pod, svc, ep)
-	fmt.Println(workload)
+	workload := combineYaml(ns, sa, pod, svc, ep)
+	return workload, ip
 }

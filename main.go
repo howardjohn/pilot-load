@@ -1,8 +1,7 @@
 package main
 
-import "github.com/howardjohn/pilot-load/pkg/simulation"
+import "github.com/howardjohn/pilot-load/cmd"
 
 func main() {
-	//cmd.Execute()
-	simulation.CreateWorkload()
+	cmd.Execute()
 }

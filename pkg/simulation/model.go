@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -9,6 +10,13 @@ import (
 	"sync"
 	"text/template"
 )
+
+
+type Runner func(ctx context.Context) error
+
+type Simulation interface {
+	Run(Args) (Runner, error)
+}
 
 var funcMap = map[string]interface{}{}
 

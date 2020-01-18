@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/howardjohn/pilot-load/client"
+	"github.com/howardjohn/pilot-load/pkg/simulation"
 )
 
 var (
@@ -26,8 +26,11 @@ func init() {
 var rootCmd = &cobra.Command{
 	Use:   "pilot-load",
 	Short: "open XDS connections to pilot",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return client.RunLoad(pilotAddress, clients, prefix, verbose)
+		return simulation.Simple(simulation.Args{
+			PilotAddress: pilotAddress,
+		})
 	},
 }
 

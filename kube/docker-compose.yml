@@ -15,7 +15,7 @@ services:
     - --etcd-servers=http://127.0.0.1:2379
     - --disable-admission-plugins="ServiceAccount"
     - --port
-    - "8080"
+    - "18090"
     - --insecure-bind-address
     - 0.0.0.0
     environment:
