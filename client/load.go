@@ -15,7 +15,7 @@ func makeADSC(addr string, client int, prefix int, verbose bool) error {
 	log.Println("Connecting:", ip)
 	con, err := adsc.Dial(addr, "", &adsc.Config{
 		IP: ip,
-		Meta: map[string]string{
+		Meta: map[string]interface{}{
 			"ISTIO_VERSION": "1.9.0",
 		},
 		Verbose: verbose,
@@ -36,13 +36,11 @@ func makeADSC(addr string, client int, prefix int, verbose bool) error {
 	}
 }
 
-func Connect(ctx context.Context, pilotAddress string, ip string) error {
+func Connect(ctx context.Context, pilotAddress string, ip string, meta map[string]interface{}) error {
 	log.Println("Connecting:", ip)
 	con, err := adsc.Dial(pilotAddress, "", &adsc.Config{
 		IP: ip,
-		Meta: map[string]string{
-			"ISTIO_VERSION": "1.5.0",
-		},
+		Meta: meta,
 		Verbose: false,
 	})
 	if err != nil {

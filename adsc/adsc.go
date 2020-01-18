@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -33,7 +34,7 @@ type Config struct {
 	Workload string
 
 	// Meta includes additional metadata for the node
-	Meta map[string]string
+	Meta map[string]interface{}
 
 	// NodeType defaults to sidecar. "ingress" and "router" are also supported.
 	NodeType string
@@ -69,7 +70,7 @@ type ADSC struct {
 
 	// Metadata has the node metadata to send to pilot.
 	// If nil, the defaults will be used.
-	Metadata map[string]string
+	Metadata map[string]interface{}
 
 	// Updates includes the type of the last update received from the server.
 	Updates chan string
@@ -373,21 +374,19 @@ func (a *ADSC) node() *core.Node {
 	n := &core.Node{
 		Id: a.nodeID,
 	}
-	if a.Metadata == nil {
-		n.Metadata = &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"ISTIO_PROXY_VERSION": {Kind: &structpb.Value_StringValue{StringValue: "1.0"}},
-			}}
-	} else {
-		f := map[string]*structpb.Value{}
-
-		for k, v := range a.Metadata {
-			f[k] = &structpb.Value{Kind: &structpb.Value_StringValue{StringValue: v}}
-		}
-		n.Metadata = &structpb.Struct{
-			Fields: f,
-		}
+	js, err := json.Marshal(a.Metadata)
+	if err != nil {
+		panic("invalid metadata " + err.Error())
 	}
+
+	meta := &structpb.Struct{}
+	err = jsonpb.UnmarshalString(string(js), meta)
+	if err != nil {
+		panic("invalid metadata " + err.Error())
+	}
+
+	n.Metadata = meta
+
 	return n
 }
 

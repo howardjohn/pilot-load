@@ -181,7 +181,16 @@ func (w Workload) Run(a Args) (func(context.Context) error, error) {
 		}
 		defer deleteNamespace(w.Namespace)
 		defer deleteConfig(config)
-		return client.Connect(ctx, a.PilotAddress, ip)
+		meta := map[string]interface{}{
+			"ISTIO_VERSION": "1.5.0",
+			"CLUSTER_ID":    "Kubernetes",
+			"LABELS": map[string]string{
+				"app": w.App,
+			},
+			"CONFIG_NAMESPACE": w.Namespace,
+		}
+
+		return client.Connect(ctx, a.PilotAddress, ip, meta)
 	}
 	return run, nil
 }
