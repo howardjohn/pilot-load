@@ -53,7 +53,7 @@ func (e Endpoint) SetAddresses(ips []string) error {
 	return nil
 }
 
-func (e Endpoint) Run(ctx Context) (err error) {
+func (e *Endpoint) Run(ctx Context) (err error) {
 	e.running = true
 	return RunConfig(ctx, func() string { return render(endpointsYml, e.Spec) })
 }

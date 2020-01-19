@@ -36,26 +36,22 @@ func makeADSC(addr string, client int, prefix int, verbose bool) error {
 	}
 }
 
-func Connect(ctx context.Context, pilotAddress string, ip string, meta map[string]interface{}) error {
-	log.Println("Connecting:", ip)
-	con, err := adsc.Dial(pilotAddress, "", &adsc.Config{
-		IP:      ip,
-		Meta:    meta,
-		Verbose: false,
-	})
+func Connect(ctx context.Context, pilotAddress string, config *adsc.Config) error {
+	log.Println("Connecting:", config.IP)
+	con, err := adsc.Dial(pilotAddress, "", config)
 	if err != nil {
 		return err
 	}
-	log.Println("Connected:", ip)
+	log.Println("Connected:", config.IP)
 	con.Watch()
 
-	log.Println("Got Initial Update:", ip)
+	log.Println("Got Initial Update:", config.IP)
 	for {
 		select {
 		case u := <-con.Updates:
-			log.Println("Got update: ", u, " for ", ip)
+			log.Println("Got update: ", u, " for ", config.IP)
 			if u == "close" {
-				log.Println("Closing:", ip)
+				log.Println("Closing:", config.IP)
 				return nil
 			}
 		case <-ctx.Done():

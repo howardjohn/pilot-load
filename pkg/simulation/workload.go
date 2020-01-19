@@ -113,7 +113,7 @@ func (w Workload) Run(ctx Context) (err error) {
 }
 
 func (w *Workload) Scale(ctx Context, n int) error {
-	log.Println("scaling to ", n, " from ", len(w.pods))
+	log.Println("scaling to", n, "from", len(w.pods))
 	if n < len(w.pods) {
 		panic("cannot scale down yet")
 	}

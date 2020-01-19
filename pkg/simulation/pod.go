@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	"github.com/howardjohn/pilot-load/adsc"
 
 	"github.com/howardjohn/pilot-load/client"
 )
@@ -15,7 +16,6 @@ metadata:
     app: {{.App}}
   name: {{.App}}-{{.UID}}
   namespace: {{.Namespace}}
-  resourceVersion: "46749"
 spec:
   containers:
   - image: alpine
@@ -85,5 +85,12 @@ func (p *Pod) Run(ctx Context) (err error) {
 	defer func() {
 		err = AddError(err, deleteConfig(render(podYml, p.Spec)))
 	}()
-	return client.Connect(ctx, ctx.args.PilotAddress, p.Spec.IP, meta)
+	return client.Connect(ctx, ctx.args.PilotAddress, &adsc.Config{
+		Namespace: p.Spec.Namespace,
+		Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),
+		Meta:      meta,
+		NodeType:  "sidecar",
+		IP:        p.Spec.IP,
+		Verbose:   false,
+	})
 }
