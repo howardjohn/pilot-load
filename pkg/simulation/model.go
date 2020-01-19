@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"strings"
 	"sync"
 	"text/template"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -36,10 +34,6 @@ func render(yml string, spec interface{}) string {
 		panic("failed to render template: " + err.Error())
 	}
 	return buf.String()
-}
-
-func combineYaml(yml ...string) string {
-	return strings.Join(yml, "---")
 }
 
 var chars = []rune("abcdefghijklmnopqrstuvwxyz")
@@ -87,7 +81,7 @@ func (a AggregateSimulation) Run(ctx Context) error {
 	g, c := errgroup.WithContext(ctx)
 	ctx = Context{c, ctx.args}
 	for _, s := range a.simulations {
-		log.Println(fmt.Sprintf("running %T", s))
+		s := s
 		g.Go(func() error {
 			return s.Run(ctx)
 		})
@@ -96,20 +90,12 @@ func (a AggregateSimulation) Run(ctx Context) error {
 }
 
 func RunConfig(ctx Context, render func() string) (err error) {
-	for attempt := 0; attempt < 5; attempt++ {
-		if err = applyConfig(render()); err != nil {
-			if attempt == 4 {
-				return fmt.Errorf("failed to apply config: %v", err)
-			} else {
-				time.Sleep(time.Second)
-			}
-		} else {
-			break
-		}
+	if err = applyConfig(render()); err != nil {
+		return fmt.Errorf("failed to apply config: %v", err)
 	}
 	<-ctx.Done()
 	defer func() {
-		err = deleteConfig(render())
+		err = AddError(err, deleteConfig(render()))
 	}()
 	return nil
 }

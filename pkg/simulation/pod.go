@@ -83,7 +83,7 @@ func (p *Pod) Run(ctx Context) (err error) {
 		"CONFIG_NAMESPACE": p.Spec.Namespace,
 	}
 	defer func() {
-		err = deleteConfig(render(podYml, p.Spec))
+		err = AddError(err, deleteConfig(render(podYml, p.Spec)))
 	}()
 	return client.Connect(ctx, ctx.args.PilotAddress, p.Spec.IP, meta)
 }

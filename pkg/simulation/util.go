@@ -6,14 +6,31 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
+
+type KubernetesObject struct {
+	Kind     string
+	Metadata map[string]interface{}
+}
+
+func logYaml(prefix, y string) {
+	for _, p := range strings.Split(y, "---") {
+		o := KubernetesObject{}
+		if err := yaml.Unmarshal([]byte(p), &o); err != nil {
+			log.Println("Failed to unmarshal with error ", err, p)
+		}
+		log.Println(fmt.Sprintf("%s: %s/%s.%s", prefix, o.Kind, o.Metadata["name"], o.Metadata["namespace"]))
+	}
+}
 
 func applyConfig(yaml string) error {
 	c := exec.Command("kubectl", "apply", "-f", "-")
 	c.Stdin = strings.NewReader(yaml)
 	c.Stderr = os.Stderr
-	c.Stdout = os.Stdout
-	log.Println("Applying config: ", yaml)
+	//c.Stdout = os.Stdout
+	logYaml("apply", yaml)
 	return c.Run()
 }
 
@@ -21,8 +38,8 @@ func deleteConfig(yaml string) error {
 	c := exec.Command("kubectl", "delete", "-f", "-", "--force", "--grace-period=0", "--ignore-not-found", "--wait=false")
 	c.Stdin = strings.NewReader(yaml)
 	c.Stderr = os.Stderr
-	c.Stdout = os.Stdout
-	log.Println("Deleting config: ", yaml)
+	//c.Stdout = os.Stdout
+	logYaml("delete", yaml)
 	return c.Run()
 }
 
@@ -34,4 +51,14 @@ func deleteNamespace(name string) error {
 	c.Stderr = os.Stderr
 	c.Stdout = os.Stdout
 	return c.Run()
+}
+
+func AddError(e1, e2 error) error {
+	if e1 == nil {
+		return e2
+	}
+	if e2 == nil {
+		return e1
+	}
+	return fmt.Errorf("%v and %v", e1, e2)
 }
