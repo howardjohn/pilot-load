@@ -1,11 +1,17 @@
 package simulation
 
+import (
+	"log"
+	"time"
+)
+
 type WorkloadSpec struct {
 	App            string
 	Node           string
 	Namespace      string
 	ServiceAccount string
 	Instances      int
+	Scaling        time.Duration
 }
 
 type Workload struct {
@@ -15,6 +21,7 @@ type Workload struct {
 	endpoint       *Endpoint
 	pods           []*Pod
 	service        *Service
+	scaler         *Scaler
 }
 
 var _ Simulation = &Workload{}
@@ -50,16 +57,83 @@ func NewWorkload(s WorkloadSpec) *Workload {
 		Namespace: s.Namespace,
 		IP:        getIp(),
 	})
+	w.scaler = NewScaler(ScalerSpec{
+		scaler:   w.Scale,
+		start:    w.Spec.Instances,
+		interval: w.Spec.Scaling,
+	})
 	return w
 }
 
+func NewScaler(s ScalerSpec) *Scaler {
+	return &Scaler{Spec: &s}
+}
+
+type ScalerSpec struct {
+	scaler   func(ctx Context, n int) error
+	start    int
+	interval time.Duration
+}
+
+type Scaler struct {
+	Spec *ScalerSpec
+}
+
+func (s Scaler) Run(ctx Context) error {
+	errCh := make(chan error)
+	cur := s.Spec.start
+	tick := time.NewTicker(s.Spec.interval)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case err := <-errCh:
+			return err
+		case <-tick.C:
+			cur++
+			scaleTo := cur
+			go func() {
+				if err := s.Spec.scaler(ctx, scaleTo); err != nil {
+					errCh <- err
+				}
+			}()
+		}
+	}
+}
+
+var _ Simulation = &Scaler{}
+
 func (w Workload) Run(ctx Context) (err error) {
-	sims := []Simulation{w.service, w.endpoint, w.serviceAccount}
+	sims := []Simulation{w.service, w.endpoint, w.serviceAccount, w.scaler}
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}
 	agg := NewAggregateSimulation([]Simulation{w.namespace}, sims)
 	return agg.Run(ctx)
+}
+
+func (w *Workload) Scale(ctx Context, n int) error {
+	log.Println("scaling to ", n, " from ", len(w.pods))
+	if n < len(w.pods) {
+		panic("cannot scale down yet")
+	}
+	newSims := []Simulation{}
+	for n > len(w.pods) {
+		pod := NewPod(PodSpec{
+			ServiceAccount: w.Spec.ServiceAccount,
+			Node:           w.Spec.Node,
+			App:            w.Spec.App,
+			Namespace:      w.Spec.Namespace,
+		})
+		w.pods = append(w.pods, pod)
+		newSims = append(newSims, pod)
+
+		// TODO this should be a simulation maybe?
+		if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
+			return err
+		}
+	}
+	return NewAggregateSimulation(nil, newSims).Run(ctx)
 }
 
 func (w Workload) getIps() []string {

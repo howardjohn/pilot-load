@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 )
 
 type Args struct {
@@ -17,7 +18,8 @@ func Simple(a Args) error {
 		Node:           "node",
 		Namespace:      "workload",
 		ServiceAccount: "default",
-		Instances:      5,
+		Instances:      1,
+		Scaling:        time.Second * 3,
 	})
 	if err := ExecuteSimulations(a, wl); err != nil {
 		return fmt.Errorf("error executing: %v", err)
