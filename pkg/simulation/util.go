@@ -13,15 +13,16 @@ func applyConfig(yaml string) error {
 	c.Stdin = strings.NewReader(yaml)
 	c.Stderr = os.Stderr
 	c.Stdout = os.Stdout
+	log.Println("Applying config: ", yaml)
 	return c.Run()
 }
 
 func deleteConfig(yaml string) error {
-	log.Println("deleting config")
 	c := exec.Command("kubectl", "delete", "-f", "-", "--force", "--grace-period=0", "--ignore-not-found", "--wait=false")
 	c.Stdin = strings.NewReader(yaml)
 	c.Stderr = os.Stderr
 	c.Stdout = os.Stdout
+	log.Println("Deleting config: ", yaml)
 	return c.Run()
 }
 

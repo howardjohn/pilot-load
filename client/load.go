@@ -39,8 +39,8 @@ func makeADSC(addr string, client int, prefix int, verbose bool) error {
 func Connect(ctx context.Context, pilotAddress string, ip string, meta map[string]interface{}) error {
 	log.Println("Connecting:", ip)
 	con, err := adsc.Dial(pilotAddress, "", &adsc.Config{
-		IP: ip,
-		Meta: meta,
+		IP:      ip,
+		Meta:    meta,
 		Verbose: false,
 	})
 	if err != nil {

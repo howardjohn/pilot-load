@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-
-	"golang.org/x/sync/errgroup"
 )
 
 type Args struct {
@@ -14,34 +12,23 @@ type Args struct {
 }
 
 func Simple(a Args) error {
-	wl := Workload{
+	wl := NewWorkload(WorkloadSpec{
 		App:            "app",
 		Node:           "node",
 		Namespace:      "workload",
 		ServiceAccount: "default",
-		Instances:      3,
-	}
-	run, err := wl.Run(a)
-	if err != nil {
-		panic(err)
-	}
-	if err := ExecuteSimulations([]Runner{run}); err != nil {
+		Instances:      1,
+	})
+	if err := ExecuteSimulations(a, wl); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}
 	return nil
 }
 
-func ExecuteSimulations(runners []Runner) error {
-	g, c := errgroup.WithContext(context.Background())
-	ctx, cancel := context.WithCancel(c)
+func ExecuteSimulations(a Args, simulation Simulation) error {
+	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
-	for _, r := range runners {
-		g.Go(func() error {
-			return r(ctx)
-		})
-	}
-
-	return g.Wait()
+	return simulation.Run(Context{ctx, a})
 }
 
 func captureTermination(ctx context.Context, cancel context.CancelFunc) {

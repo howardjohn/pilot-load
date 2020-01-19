@@ -1,6 +1,5 @@
 package adsc
 
-
 // Import all Envoy filter types so they are registered and deserialization does not fail
 // when using them in the "typed_config" attributes.
 import (

@@ -1,173 +1,6 @@
 package simulation
 
-import (
-	"context"
-	"fmt"
-	"log"
-
-	"github.com/howardjohn/pilot-load/client"
-)
-
-var (
-	namespaceYml = `
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    istio-injection: enabled
-  name: {{.Name}}
-spec:
-status:
-  phase: Active
-`
-)
-
-type NamespaceSpec struct {
-	Name string
-}
-
-func (s NamespaceSpec) Generate() string {
-	return render(namespaceYml, s)
-}
-
-var (
-	podYml = `
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    app: {{.App}}
-  name: {{.App}}-{{.UID}}
-  namespace: {{.Namespace}}
-  resourceVersion: "46749"
-spec:
-  containers:
-  - image: alpine
-    name: alpine
-    ports:
-    - containerPort: 80
-      protocol: TCP
-  - image: istio/proxyv2
-    name: istio-proxy
-    ports:
-    - containerPort: 15090
-      name: http-envoy-prom
-      protocol: TCP
-  initContainers:
-  - image: istio/proxyv2
-    imagePullPolicy: Always
-    name: istio-init
-  nodeName: {{.Node}}
-  serviceAccountName: {{.ServiceAccount}}
-status:
-  phase: Running
-  podIP: {{.IP}}
-  podIPs:
-  - ip: {{.IP}}
-`
-)
-
-type PodSpec struct {
-	ServiceAccount string
-	Node           string
-	App            string
-	Namespace      string
-	UID            string
-	IP             string
-}
-
-func (s PodSpec) Generate() string {
-	if s.UID == "" {
-		s.UID = genUID()
-	}
-	return render(podYml, s)
-}
-
-var (
-	serviceYml = `
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{.App}}
-  namespace:  {{.Namespace}}
-spec:
-  clusterIP: {{.IP}}
-  ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 80
-  selector:
-    app: {{.App}}
-  type: ClusterIP
-`
-)
-
-type ServiceSpec struct {
-	App       string
-	Namespace string
-	IP        string
-}
-
-func (s ServiceSpec) Generate() string {
-	return render(serviceYml, s)
-}
-
-var (
-	endpointsYml = `
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: {{.App}}
-  namespace: {{.Namespace}}
-subsets:
-- addresses:
-{{- range $ip := .IPs }}
-  - ip: {{$ip}}
-    nodeName: {{$.Node}}
-{{- end }}
-  ports:
-  - name: http
-    port: 80
-    protocol: TCP
-
-`
-)
-
-type EndpointSpec struct {
-	Node      string
-	App       string
-	Namespace string
-	IPs       []string
-}
-
-func (s EndpointSpec) Generate() string {
-	return render(endpointsYml, s)
-}
-
-var (
-	serviceAccountYml = `
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  labels:
-    app: {{.App}}
-  name: {{.Name}}
-  namespace: {{.Namespace}}
-`
-)
-
-type ServiceAccountSpec struct {
-	App       string
-	Namespace string
-	Name      string
-}
-
-func (s ServiceAccountSpec) Generate() string {
-	return render(serviceAccountYml, s)
-}
-
-type Workload struct {
+type WorkloadSpec struct {
 	App            string
 	Node           string
 	Namespace      string
@@ -175,68 +8,64 @@ type Workload struct {
 	Instances      int
 }
 
-func (w Workload) Run(a Args) (func(context.Context) error, error) {
-	return func(ctx context.Context) error {
-		config, ips := createWorkload(w)
-		log.Println("Applying config: ", config)
-		if err := applyConfig(config); err != nil {
-			return fmt.Errorf("failed to apply config: %v", err)
-		}
-		meta := map[string]interface{}{
-			"ISTIO_VERSION": "1.5.0",
-			"CLUSTER_ID":    "Kubernetes",
-			"LABELS": map[string]string{
-				"app": w.App,
-			},
-			"CONFIG_NAMESPACE": w.Namespace,
-		}
-		defer deleteNamespace(w.Namespace)
-		defer deleteConfig(config)
-		var run Runner = func(ctx context.Context) error { return nil }
-		for _, ip := range ips {
-			run = run.Append(func(ctx context.Context) error {
-				return client.Connect(ctx, a.PilotAddress, ip, meta)
-			})
-		}
-		return run(ctx)
-	}, nil
+type Workload struct {
+	Spec           *WorkloadSpec
+	namespace      *Namespace
+	serviceAccount *ServiceAccount
+	endpoint       *Endpoint
+	pods           []*Pod
+	service        *Service
 }
 
-func createWorkload(w Workload) (string, []string) {
-	ips := []string{}
+var _ Simulation = &Workload{}
 
-	out := ""
-	out = combineYaml(out, NamespaceSpec{
-		Name: w.Namespace,
-	}.Generate())
-	out = combineYaml(out, ServiceAccountSpec{
-		App:       w.App,
-		Namespace: w.Namespace,
-		Name:      w.ServiceAccount,
-	}.Generate())
+func NewWorkload(s WorkloadSpec) *Workload {
+	w := &Workload{Spec: &s}
+	w.namespace = NewNamespace(NamespaceSpec{
+		Name: s.Namespace,
+	})
+	w.serviceAccount = NewServiceAccount(ServiceAccountSpec{
+		App:       s.App,
+		Namespace: s.Namespace,
+		Name:      s.ServiceAccount,
+	})
 
-	for i := 0; i < w.Instances; i++ {
-		ip := getIp()
-		out = combineYaml(out, PodSpec{
-			ServiceAccount: w.ServiceAccount,
-			Node:           w.Node,
-			App:            w.App,
-			Namespace:      w.Namespace,
-			IP:             ip,
-		}.Generate())
-		ips = append(ips, ip)
+	for i := 0; i < s.Instances; i++ {
+		w.pods = append(w.pods, NewPod(PodSpec{
+			ServiceAccount: s.ServiceAccount,
+			Node:           s.Node,
+			App:            s.App,
+			Namespace:      s.Namespace,
+		}))
 	}
 
-	out = combineYaml(out, EndpointSpec{
-		Node:      w.Node,
-		App:       w.App,
-		Namespace: w.Namespace,
-		IPs:       ips,
-	}.Generate())
-	out = combineYaml(out, ServiceSpec{
-		App:       w.App,
-		Namespace: w.Namespace,
+	w.endpoint = NewEndpoint(EndpointSpec{
+		Node:      s.Node,
+		App:       s.App,
+		Namespace: s.Namespace,
+		IPs:       w.getIps(),
+	})
+	w.service = NewService(ServiceSpec{
+		App:       s.App,
+		Namespace: s.Namespace,
 		IP:        getIp(),
-	}.Generate())
-	return out, ips
+	})
+	return w
+}
+
+func (w Workload) Run(ctx Context) (err error) {
+	sims := []Simulation{w.namespace, w.service, w.endpoint, w.serviceAccount}
+	for _, p := range w.pods {
+		sims = append(sims, p)
+	}
+	agg := NewAggregateSimulation(sims)
+	return agg.Run(ctx)
+}
+
+func (w Workload) getIps() []string {
+	ret := []string{}
+	for _, p := range w.pods {
+		ret = append(ret, p.Spec.IP)
+	}
+	return ret
 }

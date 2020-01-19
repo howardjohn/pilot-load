@@ -4,33 +4,24 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
 
-type Runner func(ctx context.Context) error
-
-func (r Runner) Append(o Runner) Runner {
-	return func(ctx context.Context) error {
-		g, c := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			return r(c)
-		})
-		g.Go(func() error {
-			return o(c)
-		})
-
-		return g.Wait()
-	}
+type Simulation interface {
+	Run(ctx Context) error
 }
 
-type Simulation interface {
-	Run(Args) (Runner, error)
+type Context struct {
+	context.Context
+	args Args
 }
 
 var funcMap = map[string]interface{}{}
@@ -80,4 +71,45 @@ func getIp() string {
 	v0 := byte((v >> 24) & 0xFF)
 	nextIp = net.IPv4(v0, v1, v2, v3)
 	return ret
+}
+
+type AggregateSimulation struct {
+	simulations []Simulation
+}
+
+var _ Simulation = &AggregateSimulation{}
+
+func NewAggregateSimulation(simulations []Simulation) Simulation {
+	return &AggregateSimulation{simulations: simulations}
+}
+
+func (a AggregateSimulation) Run(ctx Context) error {
+	g, c := errgroup.WithContext(ctx)
+	ctx = Context{c, ctx.args}
+	for _, s := range a.simulations {
+		log.Println(fmt.Sprintf("running %T", s))
+		g.Go(func() error {
+			return s.Run(ctx)
+		})
+	}
+	return g.Wait()
+}
+
+func RunConfig(ctx Context, render func() string) (err error) {
+	for attempt := 0; attempt < 5; attempt++ {
+		if err = applyConfig(render()); err != nil {
+			if attempt == 4 {
+				return fmt.Errorf("failed to apply config: %v", err)
+			} else {
+				time.Sleep(time.Second)
+			}
+		} else {
+			break
+		}
+	}
+	<-ctx.Done()
+	defer func() {
+		err = deleteConfig(render())
+	}()
+	return nil
 }

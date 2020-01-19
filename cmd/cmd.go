@@ -24,8 +24,8 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "pilot-load",
-	Short: "open XDS connections to pilot",
+	Use:          "pilot-load",
+	Short:        "open XDS connections to pilot",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return simulation.Simple(simulation.Args{
