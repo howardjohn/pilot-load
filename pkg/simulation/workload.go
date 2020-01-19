@@ -90,7 +90,7 @@ func (s Scaler) Run(ctx Context) error {
 		case err := <-errCh:
 			return err
 		case <-tick.C:
-			cur++
+			cur+=10
 			scaleTo := cur
 			go func() {
 				if err := s.Spec.scaler(ctx, scaleTo); err != nil {
@@ -115,7 +115,8 @@ func (w Workload) Run(ctx Context) (err error) {
 func (w *Workload) Scale(ctx Context, n int) error {
 	log.Println("scaling to", n, "from", len(w.pods))
 	if n < len(w.pods) {
-		panic("cannot scale down yet")
+		log.Println("cannot scale down yet")
+		return nil
 	}
 	newSims := []Simulation{}
 	for n > len(w.pods) {
@@ -127,11 +128,11 @@ func (w *Workload) Scale(ctx Context, n int) error {
 		})
 		w.pods = append(w.pods, pod)
 		newSims = append(newSims, pod)
+	}
 
-		// TODO this should be a simulation maybe?
-		if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
-			return err
-		}
+	// TODO this should be a simulation maybe?
+	if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
+		return err
 	}
 	return NewAggregateSimulation(nil, newSims).Run(ctx)
 }

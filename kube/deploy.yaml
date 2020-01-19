@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    istio-injection: disabled
+  name: pilot-load
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd
+  namespace: pilot-load
+spec:
+  selector:
+    app: etcd
+  ports:
+  - port: 2379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: etcd
+  namespace: pilot-load
+  labels:
+    app: etcd
+spec:
+  template:
+    metadata:
+      name: etcd
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: etcd
+    spec:
+      containers:
+      - name: etcd
+        image: gcr.io/google_containers/etcd:3.4.3
+        args:
+        - etcd
+        - --listen-client-urls=http://0.0.0.0:2379
+        - --advertise-client-urls=http://0.0.0.0:2379
+  selector:
+    matchLabels:
+      app: etcd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver
+  namespace: pilot-load
+spec:
+  selector:
+    app: apiserver
+  ports:
+  - port: 18090
+    name: tcp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apiserver
+  namespace: pilot-load
+  labels:
+    app: apiserver
+spec:
+  selector:
+    matchLabels:
+      app: apiserver
+  template:
+    metadata:
+      name: apiserver
+      labels:
+        app: apiserver
+    spec:
+      containers:
+      - name: apiserver
+        image: k8s.gcr.io/kube-apiserver:v1.17.0
+        command:
+        - kube-apiserver
+        - --etcd-servers=http://etcd:2379
+        - --disable-admission-plugins="ServiceAccount"
+        - --port
+        - "18090"
+        - --insecure-bind-address
+        - 0.0.0.0
+        - --service-cluster-ip-range
+        - "10.0.0.0/16"
+        env:
+        - name: KUBE_ADMISSION_CONTROL
+          value: ""
