@@ -29,7 +29,8 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 }
 
 func (n Namespace) Run(ctx Context) (err error) {
-	defer func() {
+	go func() {
+		<-ctx.Done()
 		err = AddError(err, deleteNamespace(n.Spec.Name))
 	}()
 	return RunConfig(ctx, func() string { return render(namespaceYml, n.Spec) })

@@ -17,7 +17,7 @@ func Simple(a Args) error {
 		Node:           "node",
 		Namespace:      "workload",
 		ServiceAccount: "default",
-		Instances:      1,
+		Instances:      5,
 	})
 	if err := ExecuteSimulations(a, wl); err != nil {
 		return fmt.Errorf("error executing: %v", err)

@@ -21,7 +21,7 @@ func logYaml(prefix, y string) {
 		if err := yaml.Unmarshal([]byte(p), &o); err != nil {
 			log.Println("Failed to unmarshal with error ", err, p)
 		}
-		log.Println(fmt.Sprintf("%s: %s/%s.%s", prefix, o.Kind, o.Metadata["name"], o.Metadata["namespace"]))
+		log.Println(fmt.Sprintf("%s: %s/%s.%v", prefix, o.Kind, o.Metadata["name"], o.Metadata["namespace"]))
 	}
 }
 

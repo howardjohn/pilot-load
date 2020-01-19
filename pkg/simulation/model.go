@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"strings"
@@ -68,19 +69,25 @@ func getIp() string {
 }
 
 type AggregateSimulation struct {
-	simulations []Simulation
+	sync  []Simulation
+	async []Simulation
 }
 
 var _ Simulation = &AggregateSimulation{}
 
-func NewAggregateSimulation(simulations []Simulation) Simulation {
-	return &AggregateSimulation{simulations: simulations}
+func NewAggregateSimulation(sync []Simulation, async []Simulation) Simulation {
+	return &AggregateSimulation{sync, async}
 }
 
 func (a AggregateSimulation) Run(ctx Context) error {
 	g, c := errgroup.WithContext(ctx)
 	ctx = Context{c, ctx.args}
-	for _, s := range a.simulations {
+	for _, s := range a.sync {
+		if err := s.Run(ctx); err != nil {
+			return err
+		}
+	}
+	for _, s := range a.async {
 		s := s
 		g.Go(func() error {
 			return s.Run(ctx)
@@ -90,12 +97,14 @@ func (a AggregateSimulation) Run(ctx Context) error {
 }
 
 func RunConfig(ctx Context, render func() string) (err error) {
+	go func() {
+		<-ctx.Done()
+		if err := deleteConfig(render()); err != nil {
+			log.Println("error during cleanup: ", err)
+		}
+	}()
 	if err = applyConfig(render()); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
-	<-ctx.Done()
-	defer func() {
-		err = AddError(err, deleteConfig(render()))
-	}()
 	return nil
 }

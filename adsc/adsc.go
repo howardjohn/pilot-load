@@ -345,6 +345,13 @@ type Endpoint struct {
 func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 	cn := []string{}
 	for _, c := range ll {
+		switch v := c.ClusterDiscoveryType.(type) {
+		case *xdsapi.Cluster_Type:
+			if v.Type != xdsapi.Cluster_EDS {
+				continue
+			}
+		}
+
 		cn = append(cn, c.Name)
 	}
 

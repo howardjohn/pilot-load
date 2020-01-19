@@ -54,11 +54,11 @@ func NewWorkload(s WorkloadSpec) *Workload {
 }
 
 func (w Workload) Run(ctx Context) (err error) {
-	sims := []Simulation{w.namespace, w.service, w.endpoint, w.serviceAccount}
+	sims := []Simulation{w.service, w.endpoint, w.serviceAccount}
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}
-	agg := NewAggregateSimulation(sims)
+	agg := NewAggregateSimulation([]Simulation{w.namespace}, sims)
 	return agg.Run(ctx)
 }
 
