@@ -11,31 +11,22 @@ type WorkloadSpec struct {
 	Namespace      string
 	ServiceAccount string
 	Instances      int
-	Scaling        time.Duration
+	Scaling        *ScalerSpec
 }
 
 type Workload struct {
-	Spec           *WorkloadSpec
-	namespace      *Namespace
-	serviceAccount *ServiceAccount
-	endpoint       *Endpoint
-	pods           []*Pod
-	service        *Service
-	scaler         *Scaler
+	Spec     *WorkloadSpec
+	endpoint *Endpoint
+	pods     []*Pod
+	service  *Service
+	vservice *VirtualService
+	scaler   *Scaler
 }
 
 var _ Simulation = &Workload{}
 
 func NewWorkload(s WorkloadSpec) *Workload {
 	w := &Workload{Spec: &s}
-	w.namespace = NewNamespace(NamespaceSpec{
-		Name: s.Namespace,
-	})
-	w.serviceAccount = NewServiceAccount(ServiceAccountSpec{
-		App:       s.App,
-		Namespace: s.Namespace,
-		Name:      s.ServiceAccount,
-	})
 
 	for i := 0; i < s.Instances; i++ {
 		w.pods = append(w.pods, NewPod(PodSpec{
@@ -57,11 +48,14 @@ func NewWorkload(s WorkloadSpec) *Workload {
 		Namespace: s.Namespace,
 		IP:        getIp(),
 	})
-	w.scaler = NewScaler(ScalerSpec{
-		scaler:   w.Scale,
-		start:    w.Spec.Instances,
-		interval: w.Spec.Scaling,
+	w.vservice = NewVirtualService(VirtualServiceSpec{
+		App:       s.App,
+		Namespace: s.Namespace,
 	})
+	if w.Spec.Scaling != nil {
+		w.Spec.Scaling.scaler = w.Scale
+		w.scaler = NewScaler(*w.Spec.Scaling)
+	}
 	return w
 }
 
@@ -72,6 +66,7 @@ func NewScaler(s ScalerSpec) *Scaler {
 type ScalerSpec struct {
 	scaler   func(ctx Context, n int) error
 	start    int
+	step     int
 	interval time.Duration
 }
 
@@ -90,7 +85,7 @@ func (s Scaler) Run(ctx Context) error {
 		case err := <-errCh:
 			return err
 		case <-tick.C:
-			cur+=10
+			cur += s.Spec.step
 			scaleTo := cur
 			go func() {
 				if err := s.Spec.scaler(ctx, scaleTo); err != nil {
@@ -104,16 +99,16 @@ func (s Scaler) Run(ctx Context) error {
 var _ Simulation = &Scaler{}
 
 func (w Workload) Run(ctx Context) (err error) {
-	sims := []Simulation{w.service, w.endpoint, w.serviceAccount, w.scaler}
+	sims := []Simulation{w.service, w.endpoint, w.vservice, w.scaler}
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}
-	agg := NewAggregateSimulation([]Simulation{w.namespace}, sims)
+	agg := NewAggregateSimulation(nil, sims)
 	return agg.Run(ctx)
 }
 
 func (w *Workload) Scale(ctx Context, n int) error {
-	log.Println("scaling to", n, "from", len(w.pods))
+	log.Println("scaling pod from", len(w.pods), "->", n)
 	if n < len(w.pods) {
 		log.Println("cannot scale down yet")
 		return nil

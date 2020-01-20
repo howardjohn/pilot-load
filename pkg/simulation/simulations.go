@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"time"
@@ -13,15 +14,51 @@ type Args struct {
 }
 
 func Simple(a Args) error {
-	wl := NewWorkload(WorkloadSpec{
-		App:            "app",
-		Node:           "node",
-		Namespace:      "workload",
-		ServiceAccount: "default",
-		Instances:      10,
-		Scaling:        time.Second * 5,
+	numWorkloads := 0
+	ns := NewNamespace(NamespaceSpec{
+		Name: "workload",
 	})
-	if err := ExecuteSimulations(a, wl); err != nil {
+	sa := NewServiceAccount(ServiceAccountSpec{
+		Namespace: ns.Spec.Name,
+		Name:      "default",
+	})
+
+	scaler := NewScaler(ScalerSpec{
+		scaler: func(ctx Context, n int) error {
+			if n < numWorkloads {
+				log.Println("cannot scale down yet")
+				return nil
+			}
+			log.Println("Scaling workloads", numWorkloads, "->", n)
+			newSims := []Simulation{}
+			for n > numWorkloads {
+				numWorkloads++
+				w := NewWorkload(WorkloadSpec{
+					App:            fmt.Sprintf("app-%d", numWorkloads),
+					Node:           "node",
+					Namespace:      ns.Spec.Name,
+					ServiceAccount: sa.Spec.Name,
+					Instances:      1,
+					//Scaling: &ScalerSpec{
+					//	start:    1,
+					//	step:     1,
+					//	interval: time.Second * 3,
+					//},
+				})
+				newSims = append(newSims, w)
+			}
+
+			return NewAggregateSimulation(nil, newSims).Run(ctx)
+		},
+		start:    0,
+		step:     1,
+		interval: time.Second * 8,
+	})
+
+	sim := NewAggregateSimulation([]Simulation{ns, sa}, []Simulation{scaler})
+	if err := ExecuteSimulations(a, sim); err != nil {
+		log.Println("waiting for deletions")
+		time.Sleep(time.Second * 10)
 		return fmt.Errorf("error executing: %v", err)
 	}
 	return nil

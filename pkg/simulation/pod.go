@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+
 	"github.com/howardjohn/pilot-load/adsc"
 
 	"github.com/howardjohn/pilot-load/client"

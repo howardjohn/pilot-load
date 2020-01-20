@@ -5,15 +5,12 @@ var (
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  labels:
-    app: {{.App}}
   name: {{.Name}}
   namespace: {{.Namespace}}
 `
 )
 
 type ServiceAccountSpec struct {
-	App       string
 	Namespace string
 	Name      string
 }

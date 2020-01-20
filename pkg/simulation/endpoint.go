@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	"reflect"
 )
 
 var (
@@ -44,6 +45,9 @@ func NewEndpoint(s EndpointSpec) *Endpoint {
 }
 
 func (e Endpoint) SetAddresses(ips []string) error {
+	if reflect.DeepEqual(e.Spec.IPs, ips) {
+		return nil
+	}
 	e.Spec.IPs = ips
 	if e.running {
 		if err := applyConfig(render(endpointsYml, e.Spec)); err != nil {
