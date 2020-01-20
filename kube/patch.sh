@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -eux
 
-echo '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"istio-system"}}' | kubectl create --raw '/api/v1/namespaces/pilot-load/services/apiserver:tcp/proxy/api/v1/namespaces' -f - || true
+kubectl apply -f kube/deploy.yaml
+
+kubectl wait -n pilot-load --for=condition=available deployment/apiserver
+
+kubectl port-forward -n pilot-load svc/apiserver 18090 &
+kubectl port-forward -n istio-system svc/istio-pilot 15010 &
+
+sleep 5
 
 cat <<EOF | kubectl apply -n istio-system -f -
 apiVersion: v1
@@ -79,3 +86,7 @@ cat <<EOF > /tmp/patch.json
 }
 EOF
 kubectl patch deployment -n istio-system istio-pilot --patch "$(cat /tmp/patch.json)"
+
+export KUBECONFIG=kube/kubeconfig.yaml
+kubectl create namespace istio-system || true
+kubectl apply -f $GOPATH/src/istio.io/istio/manifests/base/files/crd-all.gen.yaml
