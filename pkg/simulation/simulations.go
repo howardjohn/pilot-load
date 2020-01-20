@@ -52,7 +52,7 @@ func Simple(a Args) error {
 		},
 		start:    0,
 		step:     1,
-		interval: time.Second * 8,
+		interval: time.Second * 1,
 	})
 
 	sim := NewAggregateSimulation([]Simulation{ns, sa}, []Simulation{scaler})

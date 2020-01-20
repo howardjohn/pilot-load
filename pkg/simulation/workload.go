@@ -99,7 +99,10 @@ func (s Scaler) Run(ctx Context) error {
 var _ Simulation = &Scaler{}
 
 func (w Workload) Run(ctx Context) (err error) {
-	sims := []Simulation{w.service, w.endpoint, w.vservice, w.scaler}
+	sims := []Simulation{w.service, w.endpoint, w.vservice}
+	if w.scaler != nil {
+		sims = append(sims, w.scaler)
+	}
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}

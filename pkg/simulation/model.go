@@ -83,18 +83,12 @@ func (a AggregateSimulation) Run(ctx Context) error {
 	g, c := errgroup.WithContext(ctx)
 	ctx = Context{c, ctx.args}
 	for _, s := range a.sync {
-		if s == nil {
-			continue
-		}
 		if err := s.Run(ctx); err != nil {
 			return err
 		}
 	}
 	for _, s := range a.async {
 		s := s
-		if s == nil {
-			continue
-		}
 		g.Go(func() error {
 			return s.Run(ctx)
 		})
