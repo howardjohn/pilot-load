@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"log"
 	"time"
 )
@@ -66,6 +67,7 @@ func NewScaler(s ScalerSpec) *Scaler {
 type ScalerSpec struct {
 	scaler   func(ctx Context, n int) error
 	start    int
+	stop     int
 	step     int
 	interval time.Duration
 }
@@ -87,6 +89,9 @@ func (s Scaler) Run(ctx Context) error {
 		case <-tick.C:
 			cur += s.Spec.step
 			scaleTo := cur
+			if s.Spec.stop != 0 && s.Spec.stop < scaleTo {
+				return nil
+			}
 			go func() {
 				if err := s.Spec.scaler(ctx, scaleTo); err != nil {
 					errCh <- err
@@ -107,7 +112,10 @@ func (w Workload) Run(ctx Context) (err error) {
 		sims = append(sims, p)
 	}
 	agg := NewAggregateSimulation(nil, sims)
-	return agg.Run(ctx)
+	if err := agg.Run(ctx); err != nil {
+		return fmt.Errorf("workload: %v", err)
+	}
+	return nil
 }
 
 func (w *Workload) Scale(ctx Context, n int) error {
@@ -130,9 +138,12 @@ func (w *Workload) Scale(ctx Context, n int) error {
 
 	// TODO this should be a simulation maybe?
 	if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
-		return err
+		return fmt.Errorf("endpoints: %v", err)
 	}
-	return NewAggregateSimulation(nil, newSims).Run(ctx)
+	if err := NewAggregateSimulation(nil, newSims).Run(ctx); err != nil {
+		return fmt.Errorf("scale: %v", err)
+	}
+	return nil
 }
 
 func (w Workload) getIps() []string {

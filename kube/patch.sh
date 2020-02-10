@@ -85,8 +85,10 @@ cat <<EOF > /tmp/patch.json
     }
 }
 EOF
-kubectl patch deployment -n istio-system istio-pilot --patch "$(cat /tmp/patch.json)"
+kubectl patch deployment -n istio-system istiod --patch "$(cat /tmp/patch.json)"
 
 export KUBECONFIG=kube/kubeconfig.yaml
 kubectl create namespace istio-system || true
 kubectl apply -f $GOPATH/src/istio.io/istio/manifests/base/files/crd-all.gen.yaml
+
+echo To start test: go run main.go

@@ -84,7 +84,7 @@ func (a AggregateSimulation) Run(ctx Context) error {
 	ctx = Context{c, ctx.args}
 	for _, s := range a.sync {
 		if err := s.Run(ctx); err != nil {
-			return err
+			return fmt.Errorf("aggregate sync: %v", err)
 		}
 	}
 	for _, s := range a.async {

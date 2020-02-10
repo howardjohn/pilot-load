@@ -30,8 +30,11 @@ func applyConfig(yaml string) error {
 	c.Stdin = strings.NewReader(yaml)
 	c.Stderr = os.Stderr
 	//c.Stdout = os.Stdout
-	logYaml("apply", yaml)
-	return c.Run()
+	//logYaml("apply", yaml)
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("kubectl apply: %v", err)
+	}
+	return nil
 }
 
 func deleteConfig(yaml string) error {
@@ -39,8 +42,11 @@ func deleteConfig(yaml string) error {
 	c.Stdin = strings.NewReader(yaml)
 	c.Stderr = os.Stderr
 	//c.Stdout = os.Stdout
-	logYaml("delete", yaml)
-	return c.Run()
+	//logYaml("delete", yaml)
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("kubectl delete: %v", err)
+	}
+	return nil
 }
 
 func deleteNamespace(name string) error {

@@ -14,7 +14,7 @@ type Args struct {
 }
 
 func Simple(a Args) error {
-	numWorkloads := 0
+	numWorkloads := 1
 	ns := NewNamespace(NamespaceSpec{
 		Name: "workload",
 	})
@@ -39,11 +39,12 @@ func Simple(a Args) error {
 					Namespace:      ns.Spec.Name,
 					ServiceAccount: sa.Spec.Name,
 					Instances:      1,
-					//Scaling: &ScalerSpec{
-					//	start:    1,
-					//	step:     1,
-					//	interval: time.Second * 3,
-					//},
+					Scaling: &ScalerSpec{
+						start:    1,
+						step:     1,
+						stop:     10,
+						interval: time.Second * 3,
+					},
 				})
 				newSims = append(newSims, w)
 			}
@@ -52,12 +53,13 @@ func Simple(a Args) error {
 		},
 		start:    0,
 		step:     1,
+		stop:     100,
 		interval: time.Second * 1,
 	})
 
 	sim := NewAggregateSimulation([]Simulation{ns, sa}, []Simulation{scaler})
 	if err := ExecuteSimulations(a, sim); err != nil {
-		log.Println("waiting for deletions")
+		log.Println("waiting for deletions because of error: ", err)
 		time.Sleep(time.Second * 10)
 		return fmt.Errorf("error executing: %v", err)
 	}

@@ -86,12 +86,15 @@ func (p *Pod) Run(ctx Context) (err error) {
 	defer func() {
 		err = AddError(err, deleteConfig(render(podYml, p.Spec)))
 	}()
-	return client.Connect(ctx, ctx.args.PilotAddress, &adsc.Config{
+	if err := client.Connect(ctx, ctx.args.PilotAddress, &adsc.Config{
 		Namespace: p.Spec.Namespace,
 		Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),
 		Meta:      meta,
 		NodeType:  "sidecar",
 		IP:        p.Spec.IP,
 		Verbose:   false,
-	})
+	}); err != nil {
+		return fmt.Errorf("ads connection: %v", err)
+	}
+	return nil
 }
