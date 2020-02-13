@@ -2,6 +2,7 @@
 SHELL := /bin/bash
 GOBIN ?= $(GOPATH)/bin
 MODULE = github.com/howardjohn/pilot-load
+HUB ?= gcr.io/howardjohn-istio
 export GO111MODULE ?= on
 
 all: format lint install
@@ -48,6 +49,10 @@ docker:
 .PHONY: push
 push:
 	docker push ${HUB}/pilot-load
+
+.PHONY: setup
+setup:
+	./kube/deploy.sh
 
 .PHONY: deploy
 deploy:

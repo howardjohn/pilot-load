@@ -20,8 +20,6 @@ spec:
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
         args:
-          - "--clients"
-          - "100"
           - "--pilot-address"
           - "istio-pilot.istio-system:15010"
         resources:

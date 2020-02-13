@@ -11,16 +11,10 @@ import (
 
 var (
 	pilotAddress = "localhost:15010"
-	prefix       = 128
-	clients      = 1
-	verbose      = false
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
-	rootCmd.PersistentFlags().IntVarP(&clients, "clients", "c", clients, "number of clients to connect")
-	rootCmd.PersistentFlags().IntVar(&prefix, "prefix", prefix, "IP prefix of the node connecting")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "enable adsc logging")
 }
 
 var rootCmd = &cobra.Command{
