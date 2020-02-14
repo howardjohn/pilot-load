@@ -22,10 +22,42 @@ spec:
         args:
           - "--pilot-address"
           - "istio-pilot.istio-system:15010"
+        env:
+        - name: KUBECONFIG
+          value: /etc/config/kubeconfig.yaml
         resources:
           requests:
             cpu: 40m
             memory: 128Mi
+        volumeMounts:
+        - name: kubeconfig
+          mountPath: /etc/config
+      volumes:
+      - name: kubeconfig
+        configMap:
+          name: pilot-load-kubeconfig
   selector:
     matchLabels:
       app: pilot-load
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pilot-load-kubeconfig
+data:
+  kubeconfig.yaml: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: http://apiserver.pilot-load:18090
+      name: load
+    contexts:
+    - context:
+        cluster: load
+        user: fake
+      name: load
+    current-context: load
+    kind: Config
+    preferences: {}
+    users:
+    - name: fake
