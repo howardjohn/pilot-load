@@ -33,8 +33,8 @@ func Connect(ctx context.Context, pilotAddress string, config *adsc.Config) erro
 				case u := <-con.Updates:
 					if u == "close" {
 						log.Println("Closing:", config.IP)
+						return
 					}
-					return
 				case <-ctx.Done():
 					log.Println("Context closed, exiting stream")
 					con.Close()
@@ -43,5 +43,6 @@ func Connect(ctx context.Context, pilotAddress string, config *adsc.Config) erro
 			}
 		}()
 		log.Println("Disconnected:", config.IP)
+		return nil
 	}
 }

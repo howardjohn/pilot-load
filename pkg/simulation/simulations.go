@@ -2,15 +2,20 @@ package simulation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/client"
 )
 
 type Args struct {
 	PilotAddress string
+	NodeMetadata string
 }
 
 func Simple(a Args) error {
@@ -62,6 +67,26 @@ func Simple(a Args) error {
 		log.Println("waiting for deletions because of error: ", err)
 		time.Sleep(time.Second * 10)
 		return fmt.Errorf("error executing: %v", err)
+	}
+	return nil
+}
+
+func Adsc(a Args, ipaddress string) error {
+	meta := map[string]interface{}{
+		"ISTIO_VERSION": "1.5.0",
+	}
+	if a.NodeMetadata != "" {
+		if err := json.Unmarshal([]byte(a.NodeMetadata), &meta); err != nil {
+			return err
+		}
+	}
+	if err := client.Connect(context.Background(), a.PilotAddress, &adsc.Config{
+		Meta:     meta,
+		NodeType: "sidecar",
+		IP:       ipaddress,
+		Verbose:  false,
+	}); err != nil {
+		return fmt.Errorf("ads connection: %v", err)
 	}
 	return nil
 }
