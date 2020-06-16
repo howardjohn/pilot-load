@@ -3,6 +3,9 @@ package simulation
 import (
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/howardjohn/pilot-load/adsc"
 
 	"github.com/howardjohn/pilot-load/client"
@@ -72,19 +75,20 @@ func NewPod(s PodSpec) *Pod {
 }
 
 func (p *Pod) Run(ctx Context) (err error) {
-	if err = applyConfig(render(podYml, p.Spec)); err != nil {
+	pod := p.GetPod()
+	if err = ctx.client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
 	meta := map[string]interface{}{
-		"ISTIO_VERSION": "1.5.0",
+		"ISTIO_VERSION": "1.6.0",
 		"CLUSTER_ID":    "Kubernetes",
 		"LABELS": map[string]string{
 			"app": p.Spec.App,
 		},
-		"CONFIG_NAMESPACE": p.Spec.Namespace,
+		"NAMESPACE": p.Spec.Namespace,
 	}
 	defer func() {
-		err = AddError(err, deleteConfig(render(podYml, p.Spec)))
+		err = AddError(err, ctx.client.Delete(pod))
 	}()
 	if err := client.Connect(ctx, ctx.args.PilotAddress, &adsc.Config{
 		Namespace: p.Spec.Namespace,
@@ -97,4 +101,37 @@ func (p *Pod) Run(ctx Context) (err error) {
 		return fmt.Errorf("ads connection: %v", err)
 	}
 	return nil
+}
+
+func (p *Pod) GetPod() *v1.Pod {
+	s := p.Spec
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", s.App, s.UID),
+			Namespace: s.Namespace,
+			Labels: map[string]string{
+				"app": s.App,
+			},
+		},
+		Spec: v1.PodSpec{
+			Volumes: nil,
+			InitContainers: []v1.Container{{
+				Name:  "istio-init",
+				Image: "istio/proxyv2",
+			}},
+			Containers: []v1.Container{{
+				Name:  "app",
+				Image: "app",
+			}, {
+				Name:  "istio-proxy",
+				Image: "istio/proxyv2",
+			}},
+		},
+		Status: v1.PodStatus{
+			Phase:      v1.PodRunning,
+			Conditions: nil,
+			PodIP:      s.IP,
+			PodIPs:     []v1.PodIP{{s.IP}},
+		},
+	}
 }

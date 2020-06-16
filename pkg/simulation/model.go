@@ -12,6 +12,8 @@ import (
 	"text/template"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/howardjohn/pilot-load/pkg/kube"
 )
 
 type Simulation interface {
@@ -20,7 +22,8 @@ type Simulation interface {
 
 type Context struct {
 	context.Context
-	args Args
+	args   Args
+	client *kube.Client
 }
 
 var funcMap = map[string]interface{}{}
@@ -81,7 +84,7 @@ func NewAggregateSimulation(sync []Simulation, async []Simulation) Simulation {
 
 func (a AggregateSimulation) Run(ctx Context) error {
 	g, c := errgroup.WithContext(ctx)
-	ctx = Context{c, ctx.args}
+	ctx = Context{c, ctx.args, nil}
 	for _, s := range a.sync {
 		if err := s.Run(ctx); err != nil {
 			return fmt.Errorf("aggregate sync: %v", err)

@@ -2,20 +2,19 @@ package simulation
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/client"
+	"github.com/howardjohn/pilot-load/pkg/kube"
 )
 
 type Args struct {
 	PilotAddress string
 	NodeMetadata string
+	KubeConfig   string
 }
 
 func Simple(a Args) error {
@@ -71,30 +70,29 @@ func Simple(a Args) error {
 	return nil
 }
 
-func Adsc(a Args, ipaddress string) error {
-	meta := map[string]interface{}{
-		"ISTIO_VERSION": "1.5.0",
+func Adsc(a Args) error {
+	cl, err := kube.NewClient(a.KubeConfig)
+	if err != nil {
+		return err
 	}
-	if a.NodeMetadata != "" {
-		if err := json.Unmarshal([]byte(a.NodeMetadata), &meta); err != nil {
-			return err
-		}
-	}
-	if err := client.Connect(context.Background(), a.PilotAddress, &adsc.Config{
-		Meta:     meta,
-		NodeType: "sidecar",
-		IP:       ipaddress,
-		Verbose:  false,
-	}); err != nil {
-		return fmt.Errorf("ads connection: %v", err)
-	}
-	return nil
+	ctx, cancel := context.WithCancel(context.Background())
+	go captureTermination(ctx, cancel)
+	return NewPod(PodSpec{
+		ServiceAccount: "default",
+		Node:           "nopde",
+		App:            "app",
+		Namespace:      "default",
+	}).Run(Context{ctx, a, cl})
 }
 
 func ExecuteSimulations(a Args, simulation Simulation) error {
+	cl, err := kube.NewClient(a.KubeConfig)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
-	return simulation.Run(Context{ctx, a})
+	return simulation.Run(Context{ctx, a, cl})
 }
 
 func captureTermination(ctx context.Context, cancel context.CancelFunc) {
