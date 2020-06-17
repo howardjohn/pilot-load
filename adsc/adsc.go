@@ -8,10 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"sync"
 	"time"
+
+	"istio.io/pkg/log"
 
 	xdsapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
@@ -22,6 +23,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+var scope = log.RegisterScope("adsc", "", 0)
 
 var marshal = &jsonpb.Marshaler{OrigName: true, Indent: "  "}
 
@@ -223,7 +226,7 @@ func (a *ADSC) handleRecv() {
 	for {
 		msg, err := a.stream.Recv()
 		if err != nil {
-			log.Println("Connection closed ", err, a.nodeID)
+			scope.Debugf("Connection closed ", err, a.nodeID)
 			a.Close()
 			a.WaitClear()
 			a.Updates <- "close"
@@ -297,9 +300,9 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 		for i, l := range ll {
 			b, err := marshal.MarshalToString(l)
 			if err != nil {
-				log.Println("Error in LDS: ", err)
+				scope.Errorf("Error in LDS: ", err)
 			}
-			log.Println(i, b)
+			scope.Infof("%d: %v", i, b)
 		}
 	}
 	a.mutex.Lock()
@@ -362,9 +365,9 @@ func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 		for i, c := range ll {
 			b, err := marshal.MarshalToString(c)
 			if err != nil {
-				log.Println("Error in CDS: ", err)
+				scope.Errorf("Error in CDS: ", err)
 			}
-			log.Println(i, b)
+			scope.Infof("%d: %v", i, b)
 		}
 	}
 
@@ -409,9 +412,9 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 			for i, e := range eds {
 				b, err := marshal.MarshalToString(e)
 				if err != nil {
-					log.Println("Error in EDS: ", err)
+					scope.Errorf("Error in EDS: ", err)
 				}
-				log.Println(i, b)
+				scope.Infof("%d: %v", i, b)
 			}
 		}
 
@@ -450,9 +453,9 @@ func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
 		for i, r := range configurations {
 			b, err := marshal.MarshalToString(r)
 			if err != nil {
-				log.Println("Error in RDS: ", err)
+				scope.Errorf("Error in RDS: ", err)
 			}
-			log.Println(i, b)
+			scope.Infof("%d: %v", i, b)
 		}
 	}
 
@@ -500,7 +503,7 @@ func (a *ADSC) Watch() {
 		TypeUrl:       clusterType,
 	})
 	if err != nil {
-		log.Println("Error sending request: ", err)
+		scope.Errorf("Error sending request: ", err)
 	}
 }
 

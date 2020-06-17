@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
@@ -24,7 +23,7 @@ type Args struct {
 }
 
 type Context struct {
-	context.Context
+	//context.Context
 	Args   Args
 	Client *kube.Client
 }

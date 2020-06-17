@@ -1,8 +1,9 @@
 package xds
 
 import (
+	"context"
+
 	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/client"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -13,9 +14,14 @@ type XdsSimulation struct {
 	IP        string
 	// Defaults to "Kubernetes"
 	Cluster string
+	cancel  context.CancelFunc
+	done    chan struct{}
 }
 
-func (x XdsSimulation) Run(ctx model.Context) error {
+func (x *XdsSimulation) Run(ctx model.Context) error {
+	c, cancel := context.WithCancel(context.Background())
+	x.cancel = cancel
+	x.done = make(chan struct{})
 	cluster := x.Cluster
 	if cluster == "" {
 		cluster = "Kubernetes"
@@ -30,7 +36,7 @@ func (x XdsSimulation) Run(ctx model.Context) error {
 		// TODO trigger full injection and CA bootstrap flow
 		// TODO use XDS v3
 		// TODO allow routers
-		client.Connect(ctx, ctx.Args.PilotAddress, &adsc.Config{
+		adsc.Connect(c, ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
 			Workload:  x.Name,
 			Meta:      meta,
@@ -38,11 +44,14 @@ func (x XdsSimulation) Run(ctx model.Context) error {
 			IP:        x.IP,
 			Verbose:   false,
 		})
+		close(x.done)
 	}()
 	return nil
 }
 
 func (x XdsSimulation) Cleanup(ctx model.Context) error {
+	x.cancel()
+	<-x.done
 	return nil
 }
 

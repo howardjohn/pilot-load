@@ -22,6 +22,7 @@ type PodSpec struct {
 
 type Pod struct {
 	Spec *PodSpec
+	xds  *xds.XdsSimulation
 }
 
 var _ model.Simulation = &Pod{}
@@ -44,18 +45,22 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
-	return xds.XdsSimulation{
+	p.xds = &xds.XdsSimulation{
 		Labels:    pod.Labels,
 		Namespace: pod.Namespace,
 		Name:      pod.Name,
 		IP:        p.Spec.IP,
 		// TODO: multicluster
 		Cluster: "pilot-load",
-	}.Run(ctx)
+	}
+	return p.xds.Run(ctx)
 }
 
 func (p *Pod) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(p.getPod())
+	if err := ctx.Client.Delete(p.getPod()); err != nil {
+		return err
+	}
+	return p.xds.Cleanup(ctx)
 }
 
 func (p *Pod) getPod() *v1.Pod {

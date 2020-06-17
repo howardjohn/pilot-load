@@ -37,7 +37,7 @@ func Simple(a model.Args) error {
 }
 
 func Adsc(a model.Args) error {
-	return ExecuteSimulations(a, xds.XdsSimulation{
+	return ExecuteSimulations(a, &xds.XdsSimulation{
 		Namespace: "default",
 		Name:      "adsc",
 		IP:        "1.2.3.4",
@@ -54,7 +54,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
 	defer cancel()
-	simulationContext := model.Context{ctx, a, cl}
+	simulationContext := model.Context{a, cl}
 	if err := simulation.Run(simulationContext); err != nil {
 		return err
 	}
