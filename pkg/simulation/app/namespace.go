@@ -26,6 +26,7 @@ func (n *Namespace) Run(ctx model.Context) (err error) {
 }
 
 func (n *Namespace) Cleanup(ctx model.Context) error {
+	// TODO force remove finalizers
 	return ctx.Client.Delete(n.getNamespace())
 }
 

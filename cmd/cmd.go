@@ -58,15 +58,16 @@ var rootCmd = &cobra.Command{
 			return simulation.Simple(a)
 		case "adsc":
 			fallthrough
-		default:
+		case "":
 			return simulation.Adsc(a)
+		default:
+			return fmt.Errorf("unknown simulation %v. Expected: {pods, adsc}", sim)
 		}
 	},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

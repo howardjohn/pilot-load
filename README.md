@@ -12,5 +12,6 @@
 
 ```shell script
 export KUBECONFIG=kube/local-kubeconfig.yaml
+kubectl port-forward -n istio-system svc/istiod 15010
 pilot-load <simulation>
 ```

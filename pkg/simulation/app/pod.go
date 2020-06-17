@@ -48,7 +48,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	}
 	meta := map[string]interface{}{
 		"ISTIO_VERSION": "1.6.0",
-		"CLUSTER_ID":    "Kubernetes",
+		"CLUSTER_ID":    "pilot-load",
 		"LABELS": map[string]string{
 			"app": p.Spec.App,
 		},
@@ -56,6 +56,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	}
 	go func() {
 		// TODO trigger full CA bootstrap flow
+		// TODO use XDS v3
 		client.Connect(ctx, ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: p.Spec.Namespace,
 			Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),

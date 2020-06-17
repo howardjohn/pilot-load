@@ -51,7 +51,7 @@ func (s *Service) getService() *v1.Service {
 				"app": p.App,
 			},
 			ClusterIP: p.IP,
-			Type:      "ClusterIp",
+			Type:      "ClusterIP",
 		},
 	}
 }

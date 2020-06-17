@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
+	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 )
@@ -43,23 +46,33 @@ func (c *Client) Delete(o runtime.Object) error {
 	if us == nil {
 		return fmt.Errorf("bad object %v", o)
 	}
-	cl := c.dynamic.Resource(toGvr(o)).Namespace(us.GetNamespace())
+	gvr, kind := toGvr(o)
+	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
+	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
 	return cl.Delete(context.TODO(), us.GetName(), metav1.DeleteOptions{GracePeriodSeconds: &deletePeriod})
 }
 
+func init() {
+	if err := istioscheme.AddToScheme(scheme.Scheme); err != nil {
+		panic(err.Error())
+	}
+}
+
 // TODO make this generic
-func toGvr(o runtime.Object) schema.GroupVersionResource {
+func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 	switch o.(type) {
 	case *v1.Pod:
-		return schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
+		return v1.SchemeGroupVersion.WithResource("pods"), "Pod"
 	case *v1.Service:
-		return schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"}
+		return v1.SchemeGroupVersion.WithResource("services"), "Service"
 	case *v1.ServiceAccount:
-		return schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"}
+		return v1.SchemeGroupVersion.WithResource("serviceaccounts"), "ServiceAccount"
 	case *v1.Namespace:
-		return schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}
+		return v1.SchemeGroupVersion.WithResource("namespaces"), "Namespace"
 	case *v1.Endpoints:
-		return schema.GroupVersionResource{Group: "", Version: "v1", Resource: "endpoints"}
+		return v1.SchemeGroupVersion.WithResource("endpoints"), "Endpoints"
+	case *v1alpha3.VirtualService:
+		return v1alpha3.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
 	default:
 		panic(fmt.Sprintf("unsupported type %T", o))
 	}
@@ -70,25 +83,29 @@ func (c *Client) Apply(o runtime.Object) error {
 	if us == nil {
 		return fmt.Errorf("bad object %v", o)
 	}
+	gvr, kind := toGvr(o)
 	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
-	cl := c.dynamic.Resource(toGvr(o)).Namespace(us.GetNamespace())
+	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
 
+	// TODO do we need to do this manually? We only need it for Istio types
+	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
 	err := retry.RetryOnConflict(backoff, func() error {
-		_, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
+		cur, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
 		switch {
 		case errors.IsNotFound(err):
-			log.Debugf("creating resource: %s/%s", us.GetName(), us.GetNamespace())
+			log.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			_, err = cl.Create(context.TODO(), us, metav1.CreateOptions{})
 			return err
 		case err == nil:
-			log.Debugf("updating resource: %s/%s", us.GetName(), us.GetNamespace())
+			log.Debugf("updating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			us.SetResourceVersion(cur.GetResourceVersion())
 			_, err := cl.Update(context.TODO(), us, metav1.UpdateOptions{})
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to apply %s/%s", us.GetName(), us.GetNamespace())
+		return fmt.Errorf("failed to apply %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
 	}
 	return nil
 }
