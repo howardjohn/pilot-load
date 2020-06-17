@@ -1,16 +1,16 @@
 # Pilot Load
 
-This tool connects to Pilot and opens an XDS stream.
-
 ## Install
 
-`go get github.com/howardjohn/pilot-load`
+1. Install Istio in cluster
 
-## Usage
+1. Run `./kube/deploy.sh`. This will configure a new apiserver and mutlicluster secrets to access this.
 
-* The `-c` flag can be provided for the number of clients. Default is 1.
-* The `-p` flag can be provided to change the Pilot address to use. By default this is `localhost:15010`.
+1. To deploy in cluster, run `kubectl apply -f install/deployment`.
 
-Example: `pilot-load -c 50 -p localhost:15010`
+1. To deploy out of cluster, run
 
-Pushes can be manually triggered with `curl localhost:8080/debug/adsz?push=true`
+```shell script
+export KUBECONFIG=kube/local-kubeconfig.yaml
+pilot-load <simulation>
+```

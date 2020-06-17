@@ -3,10 +3,8 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
@@ -22,72 +20,29 @@ func Simple(a model.Args) error {
 		Namespace: ns.Spec.Name,
 		Name:      "default",
 	})
-
-	scaler := NewScaler(ScalerSpec{
-		scaler: func(ctx model.Context, n int) error {
-			if n < numWorkloads {
-				log.Println("cannot scale down yet")
-				return nil
-			}
-			log.Println("Scaling workloads", numWorkloads, "->", n)
-			newSims := []model.Simulation{}
-			for n > numWorkloads {
-				numWorkloads++
-				w := NewWorkload(WorkloadSpec{
-					App:            fmt.Sprintf("app-%d", numWorkloads),
-					Node:           "node",
-					Namespace:      ns.Spec.Name,
-					ServiceAccount: sa.Spec.Name,
-					Instances:      1,
-					Scaling: &ScalerSpec{
-						start:    1,
-						step:     1,
-						stop:     10,
-						interval: time.Second * 3,
-					},
-				})
-				_ = w
-				//newSims = append(newSims, w)
-			}
-
-			return NewAggregateSimulation(nil, newSims).Run(ctx)
-		},
-		start:    0,
-		step:     1,
-		stop:     100,
-		interval: time.Second * 1,
+	w := app.NewWorkload(app.WorkloadSpec{
+		App:            fmt.Sprintf("app-%d", numWorkloads),
+		Node:           "node",
+		Namespace:      ns.Spec.Name,
+		ServiceAccount: sa.Spec.Name,
+		Instances:      2,
 	})
-	_ = scaler
 
-	sim := NewAggregateSimulation([]model.Simulation{ns, sa}, []model.Simulation{})
+	sim := model.AggregateSimulation{[]model.Simulation{ns, sa, w}}
 	if err := ExecuteSimulations(a, sim); err != nil {
-		log.Println("waiting for deletions because of error: ", err)
-		time.Sleep(time.Second * 10)
 		return fmt.Errorf("error executing: %v", err)
 	}
 	return nil
 }
 
 func Adsc(a model.Args) error {
-	cl, err := kube.NewClient(a.KubeConfig)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go captureTermination(ctx, cancel)
 	pod := app.NewPod(app.PodSpec{
 		ServiceAccount: "default",
 		Node:           "nopde",
 		App:            "app",
 		Namespace:      "default",
 	})
-	simulationContext := model.Context{ctx, a, cl}
-	if err := pod.Run(simulationContext); err != nil {
-		return err
-	}
-	<-ctx.Done()
-	return pod.Cleanup(simulationContext)
+	return ExecuteSimulations(a, pod)
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
@@ -97,7 +52,13 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
-	return simulation.Run(model.Context{ctx, a, cl})
+	defer cancel()
+	simulationContext := model.Context{ctx, a, cl}
+	if err := simulation.Run(simulationContext); err != nil {
+		return err
+	}
+	<-ctx.Done()
+	return simulation.Cleanup(simulationContext)
 }
 
 func captureTermination(ctx context.Context, cancel context.CancelFunc) {
