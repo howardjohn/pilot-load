@@ -3,6 +3,8 @@ package simulation
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 var (
@@ -38,7 +40,7 @@ type Endpoint struct {
 	running bool
 }
 
-var _ Simulation = &Endpoint{}
+var _ model.Simulation = &Endpoint{}
 
 func NewEndpoint(s EndpointSpec) *Endpoint {
 	return &Endpoint{Spec: &s}
@@ -57,7 +59,7 @@ func (e Endpoint) SetAddresses(ips []string) error {
 	return nil
 }
 
-func (e *Endpoint) Run(ctx Context) (err error) {
+func (e *Endpoint) Run(ctx model.Context) (err error) {
 	e.running = true
 	return RunConfig(ctx, func() string { return render(endpointsYml, e.Spec) })
 }

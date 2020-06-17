@@ -58,13 +58,3 @@ func deleteNamespace(name string) error {
 	c.Stdout = os.Stdout
 	return c.Run()
 }
-
-func AddError(e1, e2 error) error {
-	if e1 == nil {
-		return e2
-	}
-	if e2 == nil {
-		return e1
-	}
-	return fmt.Errorf("%v and %v", e1, e2)
-}

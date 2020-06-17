@@ -9,15 +9,11 @@ import (
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-type Args struct {
-	PilotAddress string
-	NodeMetadata string
-	KubeConfig   string
-}
-
-func Simple(a Args) error {
+func Simple(a model.Args) error {
 	numWorkloads := 1
 	ns := NewNamespace(NamespaceSpec{
 		Name: "workload",
@@ -28,13 +24,13 @@ func Simple(a Args) error {
 	})
 
 	scaler := NewScaler(ScalerSpec{
-		scaler: func(ctx Context, n int) error {
+		scaler: func(ctx model.Context, n int) error {
 			if n < numWorkloads {
 				log.Println("cannot scale down yet")
 				return nil
 			}
 			log.Println("Scaling workloads", numWorkloads, "->", n)
-			newSims := []Simulation{}
+			newSims := []model.Simulation{}
 			for n > numWorkloads {
 				numWorkloads++
 				w := NewWorkload(WorkloadSpec{
@@ -61,7 +57,7 @@ func Simple(a Args) error {
 		interval: time.Second * 1,
 	})
 
-	sim := NewAggregateSimulation([]Simulation{ns, sa}, []Simulation{scaler})
+	sim := NewAggregateSimulation([]model.Simulation{ns, sa}, []model.Simulation{scaler})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		log.Println("waiting for deletions because of error: ", err)
 		time.Sleep(time.Second * 10)
@@ -70,29 +66,29 @@ func Simple(a Args) error {
 	return nil
 }
 
-func Adsc(a Args) error {
+func Adsc(a model.Args) error {
 	cl, err := kube.NewClient(a.KubeConfig)
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
-	return NewPod(PodSpec{
+	return app.NewPod(app.PodSpec{
 		ServiceAccount: "default",
 		Node:           "nopde",
 		App:            "app",
 		Namespace:      "default",
-	}).Run(Context{ctx, a, cl})
+	}).Run(model.Context{ctx, a, cl})
 }
 
-func ExecuteSimulations(a Args, simulation Simulation) error {
+func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	cl, err := kube.NewClient(a.KubeConfig)
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
-	return simulation.Run(Context{ctx, a, cl})
+	return simulation.Run(model.Context{ctx, a, cl})
 }
 
 func captureTermination(ctx context.Context, cancel context.CancelFunc) {

@@ -1,5 +1,7 @@
 package simulation
 
+import "github.com/howardjohn/pilot-load/pkg/simulation/model"
+
 var (
 	serviceYml = `
 apiVersion: v1
@@ -30,11 +32,11 @@ type Service struct {
 	Spec *ServiceSpec
 }
 
-func (s Service) Run(ctx Context) (err error) {
+func (s Service) Run(ctx model.Context) (err error) {
 	return RunConfig(ctx, func() string { return render(serviceYml, s.Spec) })
 }
 
-var _ Simulation = &Service{}
+var _ model.Simulation = &Service{}
 
 func NewService(s ServiceSpec) *Service {
 	return &Service{Spec: &s}

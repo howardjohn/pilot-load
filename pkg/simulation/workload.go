@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type WorkloadSpec struct {
@@ -18,19 +22,19 @@ type WorkloadSpec struct {
 type Workload struct {
 	Spec     *WorkloadSpec
 	endpoint *Endpoint
-	pods     []*Pod
+	pods     []*app.Pod
 	service  *Service
 	vservice *VirtualService
 	scaler   *Scaler
 }
 
-var _ Simulation = &Workload{}
+var _ model.Simulation = &Workload{}
 
 func NewWorkload(s WorkloadSpec) *Workload {
 	w := &Workload{Spec: &s}
 
 	for i := 0; i < s.Instances; i++ {
-		w.pods = append(w.pods, NewPod(PodSpec{
+		w.pods = append(w.pods, app.NewPod(app.PodSpec{
 			ServiceAccount: s.ServiceAccount,
 			Node:           s.Node,
 			App:            s.App,
@@ -47,7 +51,7 @@ func NewWorkload(s WorkloadSpec) *Workload {
 	w.service = NewService(ServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
-		IP:        getIp(),
+		IP:        util.GetIP(),
 	})
 	w.vservice = NewVirtualService(VirtualServiceSpec{
 		App:       s.App,
@@ -65,7 +69,7 @@ func NewScaler(s ScalerSpec) *Scaler {
 }
 
 type ScalerSpec struct {
-	scaler   func(ctx Context, n int) error
+	scaler   func(ctx model.Context, n int) error
 	start    int
 	stop     int
 	step     int
@@ -76,7 +80,7 @@ type Scaler struct {
 	Spec *ScalerSpec
 }
 
-func (s Scaler) Run(ctx Context) error {
+func (s Scaler) Run(ctx model.Context) error {
 	errCh := make(chan error)
 	cur := s.Spec.start
 	tick := time.NewTicker(s.Spec.interval)
@@ -101,10 +105,10 @@ func (s Scaler) Run(ctx Context) error {
 	}
 }
 
-var _ Simulation = &Scaler{}
+var _ model.Simulation = &Scaler{}
 
-func (w Workload) Run(ctx Context) (err error) {
-	sims := []Simulation{w.service, w.endpoint, w.vservice}
+func (w Workload) Run(ctx model.Context) (err error) {
+	sims := []model.Simulation{w.service, w.endpoint, w.vservice}
 	if w.scaler != nil {
 		sims = append(sims, w.scaler)
 	}
@@ -118,15 +122,15 @@ func (w Workload) Run(ctx Context) (err error) {
 	return nil
 }
 
-func (w *Workload) Scale(ctx Context, n int) error {
+func (w *Workload) Scale(ctx model.Context, n int) error {
 	log.Println("scaling pod from", len(w.pods), "->", n)
 	if n < len(w.pods) {
 		log.Println("cannot scale down yet")
 		return nil
 	}
-	newSims := []Simulation{}
+	newSims := []model.Simulation{}
 	for n > len(w.pods) {
-		pod := NewPod(PodSpec{
+		pod := app.NewPod(app.PodSpec{
 			ServiceAccount: w.Spec.ServiceAccount,
 			Node:           w.Spec.Node,
 			App:            w.Spec.App,

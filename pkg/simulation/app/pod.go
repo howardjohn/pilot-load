@@ -1,4 +1,4 @@
-package simulation
+package app
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 
 	"github.com/howardjohn/pilot-load/client"
 )
@@ -60,23 +62,24 @@ type Pod struct {
 	Spec *PodSpec
 }
 
-var _ Simulation = &Pod{}
+var _ model.Simulation = &Pod{}
 
 func NewPod(s PodSpec) *Pod {
 	if s.UID == "" {
-		s.UID = genUID()
+		s.UID = util.GenUID()
 	}
 	if s.IP == "" {
-		s.IP = getIp()
+		s.IP = util.GetIP()
 	}
 	return &Pod{
 		Spec: &s,
 	}
 }
 
-func (p *Pod) Run(ctx Context) (err error) {
+func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.GetPod()
-	if err = ctx.client.Apply(pod); err != nil {
+	// TODO apply gets pod stuck in pending state.. figure out how to force Running
+	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
 	meta := map[string]interface{}{
@@ -88,9 +91,9 @@ func (p *Pod) Run(ctx Context) (err error) {
 		"NAMESPACE": p.Spec.Namespace,
 	}
 	defer func() {
-		err = AddError(err, ctx.client.Delete(pod))
+		err = util.AddError(err, ctx.Client.Delete(pod))
 	}()
-	if err := client.Connect(ctx, ctx.args.PilotAddress, &adsc.Config{
+	if err := client.Connect(ctx, ctx.Args.PilotAddress, &adsc.Config{
 		Namespace: p.Spec.Namespace,
 		Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),
 		Meta:      meta,

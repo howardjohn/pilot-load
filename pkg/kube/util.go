@@ -69,14 +69,11 @@ func (c *Client) Apply(o runtime.Object) error {
 		_, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
 		switch {
 		case errors.IsNotFound(err):
-			log.Debugf("creating resource: %s/%s: %+v", us.GetName(),  us.GetNamespace(), us)
+			log.Debugf("creating resource: %s/%s: %+v", us.GetName(), us.GetNamespace(), us)
 			_, err = cl.Create(context.TODO(), us, metav1.CreateOptions{})
 			if err != nil {
 				return fmt.Errorf("failed to create %s/%s: %v", us.GetName(), us.GetNamespace(), err)
 			}
-
-			_, err := cl.Update(context.TODO(), us, metav1.UpdateOptions{})
-			return err
 			return nil
 		case err == nil:
 			log.Debugf("updating resource: %s/%s", us.GetName(), us.GetNamespace())

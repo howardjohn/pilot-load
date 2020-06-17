@@ -11,6 +11,7 @@ import (
 	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 var (
@@ -47,7 +48,7 @@ var rootCmd = &cobra.Command{
 		if kubeconfig == "" {
 			kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/config")
 		}
-		a := simulation.Args{
+		a := model.Args{
 			PilotAddress: pilotAddress,
 			NodeMetadata: metadata,
 			KubeConfig:   kubeconfig,
