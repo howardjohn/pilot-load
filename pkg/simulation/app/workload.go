@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"istio.io/pkg/log"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
@@ -79,11 +80,19 @@ func (w *Workload) Cleanup(ctx model.Context) error {
 }
 
 func (w *Workload) Scale(ctx model.Context, n int) error {
-	// TODO implement this
 	log.Infof("%v: scaling pod from %d -> %d", w.Spec.App, len(w.pods), n)
-	if n < len(w.pods) {
-		log.Errorf("cannot scale down yet")
-		return nil
+	for n < len(w.pods) {
+		i := rand.IntnRange(0, len(w.pods)-1)
+		// Remove the element at index i from a.
+		old := w.pods[i]
+		w.pods[i] = w.pods[len(w.pods)-1] // Copy last element to index i.
+		w.pods[len(w.pods)-1] = nil       // Erase last element (write zero value).
+		w.pods = w.pods[:len(w.pods)-1]   // Truncate slice.
+		log.Infof("terminate pod %v", old.Name())
+		if err := old.Cleanup(ctx); err != nil {
+			log.Infof("err: %v", err)
+			return err
+		}
 	}
 
 	for n > len(w.pods) {

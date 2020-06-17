@@ -63,11 +63,15 @@ func (p *Pod) Cleanup(ctx model.Context) error {
 	return p.xds.Cleanup(ctx)
 }
 
+func (p *Pod) Name() string {
+	return fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID)
+}
+
 func (p *Pod) getPod() *v1.Pod {
 	s := p.Spec
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", s.App, s.UID),
+			Name:      p.Name(),
 			Namespace: s.Namespace,
 			Labels: map[string]string{
 				"app": s.App,
