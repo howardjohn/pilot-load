@@ -7,20 +7,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-var (
-	namespaceYml = `
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    istio-injection: enabled
-  name: {{.Name}}
-spec:
-status:
-  phase: Active
-`
-)
-
 type NamespaceSpec struct {
 	Name string
 }

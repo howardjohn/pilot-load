@@ -24,7 +24,7 @@ type Workload struct {
 	endpoint *app.Endpoint
 	pods     []*app.Pod
 	service  *app.Service
-	vservice *VirtualService
+	vservice *app.VirtualService
 	scaler   *Scaler
 }
 
@@ -53,7 +53,7 @@ func NewWorkload(s WorkloadSpec) *Workload {
 		Namespace: s.Namespace,
 		IP:        util.GetIP(),
 	})
-	w.vservice = NewVirtualService(VirtualServiceSpec{
+	w.vservice = app.NewVirtualService(app.VirtualServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
 	})

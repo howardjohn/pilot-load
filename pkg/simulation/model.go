@@ -3,7 +3,6 @@ package simulation
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"text/template"
 
 	"golang.org/x/sync/errgroup"
@@ -55,17 +54,4 @@ func (a AggregateSimulation) Run(ctx model.Context) error {
 		})
 	}
 	return g.Wait()
-}
-
-func RunConfig(ctx model.Context, render func() string) (err error) {
-	go func() {
-		<-ctx.Done()
-		if err := deleteConfig(render()); err != nil {
-			log.Println("error during cleanup: ", err)
-		}
-	}()
-	if err = applyConfig(render()); err != nil {
-		return fmt.Errorf("failed to apply config: %v", err)
-	}
-	return nil
 }
