@@ -26,8 +26,10 @@ func (n *Namespace) Run(ctx model.Context) (err error) {
 }
 
 func (n *Namespace) Cleanup(ctx model.Context) error {
-	// TODO force remove finalizers
-	return ctx.Client.Delete(n.getNamespace())
+	if err := ctx.Client.Delete(n.getNamespace()); err != nil {
+		return err
+	}
+	return ctx.Client.Finalize(n.getNamespace())
 }
 
 func (n *Namespace) getNamespace() *v1.Namespace {

@@ -16,13 +16,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 )
 
 type Client struct {
-	dynamic dynamic.Interface
+	dynamic    dynamic.Interface
+	kubernetes kubernetes.Interface
 }
 
 func NewClient(kubeconfig string) (*Client, error) {
@@ -34,12 +36,22 @@ func NewClient(kubeconfig string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	k, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
-		dynamic: d,
+		dynamic:    d,
+		kubernetes: k,
 	}, nil
 }
 
 var deletePeriod int64 = 0
+
+func (c *Client) Finalize(ns *v1.Namespace) error {
+	_, err := c.kubernetes.CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
+	return err
+}
 
 func (c *Client) Delete(o runtime.Object) error {
 	us := toUnstructured(o)
