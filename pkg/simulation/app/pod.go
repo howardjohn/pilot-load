@@ -22,7 +22,7 @@ type PodSpec struct {
 
 type Pod struct {
 	Spec *PodSpec
-	xds  *xds.XdsSimulation
+	xds  *xds.Simulation
 }
 
 var _ model.Simulation = &Pod{}
@@ -45,7 +45,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
-	p.xds = &xds.XdsSimulation{
+	p.xds = &xds.Simulation{
 		Labels:    pod.Labels,
 		Namespace: pod.Namespace,
 		Name:      pod.Name,

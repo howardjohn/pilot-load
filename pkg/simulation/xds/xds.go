@@ -7,7 +7,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-type XdsSimulation struct {
+type Simulation struct {
 	Labels    map[string]string
 	Namespace string
 	Name      string
@@ -18,7 +18,7 @@ type XdsSimulation struct {
 	done    chan struct{}
 }
 
-func (x *XdsSimulation) Run(ctx model.Context) error {
+func (x *Simulation) Run(ctx model.Context) error {
 	c, cancel := context.WithCancel(context.Background())
 	x.cancel = cancel
 	x.done = make(chan struct{})
@@ -49,10 +49,10 @@ func (x *XdsSimulation) Run(ctx model.Context) error {
 	return nil
 }
 
-func (x XdsSimulation) Cleanup(ctx model.Context) error {
+func (x Simulation) Cleanup(ctx model.Context) error {
 	x.cancel()
 	<-x.done
 	return nil
 }
 
-var _ model.Simulation = &XdsSimulation{}
+var _ model.Simulation = &Simulation{}

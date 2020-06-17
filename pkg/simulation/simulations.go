@@ -37,7 +37,7 @@ func Simple(a model.Args) error {
 }
 
 func Adsc(a model.Args) error {
-	return ExecuteSimulations(a, &xds.XdsSimulation{
+	return ExecuteSimulations(a, &xds.Simulation{
 		Namespace: "default",
 		Name:      "adsc",
 		IP:        "1.2.3.4",
