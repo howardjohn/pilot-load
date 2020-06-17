@@ -1,7 +1,9 @@
 package app
 
 import (
-	"log"
+	"fmt"
+
+	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
@@ -29,12 +31,7 @@ func NewWorkload(s WorkloadSpec) *Workload {
 	w := &Workload{Spec: &s}
 
 	for i := 0; i < s.Instances; i++ {
-		w.pods = append(w.pods, NewPod(PodSpec{
-			ServiceAccount: s.ServiceAccount,
-			Node:           s.Node,
-			App:            s.App,
-			Namespace:      s.Namespace,
-		}))
+		w.pods = append(w.pods, w.makePod())
 	}
 
 	w.endpoint = NewEndpoint(EndpointSpec{
@@ -55,6 +52,16 @@ func NewWorkload(s WorkloadSpec) *Workload {
 	return w
 }
 
+func (w *Workload) makePod() *Pod {
+	s := w.Spec
+	return NewPod(PodSpec{
+		ServiceAccount: s.ServiceAccount,
+		Node:           s.Node,
+		App:            s.App,
+		Namespace:      s.Namespace,
+	})
+}
+
 func (w *Workload) getSims() []model.Simulation {
 	sims := []model.Simulation{w.service, w.endpoint, w.vservice}
 	for _, p := range w.pods {
@@ -73,30 +80,23 @@ func (w *Workload) Cleanup(ctx model.Context) error {
 
 func (w *Workload) Scale(ctx model.Context, n int) error {
 	// TODO implement this
-	log.Println("scaling pod from", len(w.pods), "->", n)
+	log.Infof("%v: scaling pod from %d -> %d", w.Spec.App, len(w.pods), n)
 	if n < len(w.pods) {
-		log.Println("cannot scale down yet")
+		log.Errorf("cannot scale down yet")
 		return nil
 	}
-	newSims := []model.Simulation{}
+
 	for n > len(w.pods) {
-		pod := NewPod(PodSpec{
-			ServiceAccount: w.Spec.ServiceAccount,
-			Node:           w.Spec.Node,
-			App:            w.Spec.App,
-			Namespace:      w.Spec.Namespace,
-		})
-		w.pods = append(w.pods, pod)
-		newSims = append(newSims, pod)
+		pod := w.makePod()
+		w.pods = append(w.pods, w.makePod())
+		if err := pod.Run(ctx); err != nil {
+			return err
+		}
 	}
 
-	// TODO this should be a simulation maybe?
-	//if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
-	//	return fmt.Errorf("endpoints: %v", err)
-	//}
-	//if err := simulation.NewAggregateSimulation(nil, newSims).Run(ctx); err != nil {
-	//	return fmt.Errorf("scale: %v", err)
-	//}
+	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
+		return fmt.Errorf("endpoints: %v", err)
+	}
 	return nil
 }
 

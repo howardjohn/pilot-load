@@ -10,7 +10,7 @@ func Connect(ctx context.Context, pilotAddress string, config *Config) {
 	log := func(template string, args ...interface{}) {
 		a := []interface{}{config.Workload}
 		a = append(a, args...)
-		scope.Infof("%v: " + template, a...)
+		scope.Infof("%v: "+template, a...)
 	}
 	for {
 		log("Connecting: %v", config.IP)
@@ -52,4 +52,3 @@ func Connect(ctx context.Context, pilotAddress string, config *Config) {
 		log("Disconnected: %v", config.IP)
 	}
 }
-
