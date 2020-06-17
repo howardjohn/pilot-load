@@ -42,7 +42,6 @@ func (x *Simulation) Run(ctx model.Context) error {
 			Meta:      meta,
 			NodeType:  "sidecar",
 			IP:        x.IP,
-			Verbose:   false,
 		})
 		close(x.done)
 	}()

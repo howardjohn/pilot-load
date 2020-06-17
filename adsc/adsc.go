@@ -45,9 +45,6 @@ type Config struct {
 	// IP is currently the primary key used to locate inbound configs. It is sent by client,
 	// must match a known endpoint IP. Tests can use a ServiceEntry to register fake IPs.
 	IP string
-
-	// If true, will dump outputs
-	Verbose bool
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -66,8 +63,6 @@ type ADSC struct {
 
 	certDir string
 	url     string
-
-	verbose bool
 
 	InitialLoad bool
 
@@ -108,7 +103,6 @@ func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
 		Updates: make(chan string, 100),
 		certDir: certDir,
 		url:     url,
-		verbose: opts.Verbose,
 	}
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
@@ -232,35 +226,41 @@ func (a *ADSC) handleRecv() {
 			a.Updates <- "close"
 			return
 		}
+		scope.Debugf("got message for type %v", msg.TypeUrl)
 
 		listeners := []*xdsapi.Listener{}
 		clusters := []*xdsapi.Cluster{}
 		routes := []*xdsapi.RouteConfiguration{}
 		eds := []*xdsapi.ClusterLoadAssignment{}
+		names := []string{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
 			if rsc.TypeUrl == listenerType {
 				ll := &xdsapi.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
+				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == clusterType {
 				ll := &xdsapi.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
+				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == endpointType {
 				ll := &xdsapi.ClusterLoadAssignment{}
 				_ = proto.Unmarshal(valBytes, ll)
 				eds = append(eds, ll)
+				names = append(names, ll.ClusterName)
 			} else if rsc.TypeUrl == routeType {
 				ll := &xdsapi.RouteConfiguration{}
 				_ = proto.Unmarshal(valBytes, ll)
 				routes = append(routes, ll)
+				names = append(names, ll.Name)
 			}
 		}
 
 		// TODO: add hook to inject nacks
 		a.mutex.Lock()
-		a.ack(msg)
+		a.ack(msg, names)
 		a.mutex.Unlock()
 
 		if len(listeners) > 0 {
@@ -296,19 +296,21 @@ func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
 		}
 	}
 
-	if a.verbose {
+	if scope.DebugEnabled() {
 		for i, l := range ll {
 			b, err := marshal.MarshalToString(l)
 			if err != nil {
-				scope.Errorf("Error in LDS: ", err)
+				scope.Errorf("Error in LDS: %v", err)
 			}
-			scope.Infof("%d: %v", i, b)
+
+			_, _ = i, b
+			//scope.Infof("%d: %v", i, b)
 		}
 	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	if len(routes) > 0 {
-		a.sendRsc(routeType, routes)
+		a.sendRequest(routeType, routes)
 	}
 
 	select {
@@ -359,15 +361,17 @@ func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 	}
 
 	if len(cn) > 0 {
-		a.sendRsc(endpointType, cn)
+		a.sendRequest(endpointType, cn)
 	}
-	if a.verbose {
+	if scope.DebugEnabled() {
 		for i, c := range ll {
 			b, err := marshal.MarshalToString(c)
 			if err != nil {
-				scope.Errorf("Error in CDS: ", err)
+				scope.Errorf("Error in CDS: %v", err)
 			}
-			scope.Infof("%d: %v", i, b)
+
+			_, _ = i, b
+			//scope.Infof("%d: %v", i, b)
 		}
 	}
 
@@ -400,32 +404,28 @@ func (a *ADSC) node() *core.Node {
 	return n
 }
 
-func (a *ADSC) Send(req *xdsapi.DiscoveryRequest) error {
-	req.Node = a.node()
-	req.ResponseNonce = time.Now().String()
-	return a.stream.Send(req)
-}
-
 func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
-	if a.verbose {
-		if a.verbose {
+	if scope.DebugEnabled() {
+		if scope.DebugEnabled() {
 			for i, e := range eds {
 				b, err := marshal.MarshalToString(e)
 				if err != nil {
-					scope.Errorf("Error in EDS: ", err)
+					scope.Errorf("Error in EDS: %v", err)
 				}
-				scope.Infof("%d: %v", i, b)
+
+				_, _ = i, b
+				//scope.Infof("%d: %v", i, b)
 			}
 		}
 
 	}
 	if !a.InitialLoad {
 		// first load - Envoy loads listeners after endpoints
-		_ = a.stream.Send(&xdsapi.DiscoveryRequest{
+		_ = a.send(&xdsapi.DiscoveryRequest{
 			ResponseNonce: time.Now().String(),
 			Node:          a.node(),
 			TypeUrl:       listenerType,
-		})
+		}, "init")
 	}
 
 	a.mutex.Lock()
@@ -449,13 +449,15 @@ func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
 		a.InitialLoad = true
 	}
 
-	if a.verbose {
+	if scope.DebugEnabled() {
 		for i, r := range configurations {
 			b, err := marshal.MarshalToString(r)
 			if err != nil {
-				scope.Errorf("Error in RDS: ", err)
+				scope.Errorf("Error in RDS: %v", err)
 			}
-			scope.Infof("%d: %v", i, b)
+
+			_, _ = i, b
+			//scope.Infof("%d: %v", i, b)
 		}
 	}
 
@@ -494,33 +496,39 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 	}
 }
 
+func (a *ADSC) send(dr *xdsapi.DiscoveryRequest, reason string) error {
+	scope.Debugf("send message for type %v (%v) for %v", dr.TypeUrl, reason, dr.ResourceNames)
+	return a.stream.Send(dr)
+}
+
 // Watch will start watching resources, starting with CDS. Based on the CDS response
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
-	err := a.stream.Send(&xdsapi.DiscoveryRequest{
+	err := a.send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: time.Now().String(),
 		Node:          a.node(),
 		TypeUrl:       clusterType,
-	})
+	}, "init")
 	if err != nil {
 		scope.Errorf("Error sending request: ", err)
 	}
 }
 
-func (a *ADSC) sendRsc(typeurl string, rsc []string) {
-	_ = a.stream.Send(&xdsapi.DiscoveryRequest{
+func (a *ADSC) sendRequest(typeurl string, rsc []string) {
+	_ = a.send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: "",
 		Node:          a.node(),
 		TypeUrl:       typeurl,
 		ResourceNames: rsc,
-	})
+	}, "request")
 }
 
-func (a *ADSC) ack(msg *xdsapi.DiscoveryResponse) {
-	_ = a.stream.Send(&xdsapi.DiscoveryRequest{
+func (a *ADSC) ack(msg *xdsapi.DiscoveryResponse, names []string) {
+	_ = a.send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
 		Node:          a.node(),
 		VersionInfo:   msg.VersionInfo,
-	})
+		ResourceNames: names,
+	}, "ack")
 }

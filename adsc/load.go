@@ -23,7 +23,7 @@ func Connect(ctx context.Context, pilotAddress string, config *Config) {
 				log("Context closed, exiting stream")
 				con.Close()
 			case <-time.After(time.Second * time.Duration(attempts)):
-				log("Starting retry %v")
+				log("Starting retry %v", attempts)
 			}
 			continue
 		}

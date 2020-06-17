@@ -35,6 +35,9 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if verbose {
 			o := log.DefaultOptions()
+			for _, s := range log.Scopes() {
+				s.SetOutputLevel(log.DebugLevel)
+			}
 			o.SetOutputLevel(log.DefaultScopeName, log.DebugLevel)
 			if err := log.Configure(o); err != nil {
 				panic(err.Error())
