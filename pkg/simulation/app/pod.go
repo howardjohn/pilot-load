@@ -6,11 +6,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-
-	"github.com/howardjohn/pilot-load/client"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type PodSpec struct {
@@ -46,27 +44,14 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
-	meta := map[string]interface{}{
-		"ISTIO_VERSION": "1.6.0",
-		"CLUSTER_ID":    "pilot-load",
-		"LABELS": map[string]string{
-			"app": p.Spec.App,
-		},
-		"NAMESPACE": p.Spec.Namespace,
-	}
-	go func() {
-		// TODO trigger full CA bootstrap flow
-		// TODO use XDS v3
-		client.Connect(ctx, ctx.Args.PilotAddress, &adsc.Config{
-			Namespace: p.Spec.Namespace,
-			Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),
-			Meta:      meta,
-			NodeType:  "sidecar",
-			IP:        p.Spec.IP,
-			Verbose:   false,
-		})
-	}()
-	return nil
+	return xds.XdsSimulation{
+		Labels:    pod.Labels,
+		Namespace: pod.Namespace,
+		Name:      pod.Name,
+		IP:        p.Spec.IP,
+		// TODO: multicluster
+		Cluster: "pilot-load",
+	}.Run(ctx)
 }
 
 func (p *Pod) Cleanup(ctx model.Context) error {

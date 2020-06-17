@@ -9,6 +9,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 func Simple(a model.Args) error {
@@ -36,13 +37,13 @@ func Simple(a model.Args) error {
 }
 
 func Adsc(a model.Args) error {
-	pod := app.NewPod(app.PodSpec{
-		ServiceAccount: "default",
-		Node:           "nopde",
-		App:            "app",
-		Namespace:      "default",
+	return ExecuteSimulations(a, xds.XdsSimulation{
+		Namespace: "default",
+		Name:      "adsc",
+		IP:        "1.2.3.4",
+		// TODO: multicluster
+		Cluster: "pilot-load",
 	})
-	return ExecuteSimulations(a, pod)
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
