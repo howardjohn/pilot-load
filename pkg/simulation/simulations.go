@@ -15,10 +15,10 @@ import (
 
 func Simple(a model.Args) error {
 	numWorkloads := 1
-	ns := NewNamespace(NamespaceSpec{
+	ns := app.NewNamespace(app.NamespaceSpec{
 		Name: "workload",
 	})
-	sa := NewServiceAccount(ServiceAccountSpec{
+	sa := app.NewServiceAccount(app.ServiceAccountSpec{
 		Namespace: ns.Spec.Name,
 		Name:      "default",
 	})
@@ -46,7 +46,8 @@ func Simple(a model.Args) error {
 						interval: time.Second * 3,
 					},
 				})
-				newSims = append(newSims, w)
+				_ = w
+				//newSims = append(newSims, w)
 			}
 
 			return NewAggregateSimulation(nil, newSims).Run(ctx)
@@ -56,8 +57,9 @@ func Simple(a model.Args) error {
 		stop:     100,
 		interval: time.Second * 1,
 	})
+	_ = scaler
 
-	sim := NewAggregateSimulation([]model.Simulation{ns, sa}, []model.Simulation{scaler})
+	sim := NewAggregateSimulation([]model.Simulation{ns, sa}, []model.Simulation{})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		log.Println("waiting for deletions because of error: ", err)
 		time.Sleep(time.Second * 10)
@@ -72,13 +74,20 @@ func Adsc(a model.Args) error {
 		return err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go captureTermination(ctx, cancel)
-	return app.NewPod(app.PodSpec{
+	pod := app.NewPod(app.PodSpec{
 		ServiceAccount: "default",
 		Node:           "nopde",
 		App:            "app",
 		Namespace:      "default",
-	}).Run(model.Context{ctx, a, cl})
+	})
+	simulationContext := model.Context{ctx, a, cl}
+	if err := pod.Run(simulationContext); err != nil {
+		return err
+	}
+	<-ctx.Done()
+	return pod.Cleanup(simulationContext)
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {

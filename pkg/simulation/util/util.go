@@ -20,6 +20,10 @@ func AddError(e1, e2 error) error {
 
 var chars = []rune("abcdefghijklmnopqrstuvwxyz")
 
+func StringPointer(s string) *string {
+	return &s
+}
+
 func GenUID() string {
 	length := 8
 	var b strings.Builder

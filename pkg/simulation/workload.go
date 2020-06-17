@@ -21,14 +21,14 @@ type WorkloadSpec struct {
 
 type Workload struct {
 	Spec     *WorkloadSpec
-	endpoint *Endpoint
+	endpoint *app.Endpoint
 	pods     []*app.Pod
-	service  *Service
+	service  *app.Service
 	vservice *VirtualService
 	scaler   *Scaler
 }
 
-var _ model.Simulation = &Workload{}
+// TODO migrate this over
 
 func NewWorkload(s WorkloadSpec) *Workload {
 	w := &Workload{Spec: &s}
@@ -42,13 +42,13 @@ func NewWorkload(s WorkloadSpec) *Workload {
 		}))
 	}
 
-	w.endpoint = NewEndpoint(EndpointSpec{
+	w.endpoint = app.NewEndpoint(app.EndpointSpec{
 		Node:      s.Node,
 		App:       s.App,
 		Namespace: s.Namespace,
 		IPs:       w.getIps(),
 	})
-	w.service = NewService(ServiceSpec{
+	w.service = app.NewService(app.ServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
 		IP:        util.GetIP(),
@@ -105,12 +105,10 @@ func (s Scaler) Run(ctx model.Context) error {
 	}
 }
 
-var _ model.Simulation = &Scaler{}
-
 func (w Workload) Run(ctx model.Context) (err error) {
-	sims := []model.Simulation{w.service, w.endpoint, w.vservice}
+	sims := []model.Simulation{w.service, w.endpoint}
 	if w.scaler != nil {
-		sims = append(sims, w.scaler)
+		//sims = append(sims, w.scaler)
 	}
 	for _, p := range w.pods {
 		sims = append(sims, p)
@@ -141,9 +139,9 @@ func (w *Workload) Scale(ctx model.Context, n int) error {
 	}
 
 	// TODO this should be a simulation maybe?
-	if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
-		return fmt.Errorf("endpoints: %v", err)
-	}
+	//if err := w.endpoint.SetAddresses(w.getIps()); err != nil {
+	//	return fmt.Errorf("endpoints: %v", err)
+	//}
 	if err := NewAggregateSimulation(nil, newSims).Run(ctx); err != nil {
 		return fmt.Errorf("scale: %v", err)
 	}

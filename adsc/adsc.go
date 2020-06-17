@@ -491,7 +491,7 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 	}
 }
 
-// Watch will start watching resources, starting with LDS. Based on the LDS response
+// Watch will start watching resources, starting with CDS. Based on the CDS response
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
 	err := a.stream.Send(&xdsapi.DiscoveryRequest{

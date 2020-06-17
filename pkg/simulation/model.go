@@ -30,6 +30,10 @@ type AggregateSimulation struct {
 	async []model.Simulation
 }
 
+func (a AggregateSimulation) Cleanup(ctx model.Context) error {
+	panic("implement me")
+}
+
 var _ model.Simulation = &AggregateSimulation{}
 
 func NewAggregateSimulation(sync []model.Simulation, async []model.Simulation) model.Simulation {

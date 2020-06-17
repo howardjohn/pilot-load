@@ -28,7 +28,7 @@ type VirtualService struct {
 	Spec *VirtualServiceSpec
 }
 
-var _ model.Simulation = &VirtualService{}
+// TODO migrate this over
 
 func NewVirtualService(s VirtualServiceSpec) *VirtualService {
 	return &VirtualService{Spec: &s}

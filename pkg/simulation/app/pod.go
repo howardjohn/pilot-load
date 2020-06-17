@@ -13,42 +13,6 @@ import (
 	"github.com/howardjohn/pilot-load/client"
 )
 
-var (
-	podYml = `
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    app: {{.App}}
-  name: {{.App}}-{{.UID}}
-  namespace: {{.Namespace}}
-spec:
-  containers:
-  - image: alpine
-    name: alpine
-    ports:
-    - containerPort: 80
-      protocol: TCP
-  - image: istio/proxyv2
-    name: istio-proxy
-    ports:
-    - containerPort: 15090
-      name: http-envoy-prom
-      protocol: TCP
-  initContainers:
-  - image: istio/proxyv2
-    imagePullPolicy: Always
-    name: istio-init
-  nodeName: {{.Node}}
-  serviceAccountName: {{.ServiceAccount}}
-status:
-  phase: Running
-  podIP: {{.IP}}
-  podIPs:
-  - ip: {{.IP}}
-`
-)
-
 type PodSpec struct {
 	ServiceAccount string
 	Node           string
@@ -77,7 +41,7 @@ func NewPod(s PodSpec) *Pod {
 }
 
 func (p *Pod) Run(ctx model.Context) (err error) {
-	pod := p.GetPod()
+	pod := p.getPod()
 	// TODO apply gets pod stuck in pending state.. figure out how to force Running
 	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
@@ -90,23 +54,25 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 		},
 		"NAMESPACE": p.Spec.Namespace,
 	}
-	defer func() {
-		err = util.AddError(err, ctx.Client.Delete(pod))
+	go func() {
+		// TODO trigger full CA bootstrap flow
+		client.Connect(ctx, ctx.Args.PilotAddress, &adsc.Config{
+			Namespace: p.Spec.Namespace,
+			Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),
+			Meta:      meta,
+			NodeType:  "sidecar",
+			IP:        p.Spec.IP,
+			Verbose:   false,
+		})
 	}()
-	if err := client.Connect(ctx, ctx.Args.PilotAddress, &adsc.Config{
-		Namespace: p.Spec.Namespace,
-		Workload:  fmt.Sprintf("%s-%s", p.Spec.App, p.Spec.UID),
-		Meta:      meta,
-		NodeType:  "sidecar",
-		IP:        p.Spec.IP,
-		Verbose:   false,
-	}); err != nil {
-		return fmt.Errorf("ads connection: %v", err)
-	}
 	return nil
 }
 
-func (p *Pod) GetPod() *v1.Pod {
+func (p *Pod) Cleanup(ctx model.Context) error {
+	return ctx.Client.Delete(p.getPod())
+}
+
+func (p *Pod) getPod() *v1.Pod {
 	s := p.Spec
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
