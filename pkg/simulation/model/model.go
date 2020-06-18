@@ -19,10 +19,19 @@ type Simulation interface {
 	Cleanup(ctx Context) error
 }
 
+type WorkloadArgs struct {
+	Instances int
+}
+
+type ClusterArgs struct {
+	Services []WorkloadArgs
+}
+
 type Args struct {
 	PilotAddress string
 	NodeMetadata string
 	KubeConfig   string
+	Cluster      ClusterArgs
 }
 
 type Context struct {

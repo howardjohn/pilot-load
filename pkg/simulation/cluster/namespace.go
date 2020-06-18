@@ -9,7 +9,7 @@ import (
 
 type NamespaceSpec struct {
 	Name      string
-	Workloads int
+	Workloads []model.WorkloadArgs
 }
 
 type Namespace struct {
@@ -33,13 +33,13 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 			Name:      "default",
 		}),
 	}
-	for i := 0; i < s.Workloads; i++ {
+	for i, w := range s.Workloads {
 		ns.workloads = append(ns.workloads, app.NewWorkload(app.WorkloadSpec{
 			App:            fmt.Sprintf("app-%d", i),
 			Node:           "node",
 			Namespace:      ns.Spec.Name,
 			ServiceAccount: "default",
-			Instances:      5,
+			Instances:      w.Instances,
 		}))
 	}
 	return ns
