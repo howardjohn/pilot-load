@@ -8,7 +8,6 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type WorkloadSpec struct {
@@ -45,7 +44,6 @@ func NewWorkload(s WorkloadSpec) *Workload {
 	w.service = NewService(ServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
-		IP:        util.GetIP(),
 	})
 	w.vservice = config.NewVirtualService(config.VirtualServiceSpec{
 		App:       s.App,

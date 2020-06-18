@@ -62,6 +62,7 @@ func (a AggregateSimulation) Run(ctx Context) error {
 			log.Warnf("exiting early; context cancelled")
 			return nil
 		}
+		log.Debugf("running simulation %T", s)
 		if err := s.Run(ctx); err != nil {
 			return fmt.Errorf("failed running simulation %T: %v", s, err)
 		}
@@ -69,10 +70,11 @@ func (a AggregateSimulation) Run(ctx Context) error {
 	return nil
 }
 
-// TODO parallelize
+// TODO parallelize?
 func (a AggregateSimulation) Cleanup(ctx Context) error {
 	var err error
 	for _, s := range a.Simulations {
+		log.Debugf("cleaning simulation %T", s)
 		if err := s.Cleanup(ctx); err != nil {
 			err = util.AddError(err, fmt.Errorf("failed cleaning simulation %T: %v", s, err))
 		}

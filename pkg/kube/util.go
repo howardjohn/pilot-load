@@ -14,12 +14,15 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type Client struct {
@@ -120,7 +123,15 @@ func (c *Client) Apply(o runtime.Object) error {
 		case err == nil:
 			log.Debugf("updating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			us.SetResourceVersion(cur.GetResourceVersion())
-			_, err := cl.Update(context.TODO(), us, metav1.UpdateOptions{})
+			bytes, err := us.MarshalJSON()
+			if err != nil {
+				return fmt.Errorf("json error for %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+			}
+			_, err = cl.Patch(context.TODO(), us.GetName(), types.ApplyPatchType, bytes, metav1.PatchOptions{
+				FieldManager: "pilot-load",
+				Force:        util.BoolPointer(true),
+			})
+			//_, err = cl.Update(context.TODO(), us, metav1.UpdateOptions{})
 			return err
 		}
 		return nil

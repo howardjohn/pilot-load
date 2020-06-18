@@ -22,6 +22,9 @@ spec:
           - "cluster"
           - "--pilot-address"
           - "istiod.istio-system:15010"
+          - "--cluster.namespaces=15"
+          - "--cluster.services=10"
+          - "--cluster.instances=3"
         env:
         - name: KUBECONFIG
           value: /etc/config/kubeconfig.yaml

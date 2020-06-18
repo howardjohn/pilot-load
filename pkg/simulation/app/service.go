@@ -3,6 +3,7 @@ package app
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
@@ -10,7 +11,6 @@ import (
 type ServiceSpec struct {
 	App       string
 	Namespace string
-	IP        string
 }
 
 type Service struct {
@@ -43,15 +43,16 @@ func (s *Service) getService() *v1.Service {
 			// TODO port customization
 			Ports: []v1.ServicePort{
 				{
-					Name: "http",
-					Port: 80,
+					Name:       "http",
+					Port:       80,
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(80),
 				},
 			},
 			Selector: map[string]string{
 				"app": p.App,
 			},
-			ClusterIP: p.IP,
-			Type:      "ClusterIP",
+			Type: "ClusterIP",
 		},
 	}
 }

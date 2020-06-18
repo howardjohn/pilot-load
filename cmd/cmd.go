@@ -20,13 +20,24 @@ var (
 	kubeconfig   = os.Getenv("KUBECONFIG")
 	// TODO scoping, so we can have config dump split from debug
 	verbose = false
+	cluster = Cluster{}
 )
+
+type Cluster struct {
+	Namespaces int
+	Services   int
+	Instances  int
+}
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
 	rootCmd.PersistentFlags().StringVarP(&metadata, "metadata", "m", metadata, "metadata to send to pilot")
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "verbose")
+
+	rootCmd.PersistentFlags().IntVar(&cluster.Namespaces, "cluster.namespaces", 2, "number of namespaces")
+	rootCmd.PersistentFlags().IntVar(&cluster.Services, "cluster.services", 3, "number of services per namespace")
+	rootCmd.PersistentFlags().IntVar(&cluster.Instances, "cluster.instances", 4, "number of instances per service")
 }
 
 var rootCmd = &cobra.Command{
@@ -57,13 +68,13 @@ var rootCmd = &cobra.Command{
 			NodeMetadata: metadata,
 			KubeConfig:   kubeconfig,
 		}
+
 		// TODO read this from config file
-		// Set up 2 namespaces, each one with 3 services with 4 instances each
 		a.Cluster.Namespaces = map[string]model.NamespaceArgs{}
-		for namespace := 0; namespace < 2; namespace++ {
+		for namespace := 0; namespace < cluster.Namespaces; namespace++ {
 			svc := []model.ServiceArgs{}
-			for i := 0; i < 3; i++ {
-				svc = append(svc, model.ServiceArgs{Instances: 4})
+			for i := 0; i < cluster.Services; i++ {
+				svc = append(svc, model.ServiceArgs{Instances: cluster.Instances})
 			}
 			a.Cluster.Namespaces[fmt.Sprintf("ns-%d", namespace)] = model.NamespaceArgs{svc}
 		}
