@@ -58,8 +58,14 @@ var rootCmd = &cobra.Command{
 			KubeConfig:   kubeconfig,
 		}
 		// TODO read this from config file
-		for i := 0; i < 2; i++ {
-			a.Cluster.Services = append(a.Cluster.Services, model.WorkloadArgs{Instances: 3})
+		// Set up 2 namespaces, each one with 3 services with 4 instances each
+		a.Cluster.Namespaces = map[string]model.NamespaceArgs{}
+		for namespace := 0; namespace < 2; namespace++ {
+			svc := []model.ServiceArgs{}
+			for i := 0; i < 3; i++ {
+				svc = append(svc, model.ServiceArgs{Instances: 4})
+			}
+			a.Cluster.Namespaces[fmt.Sprintf("ns-%d", namespace)] = model.NamespaceArgs{svc}
 		}
 		switch sim {
 		case "cluster":

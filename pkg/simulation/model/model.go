@@ -19,12 +19,21 @@ type Simulation interface {
 	Cleanup(ctx Context) error
 }
 
-type WorkloadArgs struct {
+type ServiceArgs struct {
+	// Number of instances associated with this service
 	Instances int
 }
 
+// Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
+// A cluster consists of various namespaces
 type ClusterArgs struct {
-	Services []WorkloadArgs
+	Namespaces map[string]NamespaceArgs
+}
+
+// Namespace defines one Kubernetes namespace
+type NamespaceArgs struct {
+	// A list of services
+	Services []ServiceArgs
 }
 
 type Args struct {

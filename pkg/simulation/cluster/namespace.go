@@ -9,8 +9,8 @@ import (
 )
 
 type NamespaceSpec struct {
-	Name      string
-	Workloads []model.WorkloadArgs
+	Name     string
+	Services []model.ServiceArgs
 }
 
 type Namespace struct {
@@ -27,7 +27,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	ns := &Namespace{Spec: &s}
 
 	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
-		Name: "workload",
+		Name: s.Name,
 	})
 	ns.sa = map[string]*app.ServiceAccount{
 		"default": app.NewServiceAccount(app.ServiceAccountSpec{
@@ -36,7 +36,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}),
 	}
 	ns.sidecar = config.NewSidecar(config.SidecarSpec{Namespace: s.Name})
-	for i, w := range s.Workloads {
+	for i, w := range s.Services {
 		ns.workloads = append(ns.workloads, app.NewWorkload(app.WorkloadSpec{
 			App:            fmt.Sprintf("app-%d", i),
 			Node:           "node",

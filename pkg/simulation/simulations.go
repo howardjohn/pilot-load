@@ -14,10 +14,7 @@ import (
 )
 
 func Cluster(a model.Args) error {
-	sim := cluster.NewNamespace(cluster.NamespaceSpec{
-		Name:      "workload",
-		Workloads: a.Cluster.Services,
-	})
+	sim := cluster.NewCluster(cluster.ClusterSpec{Namespaces: a.Cluster.Namespaces})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}
