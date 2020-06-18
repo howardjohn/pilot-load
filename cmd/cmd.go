@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
@@ -24,9 +25,12 @@ var (
 )
 
 type Cluster struct {
-	Namespaces int
-	Services   int
-	Instances  int
+	Namespaces      int
+	NamespacesDelay time.Duration
+	Services        int
+	ServicesDelay   time.Duration
+	Instances       int
+	InstancesDelay  time.Duration
 }
 
 func init() {
@@ -36,8 +40,11 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "verbose")
 
 	rootCmd.PersistentFlags().IntVar(&cluster.Namespaces, "cluster.namespaces", 2, "number of namespaces")
+	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.namespacesDelay", 0, "number of namespaces")
 	rootCmd.PersistentFlags().IntVar(&cluster.Services, "cluster.services", 3, "number of services per namespace")
+	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.servicesDelay", 0, "number of namespaces")
 	rootCmd.PersistentFlags().IntVar(&cluster.Instances, "cluster.instances", 4, "number of instances per service")
+	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.instancesDelay", 0, "number of namespaces")
 }
 
 var rootCmd = &cobra.Command{
@@ -70,13 +77,17 @@ var rootCmd = &cobra.Command{
 		}
 
 		// TODO read this from config file
-		a.Cluster.Namespaces = map[string]model.NamespaceArgs{}
 		for namespace := 0; namespace < cluster.Namespaces; namespace++ {
 			svc := []model.ServiceArgs{}
 			for i := 0; i < cluster.Services; i++ {
 				svc = append(svc, model.ServiceArgs{Instances: cluster.Instances})
 			}
-			a.Cluster.Namespaces[fmt.Sprintf("ns-%d", namespace)] = model.NamespaceArgs{svc}
+			a.Cluster.Namespaces = append(a.Cluster.Namespaces, model.NamespaceArgs{svc})
+		}
+		a.Cluster.Scaler = model.ScalerSpec{
+			NamespacesDelay: cluster.NamespacesDelay,
+			ServicesDelay:   cluster.ServicesDelay,
+			InstancesDelay:  cluster.InstancesDelay,
 		}
 		switch sim {
 		case "cluster":

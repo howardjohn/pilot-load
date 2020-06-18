@@ -6,25 +6,30 @@ import (
 	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type ClusterSpec struct {
-	Namespaces map[string]model.NamespaceArgs
+	Namespaces []model.NamespaceArgs
+	Scaler     model.ScalerSpec
 }
 
 type Cluster struct {
 	Name       string
 	Spec       *ClusterSpec
-	namespaces map[string]*Namespace
+	namespaces []*Namespace
 }
 
 var _ model.Simulation = &Cluster{}
 
 func NewCluster(s ClusterSpec) *Cluster {
-	cluster := &Cluster{Name: "primary", Spec: &s, namespaces: map[string]*Namespace{}}
+	cluster := &Cluster{Name: "primary", Spec: &s}
 
-	for name, ns := range s.Namespaces {
-		cluster.namespaces[name] = NewNamespace(NamespaceSpec{Name: name, Services: ns.Services})
+	for _, ns := range s.Namespaces {
+		cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
+			Name:     fmt.Sprintf("namespace-%s", util.GenUID()),
+			Services: ns.Services,
+		}))
 	}
 	return cluster
 }

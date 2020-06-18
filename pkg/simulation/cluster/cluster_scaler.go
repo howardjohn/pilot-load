@@ -15,18 +15,32 @@ type ClusterScaler struct {
 	done    chan struct{}
 }
 
+func makeTicker(t time.Duration) <-chan time.Time {
+	if t <= 0 {
+		// Fake timer
+		return make(chan time.Time)
+	}
+	return time.NewTicker(t).C
+}
+
 func (s *ClusterScaler) Run(ctx model.Context) error {
 	c, cancel := context.WithCancel(ctx.Context)
 	s.cancel = cancel
 	s.done = make(chan struct{})
 	go func() {
 		defer close(s.done)
+		nsT := makeTicker(s.Cluster.Spec.Scaler.NamespacesDelay)
+		svcT := makeTicker(s.Cluster.Spec.Scaler.ServicesDelay)
+		instanceT := makeTicker(s.Cluster.Spec.Scaler.InstancesDelay)
 		for {
 			select {
 			case <-c.Done():
 				return
-				// Every 15s, scale up all workloads by 1
-			case <-time.After(time.Second * 3):
+			case <-nsT:
+				log.Errorf("scaling namespace not implemented")
+			case <-svcT:
+				log.Errorf("scaling service not implemented")
+			case <-instanceT:
 				for _, ns := range s.Cluster.namespaces {
 					for _, w := range ns.workloads {
 						if err := w.Scale(ctx, 1); err != nil {

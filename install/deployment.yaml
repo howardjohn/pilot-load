@@ -27,6 +27,7 @@ spec:
           - "--cluster.namespaces=3"
           - "--cluster.services=3"
           - "--cluster.instances=3"
+          - "-v"
         env:
         - name: KUBECONFIG
           value: /etc/config/kubeconfig.yaml

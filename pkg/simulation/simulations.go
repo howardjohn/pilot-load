@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
@@ -14,7 +15,7 @@ import (
 )
 
 func Cluster(a model.Args) error {
-	sim := cluster.NewCluster(cluster.ClusterSpec{Namespaces: a.Cluster.Namespaces})
+	sim := cluster.NewCluster(cluster.ClusterSpec{Namespaces: a.Cluster.Namespaces, Scaler: a.Cluster.Scaler})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}
@@ -51,6 +52,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 func captureTermination(ctx context.Context, cancel context.CancelFunc) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGTERM)
 	defer func() {
 		signal.Stop(c)
 	}()

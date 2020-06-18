@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"istio.io/pkg/log"
 
@@ -27,7 +28,14 @@ type ServiceArgs struct {
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
 type ClusterArgs struct {
-	Namespaces map[string]NamespaceArgs
+	Namespaces []NamespaceArgs
+	Scaler     ScalerSpec
+}
+
+type ScalerSpec struct {
+	NamespacesDelay time.Duration
+	ServicesDelay   time.Duration
+	InstancesDelay  time.Duration
 }
 
 // Namespace defines one Kubernetes namespace
