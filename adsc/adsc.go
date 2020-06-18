@@ -277,16 +277,14 @@ func (a *ADSC) handleRecv() {
 		a.ack(msg, names)
 		a.mutex.Unlock()
 
-		if len(listeners) > 0 {
+		switch msg.TypeUrl {
+		case listenerType:
 			a.handleLDS(listeners)
-		}
-		if len(clusters) > 0 {
+		case clusterType:
 			a.handleCDS(clusters)
-		}
-		if len(eds) > 0 {
+		case endpointType:
 			a.handleEDS(eds)
-		}
-		if len(routes) > 0 {
+		case routeType:
 			a.handleRDS(routes)
 		}
 	}
