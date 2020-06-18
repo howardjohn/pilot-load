@@ -7,30 +7,17 @@ import (
 	"os/signal"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
-func Simple(a model.Args) error {
-	numWorkloads := 1
-	ns := app.NewNamespace(app.NamespaceSpec{
-		Name: "workload",
+func Cluster(a model.Args) error {
+	sim := cluster.NewNamespace(cluster.NamespaceSpec{
+		Name:      "workload",
+		Workloads: 2,
 	})
-	sa := app.NewServiceAccount(app.ServiceAccountSpec{
-		Namespace: ns.Spec.Name,
-		Name:      "default",
-	})
-	w := app.NewWorkload(app.WorkloadSpec{
-		App:            fmt.Sprintf("app-%d", numWorkloads),
-		Node:           "node",
-		Namespace:      ns.Spec.Name,
-		ServiceAccount: sa.Spec.Name,
-		Instances:      200,
-	})
-
-	sim := model.AggregateSimulation{[]model.Simulation{ns, sa, w}}
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}

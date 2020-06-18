@@ -58,11 +58,9 @@ var rootCmd = &cobra.Command{
 			KubeConfig:   kubeconfig,
 		}
 		switch sim {
-		case "pods":
-			return simulation.Simple(a)
+		case "cluster":
+			return simulation.Cluster(a)
 		case "adsc":
-			fallthrough
-		case "":
 			return simulation.Adsc(a)
 		default:
 			return fmt.Errorf("unknown simulation %v. Expected: {pods, adsc}", sim)
