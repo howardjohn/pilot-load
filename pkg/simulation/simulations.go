@@ -9,6 +9,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
@@ -26,7 +27,7 @@ func Simple(a model.Args) error {
 		Node:           "node",
 		Namespace:      ns.Spec.Name,
 		ServiceAccount: sa.Spec.Name,
-		Instances:      2,
+		Instances:      200,
 	})
 
 	sim := model.AggregateSimulation{[]model.Simulation{ns, sa, w}}
@@ -54,6 +55,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
 	defer cancel()
+	go monitoring.StartMonitoring(ctx, 8765)
 	simulationContext := model.Context{a, cl}
 	if err := simulation.Run(simulationContext); err != nil {
 		return err

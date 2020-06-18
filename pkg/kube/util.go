@@ -29,6 +29,9 @@ type Client struct {
 
 func NewClient(kubeconfig string) (*Client, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	// Gotta go fast
+	config.QPS = 100
+	config.Burst = 200
 	if err != nil {
 		return nil, err
 	}

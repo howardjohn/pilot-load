@@ -58,6 +58,7 @@ type ADSC struct {
 
 	// NodeID is the node identity sent to Pilot.
 	nodeID string
+	node   *core.Node
 
 	done chan error
 
@@ -120,7 +121,7 @@ func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
 
 	adsc.nodeID = fmt.Sprintf("%s~%s~%s.%s~%s.svc.cluster.local", opts.NodeType, opts.IP,
 		opts.Workload, opts.Namespace, opts.Namespace)
-
+	adsc.node = adsc.makeNode()
 	err := adsc.Run()
 	return adsc, err
 }
@@ -384,7 +385,7 @@ func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
 	}
 }
 
-func (a *ADSC) node() *core.Node {
+func (a *ADSC) makeNode() *core.Node {
 	n := &core.Node{
 		Id: a.nodeID,
 	}
@@ -423,7 +424,7 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 		// first load - Envoy loads listeners after endpoints
 		_ = a.send(&xdsapi.DiscoveryRequest{
 			ResponseNonce: time.Now().String(),
-			Node:          a.node(),
+			Node:          a.node,
 			TypeUrl:       listenerType,
 		}, "init")
 	}
@@ -506,7 +507,7 @@ func (a *ADSC) send(dr *xdsapi.DiscoveryRequest, reason string) error {
 func (a *ADSC) Watch() {
 	err := a.send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: time.Now().String(),
-		Node:          a.node(),
+		Node:          a.node,
 		TypeUrl:       clusterType,
 	}, "init")
 	if err != nil {
@@ -517,7 +518,7 @@ func (a *ADSC) Watch() {
 func (a *ADSC) sendRequest(typeurl string, rsc []string) {
 	_ = a.send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: "",
-		Node:          a.node(),
+		Node:          a.node,
 		TypeUrl:       typeurl,
 		ResourceNames: rsc,
 	}, "request")
@@ -527,8 +528,8 @@ func (a *ADSC) ack(msg *xdsapi.DiscoveryResponse, names []string) {
 	_ = a.send(&xdsapi.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
-		Node:          a.node(),
+		Node:          a.node,
 		VersionInfo:   msg.VersionInfo,
-		ResourceNames: names,
+		//ResourceNames: names,
 	}, "ack")
 }
