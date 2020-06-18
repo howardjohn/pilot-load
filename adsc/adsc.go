@@ -12,11 +12,15 @@ import (
 	"sync"
 	"time"
 
+	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+
 	"istio.io/pkg/log"
 
-	xdsapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	ads "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -56,7 +60,7 @@ type ADSC struct {
 	ctx context.Context
 	// Stream is the GRPC connection stream, allowing direct GRPC send operations.
 	// Set after Dial is called.
-	stream ads.AggregatedDiscoveryService_StreamAggregatedResourcesClient
+	stream discovery.AggregatedDiscoveryService_StreamAggregatedResourcesClient
 
 	conn *grpc.ClientConn
 
@@ -214,7 +218,7 @@ func (a *ADSC) Run() error {
 		}
 	}
 
-	xds := ads.NewAggregatedDiscoveryServiceClient(a.conn)
+	xds := discovery.NewAggregatedDiscoveryServiceClient(a.conn)
 	edsstr, err := xds.StreamAggregatedResources(a.ctx)
 	if err != nil {
 		return err
@@ -236,35 +240,35 @@ func (a *ADSC) handleRecv() {
 		}
 		scope.Debugf("got message for type %v", msg.TypeUrl)
 
-		listeners := []*xdsapi.Listener{}
-		clusters := []*xdsapi.Cluster{}
-		routes := []*xdsapi.RouteConfiguration{}
-		eds := []*xdsapi.ClusterLoadAssignment{}
+		listeners := []*listener.Listener{}
+		clusters := []*cluster.Cluster{}
+		routes := []*route.RouteConfiguration{}
+		eds := []*endpoint.ClusterLoadAssignment{}
 		// TODO re-enable use of names. For now its skipped
 		names := []string{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
 			if rsc.TypeUrl == listenerType {
-				ll := &xdsapi.Listener{}
+				ll := &listener.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
 				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == clusterType {
-				ll := &xdsapi.Cluster{}
+				ll := &cluster.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
 				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == endpointType {
 				// As an optimization. We don't need to inspect these like LDS/CDS
 				if scope.DebugEnabled() {
-					ll := &xdsapi.ClusterLoadAssignment{}
+					ll := &endpoint.ClusterLoadAssignment{}
 					_ = proto.Unmarshal(valBytes, ll)
 					eds = append(eds, ll)
 					names = append(names, ll.ClusterName)
 				}
 			} else if rsc.TypeUrl == routeType {
 				if scope.DebugEnabled() {
-					ll := &xdsapi.RouteConfiguration{}
+					ll := &route.RouteConfiguration{}
 					_ = proto.Unmarshal(valBytes, ll)
 					routes = append(routes, ll)
 					names = append(names, ll.Name)
@@ -292,7 +296,7 @@ func (a *ADSC) handleRecv() {
 }
 
 // nolint: staticcheck
-func (a *ADSC) handleLDS(ll []*xdsapi.Listener) {
+func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	routes := []string{}
 	for _, l := range ll {
 		f0 := l.FilterChains[0].Filters[0]
@@ -359,12 +363,12 @@ type Endpoint struct {
 	Weight int
 }
 
-func (a *ADSC) handleCDS(ll []*xdsapi.Cluster) {
+func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	cn := []string{}
 	for _, c := range ll {
 		switch v := c.ClusterDiscoveryType.(type) {
-		case *xdsapi.Cluster_Type:
-			if v.Type != xdsapi.Cluster_EDS {
+		case *cluster.Cluster_Type:
+			if v.Type != cluster.Cluster_EDS {
 				continue
 			}
 		}
@@ -416,7 +420,7 @@ func (a *ADSC) makeNode() *core.Node {
 	return n
 }
 
-func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
+func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 	if scope.DebugEnabled() {
 		if scope.DebugEnabled() {
 			for i, e := range eds {
@@ -433,7 +437,7 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 	}
 	if !a.InitialLoad {
 		// first load - Envoy loads listeners after endpoints
-		_ = a.send(&xdsapi.DiscoveryRequest{
+		_ = a.send(&discovery.DiscoveryRequest{
 			ResponseNonce: time.Now().String(),
 			Node:          a.node,
 			TypeUrl:       listenerType,
@@ -449,9 +453,9 @@ func (a *ADSC) handleEDS(eds []*xdsapi.ClusterLoadAssignment) {
 	}
 }
 
-func (a *ADSC) handleRDS(configurations []*xdsapi.RouteConfiguration) {
+func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 
-	rds := map[string]*xdsapi.RouteConfiguration{}
+	rds := map[string]*route.RouteConfiguration{}
 
 	for _, r := range configurations {
 		rds[r.Name] = r
@@ -508,7 +512,7 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 	}
 }
 
-func (a *ADSC) send(dr *xdsapi.DiscoveryRequest, reason string) error {
+func (a *ADSC) send(dr *discovery.DiscoveryRequest, reason string) error {
 	scope.Debugf("send message for type %v (%v) for %v", dr.TypeUrl, reason, dr.ResourceNames)
 	return a.stream.Send(dr)
 }
@@ -516,7 +520,7 @@ func (a *ADSC) send(dr *xdsapi.DiscoveryRequest, reason string) error {
 // Watch will start watching resources, starting with CDS. Based on the CDS response
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
-	err := a.send(&xdsapi.DiscoveryRequest{
+	err := a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: time.Now().String(),
 		Node:          a.node,
 		TypeUrl:       clusterType,
@@ -527,7 +531,7 @@ func (a *ADSC) Watch() {
 }
 
 func (a *ADSC) sendRequest(typeurl string, rsc []string) {
-	_ = a.send(&xdsapi.DiscoveryRequest{
+	_ = a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: "",
 		Node:          a.node,
 		TypeUrl:       typeurl,
@@ -535,8 +539,8 @@ func (a *ADSC) sendRequest(typeurl string, rsc []string) {
 	}, "request")
 }
 
-func (a *ADSC) ack(msg *xdsapi.DiscoveryResponse, names []string) {
-	_ = a.send(&xdsapi.DiscoveryRequest{
+func (a *ADSC) ack(msg *discovery.DiscoveryResponse, names []string) {
+	_ = a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
 		Node:          a.node,

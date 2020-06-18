@@ -14,7 +14,7 @@ type NamespaceSpec struct {
 
 type Namespace struct {
 	Spec      *NamespaceSpec
-	ns        *app.Namespace
+	ns        *KubernetesNamespace
 	sa        map[string]*app.ServiceAccount
 	workloads []*app.Workload
 }
@@ -24,7 +24,7 @@ var _ model.Simulation = &Namespace{}
 func NewNamespace(s NamespaceSpec) *Namespace {
 	ns := &Namespace{Spec: &s}
 
-	ns.ns = app.NewNamespace(app.NamespaceSpec{
+	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
 		Name: "workload",
 	})
 	ns.sa = map[string]*app.ServiceAccount{

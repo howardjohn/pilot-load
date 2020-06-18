@@ -6,6 +6,7 @@ import (
 	"istio.io/pkg/log"
 	"k8s.io/apimachinery/pkg/util/rand"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
@@ -23,7 +24,7 @@ type Workload struct {
 	endpoint *Endpoint
 	pods     []*Pod
 	service  *Service
-	vservice *VirtualService
+	vservice *config.VirtualService
 }
 
 var _ model.Simulation = &Workload{}
@@ -46,7 +47,7 @@ func NewWorkload(s WorkloadSpec) *Workload {
 		Namespace: s.Namespace,
 		IP:        util.GetIP(),
 	})
-	w.vservice = NewVirtualService(VirtualServiceSpec{
+	w.vservice = config.NewVirtualService(config.VirtualServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
 	})
