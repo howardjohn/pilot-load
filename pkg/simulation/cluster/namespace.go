@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -16,6 +17,7 @@ type Namespace struct {
 	Spec      *NamespaceSpec
 	ns        *KubernetesNamespace
 	sa        map[string]*app.ServiceAccount
+	sidecar   *config.Sidecar
 	workloads []*app.Workload
 }
 
@@ -33,6 +35,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 			Name:      "default",
 		}),
 	}
+	ns.sidecar = config.NewSidecar(config.SidecarSpec{Namespace: s.Name})
 	for i, w := range s.Workloads {
 		ns.workloads = append(ns.workloads, app.NewWorkload(app.WorkloadSpec{
 			App:            fmt.Sprintf("app-%d", i),
@@ -46,7 +49,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 }
 
 func (n *Namespace) getSims() []model.Simulation {
-	sims := []model.Simulation{n.ns}
+	sims := []model.Simulation{n.ns, n.sidecar}
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}

@@ -88,6 +88,12 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return v1.SchemeGroupVersion.WithResource("endpoints"), "Endpoints"
 	case *v1alpha3.VirtualService:
 		return v1alpha3.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
+	case *v1alpha3.Sidecar:
+		return v1alpha3.SchemeGroupVersion.WithResource("sidecars"), "Sidecar"
+	case *v1alpha3.Gateway:
+		return v1alpha3.SchemeGroupVersion.WithResource("gateways"), "Gateway"
+	case *v1alpha3.DestinationRule:
+		return v1alpha3.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
 	default:
 		panic(fmt.Sprintf("unsupported type %T", o))
 	}

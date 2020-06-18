@@ -58,8 +58,8 @@ var rootCmd = &cobra.Command{
 			KubeConfig:   kubeconfig,
 		}
 		// TODO read this from config file
-		for i := 0; i < 5; i++ {
-			a.Cluster.Services = append(a.Cluster.Services, model.WorkloadArgs{Instances: 10})
+		for i := 0; i < 2; i++ {
+			a.Cluster.Services = append(a.Cluster.Services, model.WorkloadArgs{Instances: 3})
 		}
 		switch sim {
 		case "cluster":
