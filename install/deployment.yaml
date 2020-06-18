@@ -14,14 +14,14 @@ spec:
       labels:
         app: pilot-load
     spec:
-      restartPolicy: Always
       containers:
       - name: pilot-load
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
         args:
+          - "cluster"
           - "--pilot-address"
-          - "istio-pilot.istio-system:15010"
+          - "istiod.istio-system:15010"
         env:
         - name: KUBECONFIG
           value: /etc/config/kubeconfig.yaml
