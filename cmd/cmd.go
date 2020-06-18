@@ -42,9 +42,9 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&cluster.Namespaces, "cluster.namespaces", 2, "number of namespaces")
 	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.namespacesDelay", 0, "number of namespaces")
 	rootCmd.PersistentFlags().IntVar(&cluster.Services, "cluster.services", 3, "number of services per namespace")
-	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.servicesDelay", 0, "number of namespaces")
+	rootCmd.PersistentFlags().DurationVar(&cluster.ServicesDelay, "cluster.servicesDelay", 0, "number of namespaces")
 	rootCmd.PersistentFlags().IntVar(&cluster.Instances, "cluster.instances", 4, "number of instances per service")
-	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.instancesDelay", 0, "number of namespaces")
+	rootCmd.PersistentFlags().DurationVar(&cluster.InstancesDelay, "cluster.instancesDelay", 0, "number of namespaces")
 }
 
 var rootCmd = &cobra.Command{

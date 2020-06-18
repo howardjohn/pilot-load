@@ -33,13 +33,18 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 		svcT := makeTicker(s.Cluster.Spec.Scaler.ServicesDelay)
 		instanceT := makeTicker(s.Cluster.Spec.Scaler.InstancesDelay)
 		for {
+			// TODO: more customization around everything here
 			select {
 			case <-c.Done():
 				return
 			case <-nsT:
 				log.Errorf("scaling namespace not implemented")
 			case <-svcT:
-				log.Errorf("scaling service not implemented")
+				for _, ns := range s.Cluster.namespaces {
+					if err := ns.InsertService(ctx, model.ServiceArgs{Instances: 1}); err != nil {
+						log.Errorf("failed to scale namespace: %v", err)
+					}
+				}
 			case <-instanceT:
 				for _, ns := range s.Cluster.namespaces {
 					for _, w := range ns.workloads {

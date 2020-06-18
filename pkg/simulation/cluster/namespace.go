@@ -36,16 +36,26 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}),
 	}
 	ns.sidecar = config.NewSidecar(config.SidecarSpec{Namespace: s.Name})
-	for i, w := range s.Services {
-		ns.workloads = append(ns.workloads, app.NewWorkload(app.WorkloadSpec{
-			App:            fmt.Sprintf("app-%d", i),
-			Node:           "node",
-			Namespace:      ns.Spec.Name,
-			ServiceAccount: "default",
-			Instances:      w.Instances,
-		}))
+	for _, w := range s.Services {
+		ns.workloads = append(ns.workloads, ns.createWorkload(w))
 	}
 	return ns
+}
+
+func (n *Namespace) createWorkload(args model.ServiceArgs) *app.Workload {
+	return app.NewWorkload(app.WorkloadSpec{
+		App:            fmt.Sprintf("app-%d", len(n.workloads)+1),
+		Node:           "node",
+		Namespace:      n.Spec.Name,
+		ServiceAccount: "default",
+		Instances:      args.Instances,
+	})
+}
+
+func (n *Namespace) InsertService(ctx model.Context, args model.ServiceArgs) error {
+	wl := n.createWorkload(args)
+	n.workloads = append(n.workloads, wl)
+	return wl.Run(ctx)
 }
 
 func (n *Namespace) getSims() []model.Simulation {
