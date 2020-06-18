@@ -14,6 +14,8 @@ spec:
       labels:
         app: pilot-load
     spec:
+      # May take a while to shut down
+      terminationGracePeriodSeconds: 200
       containers:
       - name: pilot-load
         image: gcr.io/howardjohn-istio/pilot-load
@@ -22,8 +24,8 @@ spec:
           - "cluster"
           - "--pilot-address"
           - "istiod.istio-system:15010"
-          - "--cluster.namespaces=15"
-          - "--cluster.services=10"
+          - "--cluster.namespaces=3"
+          - "--cluster.services=3"
           - "--cluster.instances=3"
         env:
         - name: KUBECONFIG

@@ -78,7 +78,11 @@ func (w *Workload) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{w.getSims()}.Cleanup(ctx)
 }
 
-func (w *Workload) Scale(ctx model.Context, n int) error {
+func (w *Workload) Scale(ctx model.Context, delta int) error {
+	return w.ScaleTo(ctx, len(w.pods)+delta)
+}
+
+func (w *Workload) ScaleTo(ctx model.Context, n int) error {
 	log.Infof("%v: scaling pod from %d -> %d", w.Spec.App, len(w.pods), n)
 	for n < len(w.pods) {
 		i := rand.IntnRange(0, len(w.pods)-1)

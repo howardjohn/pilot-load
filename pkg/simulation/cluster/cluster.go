@@ -1,6 +1,10 @@
 package cluster
 
 import (
+	"fmt"
+
+	"istio.io/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -9,6 +13,7 @@ type ClusterSpec struct {
 }
 
 type Cluster struct {
+	Name       string
 	Spec       *ClusterSpec
 	namespaces map[string]*Namespace
 }
@@ -16,7 +21,7 @@ type Cluster struct {
 var _ model.Simulation = &Cluster{}
 
 func NewCluster(s ClusterSpec) *Cluster {
-	cluster := &Cluster{Spec: &s, namespaces: map[string]*Namespace{}}
+	cluster := &Cluster{Name: "primary", Spec: &s, namespaces: map[string]*Namespace{}}
 
 	for name, ns := range s.Namespaces {
 		cluster.namespaces[name] = NewNamespace(NamespaceSpec{Name: name, Services: ns.Services})
@@ -33,7 +38,11 @@ func (c *Cluster) getSims() []model.Simulation {
 }
 
 func (n *Cluster) Run(ctx model.Context) error {
-	return model.AggregateSimulation{n.getSims()}.Run(ctx)
+	if err := (model.AggregateSimulation{n.getSims()}.Run(ctx)); err != nil {
+		return fmt.Errorf("failed to bootstrap cluster: %v", err)
+	}
+	log.Infof("cluster %q synced, starting cluster scaler", n.Name)
+	return (&ClusterScaler{Cluster: n}).Run(ctx)
 }
 
 func (n *Cluster) Cleanup(ctx model.Context) error {
