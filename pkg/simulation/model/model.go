@@ -1,7 +1,10 @@
 package model
 
 import (
+	"context"
 	"fmt"
+
+	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
@@ -23,7 +26,8 @@ type Args struct {
 }
 
 type Context struct {
-	//context.Context
+	// Overall context. This should not be used to manage cleanup
+	context.Context
 	Args   Args
 	Client *kube.Client
 }
@@ -36,7 +40,10 @@ var _ Simulation = AggregateSimulation{}
 
 func (a AggregateSimulation) Run(ctx Context) error {
 	for _, s := range a.Simulations {
-		// TODO pass unique context so we can cancel independently
+		if util.IsDone(ctx) {
+			log.Warnf("exiting early; context cancelled")
+			return nil
+		}
 		if err := s.Run(ctx); err != nil {
 			return fmt.Errorf("failed running simulation %T: %v", s, err)
 		}
@@ -44,6 +51,7 @@ func (a AggregateSimulation) Run(ctx Context) error {
 	return nil
 }
 
+// TODO parallelize
 func (a AggregateSimulation) Cleanup(ctx Context) error {
 	var err error
 	for _, s := range a.Simulations {

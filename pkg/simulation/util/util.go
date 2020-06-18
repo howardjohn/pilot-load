@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -22,6 +23,15 @@ var chars = []rune("abcdefghijklmnopqrstuvwxyz")
 
 func StringPointer(s string) *string {
 	return &s
+}
+
+func IsDone(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
 }
 
 func GenUID() string {

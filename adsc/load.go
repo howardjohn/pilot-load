@@ -1,11 +1,10 @@
 package adsc
 
 import (
-	"context"
 	"time"
 )
 
-func Connect(ctx context.Context, pilotAddress string, config *Config) {
+func Connect(pilotAddress string, config *Config) {
 	attempts := 0
 	log := func(template string, args ...interface{}) {
 		a := []interface{}{config.Workload}
@@ -19,7 +18,7 @@ func Connect(ctx context.Context, pilotAddress string, config *Config) {
 			log("Error in ADS connection: %v", err)
 			attempts++
 			select {
-			case <-ctx.Done():
+			case <-config.Context.Done():
 				log("Context closed, exiting stream")
 				con.Close()
 				return
@@ -43,7 +42,7 @@ func Connect(ctx context.Context, pilotAddress string, config *Config) {
 					log("Closing: %v", config.IP)
 					exit = true
 				}
-			case <-ctx.Done():
+			case <-config.Context.Done():
 				// We are really done now. Shut everything down and stop
 				log("Context closed, exiting stream")
 				con.Close()

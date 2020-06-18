@@ -22,7 +22,9 @@ type PodSpec struct {
 
 type Pod struct {
 	Spec *PodSpec
-	xds  *xds.Simulation
+	// For internal optimization around closing only
+	created bool
+	xds     *xds.Simulation
 }
 
 var _ model.Simulation = &Pod{}
@@ -45,6 +47,8 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
+
+	p.created = true
 	p.xds = &xds.Simulation{
 		Labels:    pod.Labels,
 		Namespace: pod.Namespace,
@@ -57,8 +61,10 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 }
 
 func (p *Pod) Cleanup(ctx model.Context) error {
-	if err := ctx.Client.Delete(p.getPod()); err != nil {
-		return err
+	if p.created {
+		if err := ctx.Client.Delete(p.getPod()); err != nil {
+			return err
+		}
 	}
 	return p.xds.Cleanup(ctx)
 }

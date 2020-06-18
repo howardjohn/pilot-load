@@ -45,11 +45,15 @@ type Config struct {
 	// IP is currently the primary key used to locate inbound configs. It is sent by client,
 	// must match a known endpoint IP. Tests can use a ServiceEntry to register fake IPs.
 	IP string
+
+	// Context used for early cancellation
+	Context context.Context
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
 // or libraries that need to connect to Istio pilot or other ADS servers.
 type ADSC struct {
+	ctx context.Context
 	// Stream is the GRPC connection stream, allowing direct GRPC send operations.
 	// Set after Dial is called.
 	stream ads.AggregatedDiscoveryService_StreamAggregatedResourcesClient
@@ -104,6 +108,7 @@ func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
 		Updates: make(chan string, 100),
 		certDir: certDir,
 		url:     url,
+		ctx:     opts.Context,
 	}
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
@@ -178,7 +183,9 @@ func (a *ADSC) Close() {
 	if a.stream != nil {
 		_ = a.stream.CloseSend()
 	}
-	a.conn.Close()
+	if a.conn != nil {
+		a.conn.Close()
+	}
 	a.mutex.Unlock()
 }
 
@@ -201,14 +208,14 @@ func (a *ADSC) Run() error {
 			return err
 		}
 	} else {
-		a.conn, err = grpc.Dial(a.url, grpc.WithInsecure())
+		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithInsecure())
 		if err != nil {
 			return err
 		}
 	}
 
 	xds := ads.NewAggregatedDiscoveryServiceClient(a.conn)
-	edsstr, err := xds.StreamAggregatedResources(context.Background())
+	edsstr, err := xds.StreamAggregatedResources(a.ctx)
 	if err != nil {
 		return err
 	}
@@ -233,6 +240,7 @@ func (a *ADSC) handleRecv() {
 		clusters := []*xdsapi.Cluster{}
 		routes := []*xdsapi.RouteConfiguration{}
 		eds := []*xdsapi.ClusterLoadAssignment{}
+		// TODO re-enable use of names. For now its skipped
 		names := []string{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
@@ -247,15 +255,20 @@ func (a *ADSC) handleRecv() {
 				clusters = append(clusters, ll)
 				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == endpointType {
-				ll := &xdsapi.ClusterLoadAssignment{}
-				_ = proto.Unmarshal(valBytes, ll)
-				eds = append(eds, ll)
-				names = append(names, ll.ClusterName)
+				// As an optimization. We don't need to inspect these like LDS/CDS
+				if scope.DebugEnabled() {
+					ll := &xdsapi.ClusterLoadAssignment{}
+					_ = proto.Unmarshal(valBytes, ll)
+					eds = append(eds, ll)
+					names = append(names, ll.ClusterName)
+				}
 			} else if rsc.TypeUrl == routeType {
-				ll := &xdsapi.RouteConfiguration{}
-				_ = proto.Unmarshal(valBytes, ll)
-				routes = append(routes, ll)
-				names = append(names, ll.Name)
+				if scope.DebugEnabled() {
+					ll := &xdsapi.RouteConfiguration{}
+					_ = proto.Unmarshal(valBytes, ll)
+					routes = append(routes, ll)
+					names = append(names, ll.Name)
+				}
 			}
 		}
 

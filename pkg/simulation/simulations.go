@@ -56,7 +56,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	go captureTermination(ctx, cancel)
 	defer cancel()
 	go monitoring.StartMonitoring(ctx, 8765)
-	simulationContext := model.Context{a, cl}
+	simulationContext := model.Context{ctx, a, cl}
 	if err := simulation.Run(simulationContext); err != nil {
 		return err
 	}

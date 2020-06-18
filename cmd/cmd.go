@@ -18,7 +18,8 @@ var (
 	pilotAddress = "localhost:15010"
 	metadata     = ""
 	kubeconfig   = os.Getenv("KUBECONFIG")
-	verbose      = false
+	// TODO scoping, so we can have config dump split from debug
+	verbose = false
 )
 
 func init() {

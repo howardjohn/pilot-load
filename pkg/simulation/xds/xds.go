@@ -19,7 +19,7 @@ type Simulation struct {
 }
 
 func (x *Simulation) Run(ctx model.Context) error {
-	c, cancel := context.WithCancel(context.Background())
+	c, cancel := context.WithCancel(ctx.Context)
 	x.cancel = cancel
 	x.done = make(chan struct{})
 	cluster := x.Cluster
@@ -36,19 +36,23 @@ func (x *Simulation) Run(ctx model.Context) error {
 		// TODO trigger full injection and CA bootstrap flow
 		// TODO use XDS v3
 		// TODO allow routers
-		adsc.Connect(c, ctx.Args.PilotAddress, &adsc.Config{
+		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
 			Workload:  x.Name,
 			Meta:      meta,
 			NodeType:  "sidecar",
 			IP:        x.IP,
+			Context:   c,
 		})
 		close(x.done)
 	}()
 	return nil
 }
 
-func (x Simulation) Cleanup(ctx model.Context) error {
+func (x *Simulation) Cleanup(ctx model.Context) error {
+	if x == nil {
+		return nil
+	}
 	x.cancel()
 	<-x.done
 	return nil
