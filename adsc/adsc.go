@@ -30,6 +30,7 @@ import (
 )
 
 var scope = log.RegisterScope("adsc", "", 0)
+var dumpScope = log.RegisterScope("dump", "", 0)
 
 var marshal = &jsonpb.Marshaler{OrigName: true, Indent: "  "}
 
@@ -246,14 +247,14 @@ func (a *ADSC) handleRecv() {
 				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == resource.EndpointType {
 				// As an optimization. We don't need to inspect these like LDS/CDS
-				if scope.DebugEnabled() {
+				if dumpScope.DebugEnabled() {
 					ll := &endpoint.ClusterLoadAssignment{}
 					_ = proto.Unmarshal(valBytes, ll)
 					eds = append(eds, ll)
 					names = append(names, ll.ClusterName)
 				}
 			} else if rsc.TypeUrl == resource.RouteType {
-				if scope.DebugEnabled() {
+				if dumpScope.DebugEnabled() {
 					ll := &route.RouteConfiguration{}
 					_ = proto.Unmarshal(valBytes, ll)
 					routes = append(routes, ll)
@@ -298,15 +299,14 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 		}
 	}
 
-	if scope.DebugEnabled() {
+	if dumpScope.DebugEnabled() {
 		for i, l := range ll {
 			b, err := marshal.MarshalToString(l)
 			if err != nil {
-				scope.Errorf("Error in LDS: %v", err)
+				dumpScope.Errorf("Error in LDS: %v", err)
 			}
 
-			_, _ = i, b
-			//scope.Infof("%d: %v", i, b)
+			dumpScope.Debugf("%d: %v", i, b)
 		}
 	}
 	a.mutex.Lock()
@@ -365,15 +365,14 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	if len(cn) > 0 {
 		a.sendRequest(resource.EndpointType, cn)
 	}
-	if scope.DebugEnabled() {
+	if dumpScope.DebugEnabled() {
 		for i, c := range ll {
 			b, err := marshal.MarshalToString(c)
 			if err != nil {
-				scope.Errorf("Error in CDS: %v", err)
+				dumpScope.Errorf("Error in CDS: %v", err)
 			}
 
-			_, _ = i, b
-			//scope.Infof("%d: %v", i, b)
+			dumpScope.Debugf("%d: %v", i, b)
 		}
 	}
 
@@ -407,19 +406,15 @@ func (a *ADSC) makeNode() *core.Node {
 }
 
 func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
-	if scope.DebugEnabled() {
-		if scope.DebugEnabled() {
-			for i, e := range eds {
-				b, err := marshal.MarshalToString(e)
-				if err != nil {
-					scope.Errorf("Error in EDS: %v", err)
-				}
-
-				_, _ = i, b
-				//scope.Infof("%d: %v", i, b)
+	if dumpScope.DebugEnabled() {
+		for i, e := range eds {
+			b, err := marshal.MarshalToString(e)
+			if err != nil {
+				dumpScope.Errorf("Error in EDS: %v", err)
 			}
-		}
 
+			dumpScope.Debugf("%d: %v", i, b)
+		}
 	}
 	if !a.InitialLoad {
 		// first load - Envoy loads listeners after endpoints
@@ -451,15 +446,14 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 		a.InitialLoad = true
 	}
 
-	if scope.DebugEnabled() {
+	if dumpScope.DebugEnabled() {
 		for i, r := range configurations {
 			b, err := marshal.MarshalToString(r)
 			if err != nil {
-				scope.Errorf("Error in RDS: %v", err)
+				dumpScope.Errorf("Error in RDS: %v", err)
 			}
 
-			_, _ = i, b
-			//scope.Infof("%d: %v", i, b)
+			dumpScope.Debugf("%d: %v", i, b)
 		}
 	}
 

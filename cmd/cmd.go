@@ -16,36 +16,36 @@ import (
 )
 
 var (
-	pilotAddress = "localhost:15010"
-	kubeconfig   = os.Getenv("KUBECONFIG")
-	configFile   = ""
-	// TODO scoping, so we can have configFile dump split from debug
-	verbose = false
+	pilotAddress   = "localhost:15010"
+	kubeconfig     = os.Getenv("KUBECONFIG")
+	configFile     = ""
+	loggingOptions = defaultLogOptions()
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "verbose")
+}
 
+func defaultLogOptions() *log.Options {
+	o := log.DefaultOptions()
+
+	// These scopes are, at the default "INFO" level, too chatty for command line use
+	o.SetOutputLevel("adsc", log.WarnLevel)
+	o.SetOutputLevel("dump", log.WarnLevel)
+
+	return o
 }
 
 var rootCmd = &cobra.Command{
 	Use:          "pilot-load",
 	Short:        "open XDS connections to pilot",
 	SilenceUsage: true,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return log.Configure(loggingOptions)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if verbose {
-			o := log.DefaultOptions()
-			for _, s := range log.Scopes() {
-				s.SetOutputLevel(log.DebugLevel)
-			}
-			o.SetOutputLevel(log.DefaultScopeName, log.DebugLevel)
-			if err := log.Configure(o); err != nil {
-				return err
-			}
-		}
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 		sim := ""
 		if len(args) > 0 {
@@ -92,6 +92,12 @@ func readConfigFile(filename string) (model.ClusterConfig, error) {
 }
 
 func Execute() {
+	loggingOptions.AttachCobraFlags(rootCmd)
+	hiddenFlags := []string{"log_as_json", "log_rotate", "log_rotate_max_age", "log_rotate_max_backups",
+		"log_rotate_max_size", "log_stacktrace_level", "log_target", "log_caller"}
+	for _, opt := range hiddenFlags {
+		_ = rootCmd.PersistentFlags().MarkHidden(opt)
+	}
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
