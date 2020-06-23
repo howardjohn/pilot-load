@@ -103,7 +103,6 @@ func (w *Workload) ScaleTo(ctx model.Context, n int) error {
 		w.pods[i] = w.pods[len(w.pods)-1] // Copy last element to index i.
 		w.pods[len(w.pods)-1] = nil       // Erase last element (write zero value).
 		w.pods = w.pods[:len(w.pods)-1]   // Truncate slice.
-		log.Infof("terminate pod %v", old.Name())
 		if err := old.Cleanup(ctx); err != nil {
 			log.Infof("err: %v", err)
 			return err
