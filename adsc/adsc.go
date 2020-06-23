@@ -18,6 +18,7 @@ import (
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 
 	"istio.io/pkg/log"
 
@@ -84,21 +85,6 @@ type ADSC struct {
 
 	mutex sync.Mutex
 }
-
-const (
-	typePrefix = "type.googleapis.com/envoy.api.v2."
-
-	// Constants used for XDS
-
-	// ClusterType is used for cluster discovery. Typically first request received
-	clusterType = typePrefix + "Cluster"
-	// EndpointType is used for EDS and ADS endpoint discovery. Typically second request.
-	endpointType = typePrefix + "ClusterLoadAssignment"
-	// ListenerType is sent after clusters and endpoints.
-	listenerType = typePrefix + "Listener"
-	// RouteType is sent after listeners.
-	routeType = typePrefix + "RouteConfiguration"
-)
 
 var (
 	// ErrTimeout is returned by Wait if no update is received in the given time.
@@ -232,7 +218,7 @@ func (a *ADSC) handleRecv() {
 	for {
 		msg, err := a.stream.Recv()
 		if err != nil {
-			scope.Debugf("Connection closed ", err, a.nodeID)
+			scope.Debugf("Connection closed for %v: %v", a.nodeID, err)
 			a.Close()
 			a.WaitClear()
 			a.Updates <- "close"
@@ -248,17 +234,17 @@ func (a *ADSC) handleRecv() {
 		names := []string{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
-			if rsc.TypeUrl == listenerType {
+			if rsc.TypeUrl == resource.ListenerType {
 				ll := &listener.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
 				names = append(names, ll.Name)
-			} else if rsc.TypeUrl == clusterType {
+			} else if rsc.TypeUrl == resource.ClusterType {
 				ll := &cluster.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
 				names = append(names, ll.Name)
-			} else if rsc.TypeUrl == endpointType {
+			} else if rsc.TypeUrl == resource.EndpointType {
 				// As an optimization. We don't need to inspect these like LDS/CDS
 				if scope.DebugEnabled() {
 					ll := &endpoint.ClusterLoadAssignment{}
@@ -266,7 +252,7 @@ func (a *ADSC) handleRecv() {
 					eds = append(eds, ll)
 					names = append(names, ll.ClusterName)
 				}
-			} else if rsc.TypeUrl == routeType {
+			} else if rsc.TypeUrl == resource.RouteType {
 				if scope.DebugEnabled() {
 					ll := &route.RouteConfiguration{}
 					_ = proto.Unmarshal(valBytes, ll)
@@ -282,13 +268,13 @@ func (a *ADSC) handleRecv() {
 		a.mutex.Unlock()
 
 		switch msg.TypeUrl {
-		case listenerType:
+		case resource.ListenerType:
 			a.handleLDS(listeners)
-		case clusterType:
+		case resource.ClusterType:
 			a.handleCDS(clusters)
-		case endpointType:
+		case resource.EndpointType:
 			a.handleEDS(eds)
-		case routeType:
+		case resource.RouteType:
 			a.handleRDS(routes)
 		}
 	}
@@ -326,7 +312,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	if len(routes) > 0 {
-		a.sendRequest(routeType, routes)
+		a.sendRequest(resource.RouteType, routes)
 	}
 
 	select {
@@ -377,7 +363,7 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	}
 
 	if len(cn) > 0 {
-		a.sendRequest(endpointType, cn)
+		a.sendRequest(resource.EndpointType, cn)
 	}
 	if scope.DebugEnabled() {
 		for i, c := range ll {
@@ -440,7 +426,7 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 		_ = a.send(&discovery.DiscoveryRequest{
 			ResponseNonce: time.Now().String(),
 			Node:          a.node,
-			TypeUrl:       listenerType,
+			TypeUrl:       resource.ListenerType,
 		}, "init")
 	}
 
@@ -523,7 +509,7 @@ func (a *ADSC) Watch() {
 	err := a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: time.Now().String(),
 		Node:          a.node,
-		TypeUrl:       clusterType,
+		TypeUrl:       resource.ClusterType,
 	}, "init")
 	if err != nil {
 		scope.Errorf("Error sending request: ", err)
@@ -540,11 +526,16 @@ func (a *ADSC) sendRequest(typeurl string, rsc []string) {
 }
 
 func (a *ADSC) ack(msg *discovery.DiscoveryResponse, names []string) {
+	sendNames := names
+	// Pilot currently breaks if we do this properly.. send only routes
+	if msg.TypeUrl != resource.RouteType {
+		sendNames = []string{}
+	}
 	_ = a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
 		Node:          a.node,
 		VersionInfo:   msg.VersionInfo,
-		//ResourceNames: names,
+		ResourceNames: sendNames,
 	}, "ack")
 }
