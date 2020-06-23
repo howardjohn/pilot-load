@@ -6,19 +6,20 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type NamespaceSpec struct {
-	Name     string
-	Services []model.ServiceArgs
+	Name        string
+	Deployments []model.DeploymentConfig
 }
 
 type Namespace struct {
-	Spec      *NamespaceSpec
-	ns        *KubernetesNamespace
-	sa        map[string]*app.ServiceAccount
-	sidecar   *config.Sidecar
-	workloads []*app.Workload
+	Spec        *NamespaceSpec
+	ns          *KubernetesNamespace
+	sa          map[string]*app.ServiceAccount
+	sidecar     *config.Sidecar
+	deployments []*app.Deployment
 }
 
 var _ model.Simulation = &Namespace{}
@@ -36,25 +37,29 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}),
 	}
 	ns.sidecar = config.NewSidecar(config.SidecarSpec{Namespace: s.Name})
-	for _, w := range s.Services {
-		ns.workloads = append(ns.workloads, ns.createWorkload(w))
+	for _, d := range s.Deployments {
+		for r := 0; r < d.Replicas; r++ {
+			ns.deployments = append(ns.deployments, ns.createDeployment(d))
+		}
 	}
 	return ns
 }
 
-func (n *Namespace) createWorkload(args model.ServiceArgs) *app.Workload {
-	return app.NewWorkload(app.WorkloadSpec{
-		App:            fmt.Sprintf("app-%d", len(n.workloads)+1),
-		Node:           "node",
-		Namespace:      n.Spec.Name,
+func (n *Namespace) createDeployment(args model.DeploymentConfig) *app.Deployment {
+	return app.NewDeployment(app.DeploymentSpec{
+		App: fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), util.GenUID()),
+		// TODO implement nodes
+		Node:      "node",
+		Namespace: n.Spec.Name,
+		// TODO implement different service accounts
 		ServiceAccount: "default",
 		Instances:      args.Instances,
 	})
 }
 
-func (n *Namespace) InsertService(ctx model.Context, args model.ServiceArgs) error {
-	wl := n.createWorkload(args)
-	n.workloads = append(n.workloads, wl)
+func (n *Namespace) InsertDeployment(ctx model.Context, args model.DeploymentConfig) error {
+	wl := n.createDeployment(args)
+	n.deployments = append(n.deployments, wl)
 	return wl.Run(ctx)
 }
 
@@ -63,7 +68,7 @@ func (n *Namespace) getSims() []model.Simulation {
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}
-	for _, w := range n.workloads {
+	for _, w := range n.deployments {
 		sims = append(sims, w)
 	}
 	return sims

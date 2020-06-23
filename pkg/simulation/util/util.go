@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 func AddError(e1, e2 error) error {
@@ -25,6 +26,13 @@ func StringPointer(s string) *string {
 	return &s
 }
 
+func StringDefault(s string, def string) string {
+	if s != "" {
+		return s
+	}
+	return def
+}
+
 func BoolPointer(b bool) *bool {
 	return &b
 }
@@ -36,6 +44,10 @@ func IsDone(ctx context.Context) bool {
 	default:
 		return false
 	}
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 func GenUID() string {

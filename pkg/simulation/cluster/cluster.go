@@ -10,8 +10,7 @@ import (
 )
 
 type ClusterSpec struct {
-	Namespaces []model.NamespaceArgs
-	Scaler     model.ScalerSpec
+	Config model.ClusterConfig
 }
 
 type Cluster struct {
@@ -25,11 +24,13 @@ var _ model.Simulation = &Cluster{}
 func NewCluster(s ClusterSpec) *Cluster {
 	cluster := &Cluster{Name: "primary", Spec: &s}
 
-	for _, ns := range s.Namespaces {
-		cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
-			Name:     fmt.Sprintf("namespace-%s", util.GenUID()),
-			Services: ns.Services,
-		}))
+	for _, ns := range s.Config.Namespaces {
+		for r := 0; r < ns.Replicas; r++ {
+			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
+				Name:        fmt.Sprintf("%s-%s", util.StringDefault(ns.Name, "namespace"), util.GenUID()),
+				Deployments: ns.Deployments,
+			}))
+		}
 	}
 	return cluster
 }

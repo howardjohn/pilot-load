@@ -10,7 +10,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-type WorkloadSpec struct {
+type DeploymentSpec struct {
 	App            string
 	Node           string
 	Namespace      string
@@ -18,20 +18,20 @@ type WorkloadSpec struct {
 	Instances      int
 }
 
-type Workload struct {
-	Spec     *WorkloadSpec
+type Deployment struct {
+	Spec     *DeploymentSpec
 	endpoint *Endpoint
 	pods     []*Pod
 	service  *Service
 	vservice *config.VirtualService
 }
 
-var _ model.Simulation = &Workload{}
-var _ model.ScalableSimulation = &Workload{}
-var _ model.RefreshableSimulation = &Workload{}
+var _ model.Simulation = &Deployment{}
+var _ model.ScalableSimulation = &Deployment{}
+var _ model.RefreshableSimulation = &Deployment{}
 
-func NewWorkload(s WorkloadSpec) *Workload {
-	w := &Workload{Spec: &s}
+func NewDeployment(s DeploymentSpec) *Deployment {
+	w := &Deployment{Spec: &s}
 
 	for i := 0; i < s.Instances; i++ {
 		w.pods = append(w.pods, w.makePod())
@@ -54,7 +54,7 @@ func NewWorkload(s WorkloadSpec) *Workload {
 	return w
 }
 
-func (w *Workload) makePod() *Pod {
+func (w *Deployment) makePod() *Pod {
 	s := w.Spec
 	return NewPod(PodSpec{
 		ServiceAccount: s.ServiceAccount,
@@ -64,7 +64,7 @@ func (w *Workload) makePod() *Pod {
 	})
 }
 
-func (w *Workload) getSims() []model.Simulation {
+func (w *Deployment) getSims() []model.Simulation {
 	sims := []model.Simulation{w.service, w.endpoint, w.vservice}
 	for _, p := range w.pods {
 		sims = append(sims, p)
@@ -72,26 +72,27 @@ func (w *Workload) getSims() []model.Simulation {
 	return sims
 }
 
-func (w *Workload) Run(ctx model.Context) (err error) {
+func (w *Deployment) Run(ctx model.Context) (err error) {
 	return model.AggregateSimulation{w.getSims()}.Run(ctx)
 }
 
-func (w *Workload) Cleanup(ctx model.Context) error {
+func (w *Deployment) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{w.getSims()}.Cleanup(ctx)
 }
 
-func (w *Workload) Refresh(ctx model.Context) error {
+// TODO scale up first, but make sure we don't immediately scale that one down
+func (w *Deployment) Refresh(ctx model.Context) error {
 	if err := w.Scale(ctx, -1); err != nil {
 		return err
 	}
 	return w.Scale(ctx, 1)
 }
 
-func (w *Workload) Scale(ctx model.Context, delta int) error {
+func (w *Deployment) Scale(ctx model.Context, delta int) error {
 	return w.ScaleTo(ctx, len(w.pods)+delta)
 }
 
-func (w *Workload) ScaleTo(ctx model.Context, n int) error {
+func (w *Deployment) ScaleTo(ctx model.Context, n int) error {
 	log.Infof("%v: scaling pod from %d -> %d", w.Spec.App, len(w.pods), n)
 	for n < len(w.pods) && n >= 0 {
 		i := 0
@@ -123,7 +124,7 @@ func (w *Workload) ScaleTo(ctx model.Context, n int) error {
 	return nil
 }
 
-func (w Workload) getIps() []string {
+func (w Deployment) getIps() []string {
 	ret := []string{}
 	for _, p := range w.pods {
 		ret = append(ret, p.Spec.IP)

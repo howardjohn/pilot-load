@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,35 +32,62 @@ type RefreshableSimulation interface {
 	Refresh(ctx Context) error
 }
 
-type ServiceArgs struct {
-	// Number of instances associated with this service
-	Instances int
+type Duration time.Duration
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String())
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		*d = Duration(time.Duration(value))
+		return nil
+	case string:
+		tmp, err := time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		*d = Duration(tmp)
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
+}
+
+type ClusterJitterConfig struct {
+	Workloads Duration `json:"workloads"`
+	Config    Duration `json:"config"`
+}
+
+type DeploymentConfig struct {
+	Name      string `json:"name"`
+	Replicas  int    `json:"replicas"`
+	Instances int    `json:"instances"`
+}
+
+type NamespaceConfig struct {
+	Name        string             `json:"name"`
+	Replicas    int                `json:"replicas"`
+	Deployments []DeploymentConfig `json:"deployments"`
 }
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
-type ClusterArgs struct {
-	Namespaces []NamespaceArgs
-	Scaler     ScalerSpec
-}
-
-type ScalerSpec struct {
-	ServicesDelay   time.Duration
-	InstancesDelay  time.Duration
-	InstancesJitter time.Duration
-}
-
-// Namespace defines one Kubernetes namespace
-type NamespaceArgs struct {
-	// A list of services
-	Services []ServiceArgs
+type ClusterConfig struct {
+	Jitter       ClusterJitterConfig    `json:"jitter"`
+	Namespaces   []NamespaceConfig      `json:"namespaces"`
+	NodeMetadata map[string]interface{} `json:"nodeMetadata"`
 }
 
 type Args struct {
-	PilotAddress string
-	NodeMetadata string
-	KubeConfig   string
-	Cluster      ClusterArgs
+	PilotAddress  string
+	KubeConfig    string
+	ClusterConfig ClusterConfig
 }
 
 type Context struct {

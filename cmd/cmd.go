@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
 	"istio.io/pkg/log"
@@ -17,34 +17,18 @@ import (
 
 var (
 	pilotAddress = "localhost:15010"
-	metadata     = ""
 	kubeconfig   = os.Getenv("KUBECONFIG")
-	// TODO scoping, so we can have config dump split from debug
+	configFile   = ""
+	// TODO scoping, so we can have configFile dump split from debug
 	verbose = false
-	cluster = Cluster{}
 )
-
-type Cluster struct {
-	Namespaces      int
-	Services        int
-	ServicesDelay   time.Duration
-	Instances       int
-	InstancesDelay  time.Duration
-	InstancesJitter time.Duration
-}
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
-	rootCmd.PersistentFlags().StringVarP(&metadata, "metadata", "m", metadata, "metadata to send to pilot")
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "verbose")
 
-	rootCmd.PersistentFlags().IntVar(&cluster.Namespaces, "cluster.namespaces", 2, "number of namespaces")
-	rootCmd.PersistentFlags().IntVar(&cluster.Services, "cluster.services", 3, "number of services per namespace")
-	rootCmd.PersistentFlags().DurationVar(&cluster.ServicesDelay, "cluster.servicesDelay", 0, "number of namespaces")
-	rootCmd.PersistentFlags().IntVar(&cluster.Instances, "cluster.instances", 4, "number of instances per service")
-	rootCmd.PersistentFlags().DurationVar(&cluster.InstancesDelay, "cluster.instancesDelay", 0, "number of namespaces")
-	rootCmd.PersistentFlags().DurationVar(&cluster.InstancesJitter, "cluster.instancesJitter", 0, "number of namespaces")
 }
 
 var rootCmd = &cobra.Command{
@@ -59,7 +43,7 @@ var rootCmd = &cobra.Command{
 			}
 			o.SetOutputLevel(log.DefaultScopeName, log.DebugLevel)
 			if err := log.Configure(o); err != nil {
-				panic(err.Error())
+				return err
 			}
 		}
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
@@ -68,27 +52,18 @@ var rootCmd = &cobra.Command{
 			sim = args[0]
 		}
 		if kubeconfig == "" {
-			kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/config")
+			kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/configFile")
+		}
+		config, err := readConfigFile(configFile)
+		if err != nil {
+			return fmt.Errorf("failed to read config file: %v", err)
 		}
 		a := model.Args{
-			PilotAddress: pilotAddress,
-			NodeMetadata: metadata,
-			KubeConfig:   kubeconfig,
+			PilotAddress:  pilotAddress,
+			KubeConfig:    kubeconfig,
+			ClusterConfig: config,
 		}
 
-		// TODO read this from config file
-		for namespace := 0; namespace < cluster.Namespaces; namespace++ {
-			svc := []model.ServiceArgs{}
-			for i := 0; i < cluster.Services; i++ {
-				svc = append(svc, model.ServiceArgs{Instances: cluster.Instances})
-			}
-			a.Cluster.Namespaces = append(a.Cluster.Namespaces, model.NamespaceArgs{svc})
-		}
-		a.Cluster.Scaler = model.ScalerSpec{
-			ServicesDelay:   cluster.ServicesDelay,
-			InstancesDelay:  cluster.InstancesDelay,
-			InstancesJitter: cluster.InstancesJitter,
-		}
 		switch sim {
 		case "cluster":
 			return simulation.Cluster(a)
@@ -98,6 +73,22 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc}", sim)
 		}
 	},
+}
+var defaultConfig = model.ClusterConfig{}
+
+func readConfigFile(filename string) (model.ClusterConfig, error) {
+	if filename == "" {
+		return defaultConfig, nil
+	}
+	bytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return model.ClusterConfig{}, fmt.Errorf("failed to read configFile file: %v", filename)
+	}
+	config := model.ClusterConfig{}
+	if err := yaml.Unmarshal(bytes, &config); err != nil {
+		return config, fmt.Errorf("failed to unmarshall configFile: %v", err)
+	}
+	return config, err
 }
 
 func Execute() {

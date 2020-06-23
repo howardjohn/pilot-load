@@ -30,32 +30,16 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 	s.done = make(chan struct{})
 	go func() {
 		defer close(s.done)
-		svcT := makeTicker(s.Cluster.Spec.Scaler.ServicesDelay)
-		instanceT := makeTicker(s.Cluster.Spec.Scaler.InstancesDelay)
-		instanceJitterT := makeTicker(s.Cluster.Spec.Scaler.InstancesJitter)
+		instanceJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Workloads))
 		for {
 			// TODO: more customization around everything here
 			select {
 			case <-c.Done():
 				return
-			case <-svcT:
-				for _, ns := range s.Cluster.namespaces {
-					if err := ns.InsertService(ctx, model.ServiceArgs{Instances: 1}); err != nil {
-						log.Errorf("failed to scale namespace: %v", err)
-					}
-				}
-			case <-instanceT:
-				for _, ns := range s.Cluster.namespaces {
-					for _, w := range ns.workloads {
-						if err := w.Scale(ctx, 1); err != nil {
-							log.Errorf("failed to scale workload: %v", err)
-						}
-					}
-				}
 			case <-instanceJitterT:
 				wls := []model.RefreshableSimulation{}
 				for _, ns := range s.Cluster.namespaces {
-					for _, w := range ns.workloads {
+					for _, w := range ns.deployments {
 						wls = append(wls, w)
 					}
 				}

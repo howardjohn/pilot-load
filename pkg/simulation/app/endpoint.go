@@ -50,14 +50,17 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 			Name:      s.App,
 			Namespace: s.Namespace,
 		},
-		Subsets: []v1.EndpointSubset{{}},
 	}
+	subset := v1.EndpointSubset{}
 	for _, ip := range s.IPs {
-		ep.Subsets[0].Addresses = append(ep.Subsets[0].Addresses, v1.EndpointAddress{IP: ip, NodeName: &s.Node})
+		subset.Addresses = append(subset.Addresses, v1.EndpointAddress{IP: ip, NodeName: &s.Node})
 	}
-	ep.Subsets[0].Ports = []v1.EndpointPort{{
+	subset.Ports = []v1.EndpointPort{{
 		Name: "http",
 		Port: 80,
 	}}
+	if len(s.IPs) > 0 {
+		ep.Subsets = append(ep.Subsets, subset)
+	}
 	return ep
 }

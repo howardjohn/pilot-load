@@ -15,7 +15,7 @@ import (
 )
 
 func Cluster(a model.Args) error {
-	sim := cluster.NewCluster(cluster.ClusterSpec{Namespaces: a.Cluster.Namespaces, Scaler: a.Cluster.Scaler})
+	sim := cluster.NewCluster(cluster.ClusterSpec{a.ClusterConfig})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}

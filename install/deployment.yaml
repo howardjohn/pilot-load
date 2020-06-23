@@ -10,7 +10,9 @@ spec:
     metadata:
       name: pilot-load
       annotations:
-        "sidecar.istio.io/inject": "false"
+        sidecar.istio.io/inject: "false"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8765"
       labels:
         app: pilot-load
     spec:
@@ -67,3 +69,28 @@ data:
     preferences: {}
     users:
     - name: fake
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pilot-load-config
+data:
+  config.yaml: |
+    jitter:
+      instances: 1s
+      config: 15s
+    namespaces:
+    - name: first
+      replicas: 1
+      services:
+      - name: first
+        replicas: 1
+        workloads:
+        - replicas: 1
+    - name: second
+      replicas: 1
+      services:
+      - name: second
+       replicas: 1
+        workloads:
+        - replicas: 1

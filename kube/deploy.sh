@@ -9,7 +9,7 @@ kubectl port-forward -n pilot-load svc/apiserver 18090 &
 
 sleep 1
 
-if [[ "${PATCH:-}" == "true" ]]; then
+if [[ "${PATCH:-}" != "false" ]]; then
   cat <<EOF > /tmp/patch.json
 {
     "spec": {
@@ -17,13 +17,7 @@ if [[ "${PATCH:-}" == "true" ]]; then
             "spec": {
                 "containers": [
                     {
-                        "args": [
-                            "discovery",
-                            "--monitoringAddr=:15014",
-                            "--keepaliveMaxServerConnectionAge=30m",
-                            "--kubeconfig=/etc/istio/kubeconfig/pilot-load"
-                        ],
-                        "env": [{"name":"INJECTION_WEBHOOK_CONFIG_NAME","value":""}],
+                        "env": [{"name":"INJECTION_WEBHOOK_CONFIG_NAME","value":""},{"name":"KUBECONFIG","value":"/etc/istio/kubeconfig/pilot-load"}],
                         "volumeMounts": [
                             {
                                 "mountPath": "/etc/istio/kubeconfig",
@@ -51,7 +45,7 @@ EOF
   kubectl label secret -n istio-system pilot-load-multicluster istio/multiCluster-
 fi
 
-if [[ "${SINGLE:-}" != "true" ]]; then
+if [[ "${SINGLE:-}" != "false" ]]; then
   kubectl delete hpa istiod -n istio-system || true
   kubectl scale deployment/istiod --replicas=1 -n istio-system
 fi
