@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"math/rand"
 	"time"
 
 	"istio.io/pkg/log"
@@ -29,16 +30,14 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 	s.done = make(chan struct{})
 	go func() {
 		defer close(s.done)
-		nsT := makeTicker(s.Cluster.Spec.Scaler.NamespacesDelay)
 		svcT := makeTicker(s.Cluster.Spec.Scaler.ServicesDelay)
 		instanceT := makeTicker(s.Cluster.Spec.Scaler.InstancesDelay)
+		instanceJitterT := makeTicker(s.Cluster.Spec.Scaler.InstancesJitter)
 		for {
 			// TODO: more customization around everything here
 			select {
 			case <-c.Done():
 				return
-			case <-nsT:
-				log.Errorf("scaling namespace not implemented")
 			case <-svcT:
 				for _, ns := range s.Cluster.namespaces {
 					if err := ns.InsertService(ctx, model.ServiceArgs{Instances: 1}); err != nil {
@@ -52,6 +51,16 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 							log.Errorf("failed to scale workload: %v", err)
 						}
 					}
+				}
+			case <-instanceJitterT:
+				wls := []model.RefreshableSimulation{}
+				for _, ns := range s.Cluster.namespaces {
+					for _, w := range ns.workloads {
+						wls = append(wls, w)
+					}
+				}
+				if err := wls[rand.Intn(len(wls))].Refresh(ctx); err != nil {
+					log.Errorf("failed to jitter workload: %v", err)
 				}
 			}
 		}

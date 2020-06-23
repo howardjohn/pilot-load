@@ -26,11 +26,11 @@ var (
 
 type Cluster struct {
 	Namespaces      int
-	NamespacesDelay time.Duration
 	Services        int
 	ServicesDelay   time.Duration
 	Instances       int
 	InstancesDelay  time.Duration
+	InstancesJitter time.Duration
 }
 
 func init() {
@@ -40,11 +40,11 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "verbose")
 
 	rootCmd.PersistentFlags().IntVar(&cluster.Namespaces, "cluster.namespaces", 2, "number of namespaces")
-	rootCmd.PersistentFlags().DurationVar(&cluster.NamespacesDelay, "cluster.namespacesDelay", 0, "number of namespaces")
 	rootCmd.PersistentFlags().IntVar(&cluster.Services, "cluster.services", 3, "number of services per namespace")
 	rootCmd.PersistentFlags().DurationVar(&cluster.ServicesDelay, "cluster.servicesDelay", 0, "number of namespaces")
 	rootCmd.PersistentFlags().IntVar(&cluster.Instances, "cluster.instances", 4, "number of instances per service")
 	rootCmd.PersistentFlags().DurationVar(&cluster.InstancesDelay, "cluster.instancesDelay", 0, "number of namespaces")
+	rootCmd.PersistentFlags().DurationVar(&cluster.InstancesJitter, "cluster.instancesJitter", 0, "number of namespaces")
 }
 
 var rootCmd = &cobra.Command{
@@ -85,9 +85,9 @@ var rootCmd = &cobra.Command{
 			a.Cluster.Namespaces = append(a.Cluster.Namespaces, model.NamespaceArgs{svc})
 		}
 		a.Cluster.Scaler = model.ScalerSpec{
-			NamespacesDelay: cluster.NamespacesDelay,
 			ServicesDelay:   cluster.ServicesDelay,
 			InstancesDelay:  cluster.InstancesDelay,
+			InstancesJitter: cluster.InstancesJitter,
 		}
 		switch sim {
 		case "cluster":
@@ -95,7 +95,7 @@ var rootCmd = &cobra.Command{
 		case "adsc":
 			return simulation.Adsc(a)
 		default:
-			return fmt.Errorf("unknown simulation %v. Expected: {pods, adsc}", sim)
+			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc}", sim)
 		}
 	},
 }

@@ -27,6 +27,8 @@ type Workload struct {
 }
 
 var _ model.Simulation = &Workload{}
+var _ model.ScalableSimulation = &Workload{}
+var _ model.RefreshableSimulation = &Workload{}
 
 func NewWorkload(s WorkloadSpec) *Workload {
 	w := &Workload{Spec: &s}
@@ -78,14 +80,24 @@ func (w *Workload) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{w.getSims()}.Cleanup(ctx)
 }
 
+func (w *Workload) Refresh(ctx model.Context) error {
+	if err := w.Scale(ctx, -1); err != nil {
+		return err
+	}
+	return w.Scale(ctx, 1)
+}
+
 func (w *Workload) Scale(ctx model.Context, delta int) error {
 	return w.ScaleTo(ctx, len(w.pods)+delta)
 }
 
 func (w *Workload) ScaleTo(ctx model.Context, n int) error {
 	log.Infof("%v: scaling pod from %d -> %d", w.Spec.App, len(w.pods), n)
-	for n < len(w.pods) {
-		i := rand.IntnRange(0, len(w.pods)-1)
+	for n < len(w.pods) && n >= 0 {
+		i := 0
+		if len(w.pods) > 1 {
+			i = rand.IntnRange(0, len(w.pods)-1)
+		}
 		// Remove the element at index i from a.
 		old := w.pods[i]
 		w.pods[i] = w.pods[len(w.pods)-1] // Copy last element to index i.
@@ -100,7 +112,7 @@ func (w *Workload) ScaleTo(ctx model.Context, n int) error {
 
 	for n > len(w.pods) {
 		pod := w.makePod()
-		w.pods = append(w.pods, w.makePod())
+		w.pods = append(w.pods, pod)
 		if err := pod.Run(ctx); err != nil {
 			return err
 		}

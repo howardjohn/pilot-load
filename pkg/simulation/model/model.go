@@ -16,8 +16,18 @@ type Simulation interface {
 	// watching ctx.Done() for termination.
 	Run(ctx Context) error
 	// Cleanup tears down the simulation.
-	// TODO do not pass context. Simulations should store it and then cancel the context. This means we should always pass a new ctx.
 	Cleanup(ctx Context) error
+}
+
+type ScalableSimulation interface {
+	Scale(ctx Context, delta int) error
+
+	ScaleTo(ctx Context, n int) error
+}
+
+type RefreshableSimulation interface {
+	// Refresh will make a change to the simulation. This may mean removing and recreating a pod, changing config, etc
+	Refresh(ctx Context) error
 }
 
 type ServiceArgs struct {
@@ -33,9 +43,9 @@ type ClusterArgs struct {
 }
 
 type ScalerSpec struct {
-	NamespacesDelay time.Duration
 	ServicesDelay   time.Duration
 	InstancesDelay  time.Duration
+	InstancesJitter time.Duration
 }
 
 // Namespace defines one Kubernetes namespace
