@@ -49,6 +49,9 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.App,
 			Namespace: s.Namespace,
+			Labels: map[string]string{
+				"app": s.App,
+			},
 		},
 	}
 	subset := v1.EndpointSubset{}

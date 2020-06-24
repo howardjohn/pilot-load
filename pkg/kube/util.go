@@ -118,8 +118,16 @@ func (c *Client) Apply(o runtime.Object) error {
 		switch {
 		case errors.IsNotFound(err):
 			log.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			_, err = cl.Create(context.TODO(), us, metav1.CreateOptions{})
-			return err
+			if _, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
+				return err
+			}
+			if _, f := us.Object["status"]; f {
+				log.Debugf("updating resource status: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
+					return err
+				}
+			}
+			return nil
 		case err == nil:
 			log.Debugf("updating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			us.SetResourceVersion(cur.GetResourceVersion())
@@ -131,7 +139,6 @@ func (c *Client) Apply(o runtime.Object) error {
 				FieldManager: "pilot-load",
 				Force:        util.BoolPointer(true),
 			})
-			//_, err = cl.Update(context.TODO(), us, metav1.UpdateOptions{})
 			return err
 		}
 		return nil
