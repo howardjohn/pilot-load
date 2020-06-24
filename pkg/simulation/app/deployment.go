@@ -19,11 +19,12 @@ type DeploymentSpec struct {
 }
 
 type Deployment struct {
-	Spec     *DeploymentSpec
-	endpoint *Endpoint
-	pods     []*Pod
-	service  *Service
-	vservice *config.VirtualService
+	Spec           *DeploymentSpec
+	endpoint       *Endpoint
+	pods           []*Pod
+	service        *Service
+	virtualService *config.VirtualService
+	destRule       *config.DestinationRule
 }
 
 var _ model.Simulation = &Deployment{}
@@ -47,9 +48,19 @@ func NewDeployment(s DeploymentSpec) *Deployment {
 		App:       s.App,
 		Namespace: s.Namespace,
 	})
-	w.vservice = config.NewVirtualService(config.VirtualServiceSpec{
+	w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
+	})
+	w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
+		App:       s.App,
+		Namespace: s.Namespace,
+		Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
+	})
+	w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
+		App:       s.App,
+		Namespace: s.Namespace,
+		Subsets:   []string{"a", "b"},
 	})
 	return w
 }
@@ -65,7 +76,7 @@ func (w *Deployment) makePod() *Pod {
 }
 
 func (w *Deployment) getSims() []model.Simulation {
-	sims := []model.Simulation{w.service, w.endpoint, w.vservice}
+	sims := []model.Simulation{w.service, w.endpoint, w.virtualService, w.destRule}
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}

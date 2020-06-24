@@ -32,7 +32,6 @@ func defaultLogOptions() *log.Options {
 	o := log.DefaultOptions()
 
 	// These scopes are, at the default "INFO" level, too chatty for command line use
-	o.SetOutputLevel("adsc", log.WarnLevel)
 	o.SetOutputLevel("dump", log.WarnLevel)
 
 	return o
@@ -58,6 +57,11 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
+		bytes, err := yaml.Marshal(config)
+		if err != nil {
+			return err
+		}
+		log.Infof("Starting simulation with config:\n%v", string(bytes))
 		a := model.Args{
 			PilotAddress:  pilotAddress,
 			KubeConfig:    kubeconfig,
@@ -74,7 +78,22 @@ var rootCmd = &cobra.Command{
 		}
 	},
 }
-var defaultConfig = model.ClusterConfig{}
+
+var defaultConfig = model.ClusterConfig{
+	Jitter: model.ClusterJitterConfig{
+		Workloads: 0,
+		Config:    0,
+	},
+	Namespaces: []model.NamespaceConfig{{
+		Name:     "default",
+		Replicas: 1,
+		Deployments: []model.DeploymentConfig{{
+			Name:      "default",
+			Replicas:  1,
+			Instances: 1,
+		}},
+	}},
+}
 
 func readConfigFile(filename string) (model.ClusterConfig, error) {
 	if filename == "" {

@@ -254,12 +254,10 @@ func (a *ADSC) handleRecv() {
 					names = append(names, ll.ClusterName)
 				}
 			} else if rsc.TypeUrl == resource.RouteType {
-				if dumpScope.DebugEnabled() {
-					ll := &route.RouteConfiguration{}
-					_ = proto.Unmarshal(valBytes, ll)
-					routes = append(routes, ll)
-					names = append(names, ll.Name)
-				}
+				ll := &route.RouteConfiguration{}
+				_ = proto.Unmarshal(valBytes, ll)
+				routes = append(routes, ll)
+				names = append(names, ll.Name)
 			}
 		}
 

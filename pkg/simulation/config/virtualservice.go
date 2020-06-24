@@ -10,9 +10,15 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
+type SubsetSpec struct {
+	Name   string
+	Weight int
+}
+
 type VirtualServiceSpec struct {
 	App       string
 	Namespace string
+	Subsets   []SubsetSpec
 }
 
 type VirtualService struct {
@@ -35,6 +41,15 @@ func (v *VirtualService) Cleanup(ctx model.Context) error {
 
 func (v *VirtualService) getVirtualService() *v1alpha3.VirtualService {
 	s := v.Spec
+	routes := []*networkingv1alpha3.HTTPRouteDestination{}
+	for _, ss := range s.Subsets {
+		routes = append(routes, &networkingv1alpha3.HTTPRouteDestination{
+			Weight: int32(ss.Weight),
+			Destination: &networkingv1alpha3.Destination{
+				Host:   s.App,
+				Subset: ss.Name,
+			}})
+	}
 	return &v1alpha3.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.App,
@@ -45,14 +60,7 @@ func (v *VirtualService) getVirtualService() *v1alpha3.VirtualService {
 			Gateways: nil,
 			Http: []*networkingv1alpha3.HTTPRoute{
 				{
-					Route: []*networkingv1alpha3.HTTPRouteDestination{
-						{
-							Destination: &networkingv1alpha3.Destination{
-								// TODO
-								Host: "productpage",
-							},
-						},
-					},
+					Route: routes,
 				},
 			},
 		},

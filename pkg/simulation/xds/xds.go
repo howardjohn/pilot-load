@@ -31,6 +31,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 		"CLUSTER_ID":    cluster,
 		"LABELS":        x.Labels,
 		"NAMESPACE":     x.Namespace,
+		"SDS":           "true",
 	}
 	go func() {
 		// TODO trigger full injection and CA bootstrap flow
