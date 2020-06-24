@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+
 set -eux
+
+WD=$(dirname "$0")
+WD=$(cd "$WD"; pwd)
 
 kubectl apply -f kube/deploy.yaml
 
@@ -54,7 +58,7 @@ fi
 export KUBECONFIG=kube/local-kubeconfig.yaml
 kubectl create namespace istio-system || true
 kubectl apply -f $GOPATH/src/istio.io/istio/manifests/charts/base/crds/
-
+kubectl apply -f $WD/telemetryv2.yaml
 
 echo To start test: go run main.go
 echo 'export KUBECONFIG=kube/local-kubeconfig.yaml'
