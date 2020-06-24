@@ -86,6 +86,30 @@ type ClusterConfig struct {
 	NodeMetadata map[string]interface{} `json:"nodeMetadata"`
 }
 
+func (c ClusterConfig) ApplyDefaults() ClusterConfig {
+	cpy := c
+	ret := &cpy
+	if ret.Nodes == 0 {
+		ret.Nodes = 1
+	}
+	for n, ns := range ret.Namespaces {
+		if ns.Replicas == 0 {
+			ns.Replicas = 1
+		}
+		for d, dp := range ns.Deployments {
+			if dp.Replicas == 0 {
+				dp.Replicas = 1
+			}
+			if dp.Instances == 0 {
+				dp.Instances = 1
+			}
+			ns.Deployments[d] = dp
+		}
+		ret.Namespaces[n] = ns
+	}
+	return *ret
+}
+
 type Args struct {
 	PilotAddress  string
 	KubeConfig    string

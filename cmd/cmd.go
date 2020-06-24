@@ -57,6 +57,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
+		config = config.ApplyDefaults()
 		bytes, err := yaml.Marshal(config)
 		if err != nil {
 			return err
@@ -80,19 +81,8 @@ var rootCmd = &cobra.Command{
 }
 
 var defaultConfig = model.ClusterConfig{
-	Jitter: model.ClusterJitterConfig{
-		Workloads: 0,
-		Config:    0,
-	},
-	Nodes: 1,
 	Namespaces: []model.NamespaceConfig{{
-		Name:     "default",
-		Replicas: 1,
-		Deployments: []model.DeploymentConfig{{
-			Name:      "default",
-			Replicas:  1,
-			Instances: 1,
-		}},
+		Deployments: []model.DeploymentConfig{{}},
 	}},
 }
 
