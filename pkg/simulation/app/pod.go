@@ -81,6 +81,7 @@ func (p *Pod) getPod() *v1.Pod {
 			Namespace: s.Namespace,
 			Labels: map[string]string{
 				"app": s.App,
+				"security.istio.io/tlsMode": "istio",
 			},
 		},
 		Spec: v1.PodSpec{

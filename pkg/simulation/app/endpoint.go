@@ -50,7 +50,8 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 			Name:      s.App,
 			Namespace: s.Namespace,
 			Labels: map[string]string{
-				"app": s.App,
+				"app":                       s.App,
+				"security.istio.io/tlsMode": "istio",
 			},
 		},
 	}
