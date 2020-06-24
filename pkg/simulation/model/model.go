@@ -65,9 +65,10 @@ type ClusterJitterConfig struct {
 }
 
 type DeploymentConfig struct {
-	Name      string `json:"name"`
-	Replicas  int    `json:"replicas"`
-	Instances int    `json:"instances"`
+	Name      string        `json:"name"`
+	Replicas  int           `json:"replicas"`
+	Instances int           `json:"instances"`
+	GetNode   func() string `json:"-"`
 }
 
 type NamespaceConfig struct {
@@ -81,6 +82,7 @@ type NamespaceConfig struct {
 type ClusterConfig struct {
 	Jitter       ClusterJitterConfig    `json:"jitter"`
 	Namespaces   []NamespaceConfig      `json:"namespaces"`
+	Nodes        int                    `json:"nodes"`
 	NodeMetadata map[string]interface{} `json:"nodeMetadata"`
 }
 

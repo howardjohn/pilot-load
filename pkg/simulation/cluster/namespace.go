@@ -48,8 +48,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 func (n *Namespace) createDeployment(args model.DeploymentConfig) *app.Deployment {
 	return app.NewDeployment(app.DeploymentSpec{
 		App: fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), util.GenUID()),
-		// TODO implement nodes
-		Node:      "node",
+		Node:      args.GetNode(),
 		Namespace: n.Spec.Name,
 		// TODO implement different service accounts
 		ServiceAccount: "default",

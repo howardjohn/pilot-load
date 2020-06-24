@@ -33,8 +33,8 @@ type Client struct {
 func NewClient(kubeconfig string) (*Client, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	// Gotta go fast
-	config.QPS = 100
-	config.Burst = 200
+	config.QPS = 1000
+	config.Burst = 2000
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +81,8 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 	switch o.(type) {
 	case *v1.Pod:
 		return v1.SchemeGroupVersion.WithResource("pods"), "Pod"
+	case *v1.Node:
+		return v1.SchemeGroupVersion.WithResource("nodes"), "Node"
 	case *v1.Service:
 		return v1.SchemeGroupVersion.WithResource("services"), "Service"
 	case *v1.ServiceAccount:
@@ -117,12 +119,12 @@ func (c *Client) Apply(o runtime.Object) error {
 		cur, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
 		switch {
 		case errors.IsNotFound(err):
-			log.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			log.Debugf("%+v %+v", gvr, us.GetObjectKind().GroupVersionKind())
 			if _, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
 				return err
 			}
 			if _, f := us.Object["status"]; f {
-				log.Debugf("updating resource status: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+				log.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}

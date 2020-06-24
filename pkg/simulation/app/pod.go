@@ -96,6 +96,7 @@ func (p *Pod) getPod() *v1.Pod {
 				Name:  "istio-proxy",
 				Image: "istio/proxyv2",
 			}},
+			NodeName: s.Node,
 		},
 		Status: v1.PodStatus{
 			Phase:      v1.PodRunning,

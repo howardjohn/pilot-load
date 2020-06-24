@@ -84,6 +84,7 @@ var defaultConfig = model.ClusterConfig{
 		Workloads: 0,
 		Config:    0,
 	},
+	Nodes: 1,
 	Namespaces: []model.NamespaceConfig{{
 		Name:     "default",
 		Replicas: 1,
