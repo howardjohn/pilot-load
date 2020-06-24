@@ -123,6 +123,14 @@ type Context struct {
 	Client *kube.Client
 }
 
+func ReverseSimulations(sims []Simulation) []Simulation {
+	for i := 0; i < len(sims)/2; i++ {
+		j := len(sims) - i - 1
+		sims[i], sims[j] = sims[j], sims[i]
+	}
+	return sims
+}
+
 type AggregateSimulation struct {
 	Simulations []Simulation
 }

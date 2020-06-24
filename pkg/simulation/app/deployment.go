@@ -88,7 +88,7 @@ func (w *Deployment) Run(ctx model.Context) (err error) {
 }
 
 func (w *Deployment) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{w.getSims()}.Cleanup(ctx)
+	return model.AggregateSimulation{model.ReverseSimulations(w.getSims())}.Cleanup(ctx)
 }
 
 // TODO scale up first, but make sure we don't immediately scale that one down
