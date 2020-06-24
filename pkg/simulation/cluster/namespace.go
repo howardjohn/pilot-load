@@ -11,7 +11,7 @@ import (
 
 type NamespaceSpec struct {
 	Name        string
-	Deployments []model.DeploymentConfig
+	Deployments []model.ApplicationConfig
 }
 
 type Namespace struct {
@@ -19,7 +19,7 @@ type Namespace struct {
 	ns          *KubernetesNamespace
 	sa          map[string]*app.ServiceAccount
 	sidecar     *config.Sidecar
-	deployments []*app.Deployment
+	deployments []*app.Application
 }
 
 var _ model.Simulation = &Namespace{}
@@ -45,8 +45,8 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	return ns
 }
 
-func (n *Namespace) createDeployment(args model.DeploymentConfig) *app.Deployment {
-	return app.NewDeployment(app.DeploymentSpec{
+func (n *Namespace) createDeployment(args model.ApplicationConfig) *app.Application {
+	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), util.GenUID()),
 		Node:      args.GetNode(),
 		Namespace: n.Spec.Name,
@@ -56,7 +56,7 @@ func (n *Namespace) createDeployment(args model.DeploymentConfig) *app.Deploymen
 	})
 }
 
-func (n *Namespace) InsertDeployment(ctx model.Context, args model.DeploymentConfig) error {
+func (n *Namespace) InsertDeployment(ctx model.Context, args model.ApplicationConfig) error {
 	wl := n.createDeployment(args)
 	n.deployments = append(n.deployments, wl)
 	return wl.Run(ctx)

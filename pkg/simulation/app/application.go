@@ -10,7 +10,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-type DeploymentSpec struct {
+type ApplicationSpec struct {
 	App            string
 	Node           string
 	Namespace      string
@@ -18,8 +18,8 @@ type DeploymentSpec struct {
 	Instances      int
 }
 
-type Deployment struct {
-	Spec           *DeploymentSpec
+type Application struct {
+	Spec           *ApplicationSpec
 	endpoint       *Endpoint
 	pods           []*Pod
 	service        *Service
@@ -27,12 +27,12 @@ type Deployment struct {
 	destRule       *config.DestinationRule
 }
 
-var _ model.Simulation = &Deployment{}
-var _ model.ScalableSimulation = &Deployment{}
-var _ model.RefreshableSimulation = &Deployment{}
+var _ model.Simulation = &Application{}
+var _ model.ScalableSimulation = &Application{}
+var _ model.RefreshableSimulation = &Application{}
 
-func NewDeployment(s DeploymentSpec) *Deployment {
-	w := &Deployment{Spec: &s}
+func NewApplication(s ApplicationSpec) *Application {
+	w := &Application{Spec: &s}
 
 	for i := 0; i < s.Instances; i++ {
 		w.pods = append(w.pods, w.makePod())
@@ -65,7 +65,7 @@ func NewDeployment(s DeploymentSpec) *Deployment {
 	return w
 }
 
-func (w *Deployment) makePod() *Pod {
+func (w *Application) makePod() *Pod {
 	s := w.Spec
 	return NewPod(PodSpec{
 		ServiceAccount: s.ServiceAccount,
@@ -75,7 +75,7 @@ func (w *Deployment) makePod() *Pod {
 	})
 }
 
-func (w *Deployment) getSims() []model.Simulation {
+func (w *Application) getSims() []model.Simulation {
 	sims := []model.Simulation{w.service, w.endpoint, w.virtualService, w.destRule}
 	for _, p := range w.pods {
 		sims = append(sims, p)
@@ -83,27 +83,27 @@ func (w *Deployment) getSims() []model.Simulation {
 	return sims
 }
 
-func (w *Deployment) Run(ctx model.Context) (err error) {
+func (w *Application) Run(ctx model.Context) (err error) {
 	return model.AggregateSimulation{w.getSims()}.Run(ctx)
 }
 
-func (w *Deployment) Cleanup(ctx model.Context) error {
+func (w *Application) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{model.ReverseSimulations(w.getSims())}.Cleanup(ctx)
 }
 
 // TODO scale up first, but make sure we don't immediately scale that one down
-func (w *Deployment) Refresh(ctx model.Context) error {
+func (w *Application) Refresh(ctx model.Context) error {
 	if err := w.Scale(ctx, -1); err != nil {
 		return err
 	}
 	return w.Scale(ctx, 1)
 }
 
-func (w *Deployment) Scale(ctx model.Context, delta int) error {
+func (w *Application) Scale(ctx model.Context, delta int) error {
 	return w.ScaleTo(ctx, len(w.pods)+delta)
 }
 
-func (w *Deployment) ScaleTo(ctx model.Context, n int) error {
+func (w *Application) ScaleTo(ctx model.Context, n int) error {
 	log.Infof("%v: scaling pod from %d -> %d", w.Spec.App, len(w.pods), n)
 	for n < len(w.pods) && n >= 0 {
 		i := 0
@@ -135,7 +135,7 @@ func (w *Deployment) ScaleTo(ctx model.Context, n int) error {
 	return nil
 }
 
-func (w Deployment) getIps() []string {
+func (w Application) getIps() []string {
 	ret := []string{}
 	for _, p := range w.pods {
 		ret = append(ret, p.Spec.IP)

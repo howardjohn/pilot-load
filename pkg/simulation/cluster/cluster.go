@@ -35,8 +35,8 @@ func NewCluster(s ClusterSpec) *Cluster {
 	}
 	for _, ns := range s.Config.Namespaces {
 		for r := 0; r < ns.Replicas; r++ {
-			deployments := ns.Deployments
-			for i, d := range ns.Deployments {
+			deployments := ns.Applications
+			for i, d := range ns.Applications {
 				d.GetNode = cluster.SelectNode
 				deployments[i] = d
 			}

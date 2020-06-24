@@ -5,7 +5,7 @@ jitter:
 namespaces:
 - name: default
   replicas: 2
-  deployments:
+  applications:
   - name: tall
     replicas: 1
     instances: 3

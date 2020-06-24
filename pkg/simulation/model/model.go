@@ -64,7 +64,7 @@ type ClusterJitterConfig struct {
 	Config    Duration `json:"config"`
 }
 
-type DeploymentConfig struct {
+type ApplicationConfig struct {
 	Name      string        `json:"name"`
 	Replicas  int           `json:"replicas"`
 	Instances int           `json:"instances"`
@@ -72,9 +72,9 @@ type DeploymentConfig struct {
 }
 
 type NamespaceConfig struct {
-	Name        string             `json:"name"`
-	Replicas    int                `json:"replicas"`
-	Deployments []DeploymentConfig `json:"deployments"`
+	Name         string              `json:"name"`
+	Replicas     int                 `json:"replicas"`
+	Applications []ApplicationConfig `json:"applications"`
 }
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
@@ -96,14 +96,14 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 		if ns.Replicas == 0 {
 			ns.Replicas = 1
 		}
-		for d, dp := range ns.Deployments {
+		for d, dp := range ns.Applications {
 			if dp.Replicas == 0 {
 				dp.Replicas = 1
 			}
 			if dp.Instances == 0 {
 				dp.Instances = 1
 			}
-			ns.Deployments[d] = dp
+			ns.Applications[d] = dp
 		}
 		ret.Namespaces[n] = ns
 	}

@@ -84,7 +84,7 @@ data:
     namespaces:
       - name: default
         replicas: 50
-        deployments:
+        applications:
         - name: tall
           replicas: 1
           instances: 100
