@@ -1,6 +1,8 @@
 package config
 
 import (
+	"math/rand"
+
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
@@ -26,6 +28,7 @@ type VirtualService struct {
 }
 
 var _ model.Simulation = &VirtualService{}
+var _ model.RefreshableSimulation = &VirtualService{}
 
 func NewVirtualService(s VirtualServiceSpec) *VirtualService {
 	return &VirtualService{Spec: &s}
@@ -37,6 +40,31 @@ func (v *VirtualService) Run(ctx model.Context) (err error) {
 
 func (v *VirtualService) Cleanup(ctx model.Context) error {
 	return ctx.Client.Delete(v.getVirtualService())
+}
+
+func getRandomWeights(size int) []int {
+	remainingWeight := 100
+	var weights []int
+	for i := 0; i < size-1; i++ {
+		if remainingWeight == 0 {
+			weights = append(weights, 0)
+		} else {
+			weight := rand.Intn(remainingWeight + 1)
+			remainingWeight -= weight
+			weights = append(weights, weight)
+		}
+	}
+	weights = append(weights, remainingWeight)
+	return weights
+}
+
+func (v *VirtualService) Refresh(ctx model.Context) error {
+	for i, w := range getRandomWeights(len(v.Spec.Subsets)) {
+		ss := v.Spec.Subsets[i]
+		ss.Weight = w
+		v.Spec.Subsets[i] = ss
+	}
+	return v.Run(ctx)
 }
 
 func (v *VirtualService) getVirtualService() *v1alpha3.VirtualService {

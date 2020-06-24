@@ -65,6 +65,10 @@ func NewApplication(s ApplicationSpec) *Application {
 	return w
 }
 
+func (w *Application) GetConfigs() []model.RefreshableSimulation {
+	return []model.RefreshableSimulation{w.virtualService}
+}
+
 func (w *Application) makePod() *Pod {
 	s := w.Spec
 	return NewPod(PodSpec{

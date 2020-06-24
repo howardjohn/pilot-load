@@ -31,20 +31,29 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 	go func() {
 		defer close(s.done)
 		instanceJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Workloads))
+		configJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Config))
 		for {
 			// TODO: more customization around everything here
 			select {
 			case <-c.Done():
 				return
 			case <-instanceJitterT:
-				wls := []model.RefreshableSimulation{}
-				for _, ns := range s.Cluster.namespaces {
-					for _, w := range ns.deployments {
-						wls = append(wls, w)
-					}
+				wls := s.Cluster.GetRefreshableInstances()
+				if len(wls) == 0 {
+					continue
 				}
 				if err := wls[rand.Intn(len(wls))].Refresh(ctx); err != nil {
 					log.Errorf("failed to jitter workload: %v", err)
+				}
+			case <-configJitterT:
+				cfgs := s.Cluster.GetRefreshableConfig()
+				if len(cfgs) == 0 {
+					continue
+				}
+				cfg := cfgs[rand.Intn(len(cfgs))]
+				log.Infof("refresh config %T", cfg)
+				if err := cfg.Refresh(ctx); err != nil {
+					log.Errorf("failed to jitter configs: %v", err)
 				}
 			}
 		}

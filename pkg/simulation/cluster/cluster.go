@@ -49,6 +49,26 @@ func NewCluster(s ClusterSpec) *Cluster {
 	return cluster
 }
 
+func (c *Cluster) GetRefreshableInstances() []model.RefreshableSimulation {
+	var wls []model.RefreshableSimulation
+	for _, ns := range c.namespaces {
+		for _, w := range ns.deployments {
+			wls = append(wls, w)
+		}
+	}
+	return wls
+}
+
+func (c *Cluster) GetRefreshableConfig() []model.RefreshableSimulation {
+	var cfgs []model.RefreshableSimulation
+	for _, ns := range c.namespaces {
+		for _, w := range ns.deployments {
+			cfgs = append(cfgs, w.GetConfigs()...)
+		}
+	}
+	return cfgs
+}
+
 // Return a random node
 func (c *Cluster) SelectNode() string {
 	return c.nodes[rand.Intn(len(c.nodes))].Spec.Name
