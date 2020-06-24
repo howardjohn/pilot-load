@@ -24,26 +24,27 @@ spec:
         imagePullPolicy: Always
         args:
           - "cluster"
-          - "--pilot-address"
-          - "istiod.istio-system:15010"
-          - "--cluster.namespaces=50"
-          - "--cluster.services=10"
-          - "--cluster.instances=10"
-          - "--cluster.instancesJitter=1s"
+          - "--pilot-address=istiod.istio-system:15010"
+          - "--config=/etc/config/config/config.yaml"
         env:
         - name: KUBECONFIG
-          value: /etc/config/kubeconfig.yaml
+          value: /etc/config/kubeconfig/kubeconfig.yaml
         resources:
           requests:
             cpu: 40m
             memory: 128Mi
         volumeMounts:
         - name: kubeconfig
-          mountPath: /etc/config
+          mountPath: /etc/config/kubeconfig
+        - name: config
+          mountPath: /etc/config/config
       volumes:
       - name: kubeconfig
         configMap:
           name: pilot-load-kubeconfig
+      - name: config
+        configMap:
+          name: pilot-load-config
   selector:
     matchLabels:
       app: pilot-load
@@ -76,21 +77,17 @@ metadata:
   name: pilot-load-config
 data:
   config.yaml: |
+    nodeMetadata: {}
     jitter:
-      instances: 1s
-      config: 15s
+      workloads: "1s"
+      config: "15s"
     namespaces:
-    - name: first
-      replicas: 1
-      services:
-      - name: first
-        replicas: 1
-        workloads:
-        - replicas: 1
-    - name: second
-      replicas: 1
-      services:
-      - name: second
-       replicas: 1
-        workloads:
-        - replicas: 1
+      - name: default
+        replicas: 50
+        deployments:
+        - name: tall
+          replicas: 1
+          instances: 100
+        - name: wide
+          replicas: 10
+          instances: 10
