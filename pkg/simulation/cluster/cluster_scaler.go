@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/lthibault/jitterbug"
 	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -21,7 +22,11 @@ func makeTicker(t time.Duration) <-chan time.Time {
 		// Fake timer
 		return make(chan time.Time)
 	}
-	return time.NewTicker(t).C
+	tck := jitterbug.New(
+		t,
+		&jitterbug.Norm{Stdev: t / 5},
+	)
+	return tck.C
 }
 
 func (s *ClusterScaler) Run(ctx model.Context) error {

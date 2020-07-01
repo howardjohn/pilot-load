@@ -7,6 +7,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.9.5
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.3.5
+	github.com/lthibault/jitterbug v2.0.0+incompatible
 	github.com/spf13/cobra v1.0.0
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa // indirect
 	google.golang.org/genproto v0.0.0-20200113173426-e1de0a7b01eb // indirect

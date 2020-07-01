@@ -32,12 +32,12 @@ type Client struct {
 
 func NewClient(kubeconfig string) (*Client, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// Gotta go fast
-	config.QPS = 1000
-	config.Burst = 2000
 	if err != nil {
 		return nil, err
 	}
+	// Gotta go fast
+	config.QPS = 1000
+	config.Burst = 2000
 	d, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, err
