@@ -16,6 +16,7 @@ type ApplicationSpec struct {
 	Namespace      string
 	ServiceAccount string
 	Instances      int
+	PodType        model.PodType
 }
 
 type Application struct {
@@ -76,6 +77,7 @@ func (w *Application) makePod() *Pod {
 		Node:           s.Node,
 		App:            s.App,
 		Namespace:      s.Namespace,
+		PodType:        s.PodType,
 	})
 }
 
@@ -98,9 +100,12 @@ func (w *Application) Cleanup(ctx model.Context) error {
 // TODO scale up first, but make sure we don't immediately scale that one down
 func (w *Application) Refresh(ctx model.Context) error {
 	if err := w.Scale(ctx, -1); err != nil {
-		return err
+		return fmt.Errorf("scale down: %v", err)
 	}
-	return w.Scale(ctx, 1)
+	if err := w.Scale(ctx, 1); err != nil {
+		return fmt.Errorf("scale up: %v", err)
+	}
+	return nil
 }
 
 func (w *Application) Scale(ctx model.Context, delta int) error {
@@ -139,10 +144,10 @@ func (w *Application) ScaleTo(ctx model.Context, n int) error {
 	return nil
 }
 
-func (w Application) getIps() []string {
-	ret := []string{}
+func (w Application) getIps() map[string]string {
+	ret := map[string]string{}
 	for _, p := range w.pods {
-		ret = append(ret, p.Spec.IP)
+		ret[p.Name()] = p.Spec.IP
 	}
 	return ret
 }

@@ -4,11 +4,15 @@ jitter:
   config: "15s"
 namespaces:
 - name: default
-  replicas: 2
+  replicas: 1
   applications:
   - name: tall
     replicas: 1
     instances: 3
   - name: wide
-    replicas: 3
+    replicas: 2
     instances: 1
+  - name: external
+    replicas: 1
+    instances: 100
+    podType: external

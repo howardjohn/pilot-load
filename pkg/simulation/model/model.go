@@ -64,8 +64,19 @@ type ClusterJitterConfig struct {
 	Config    Duration `json:"config"`
 }
 
+type PodType string
+
+const (
+	SidecarType PodType = "sidecar"
+
+	GatewayType PodType = "router"
+
+	ExternalType PodType = "external"
+)
+
 type ApplicationConfig struct {
 	Name      string        `json:"name"`
+	PodType   PodType       `json:"podType"`
 	Replicas  int           `json:"replicas"`
 	Instances int           `json:"instances"`
 	GetNode   func() string `json:"-"`
@@ -102,6 +113,9 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 			}
 			if dp.Instances == 0 {
 				dp.Instances = 1
+			}
+			if dp.PodType == "" {
+				dp.PodType = SidecarType
 			}
 			ns.Applications[d] = dp
 		}

@@ -18,6 +18,7 @@ type PodSpec struct {
 	Namespace      string
 	UID            string
 	IP             string
+	PodType        model.PodType
 }
 
 type Pod struct {
@@ -43,21 +44,26 @@ func NewPod(s PodSpec) *Pod {
 
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
-	// TODO apply gets pod stuck in pending state.. figure out how to force Running
+
 	if err = ctx.Client.Apply(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
 
 	p.created = true
-	p.xds = &xds.Simulation{
-		Labels:    pod.Labels,
-		Namespace: pod.Namespace,
-		Name:      pod.Name,
-		IP:        p.Spec.IP,
-		// TODO: multicluster
-		Cluster: "pilot-load",
+
+	if p.Spec.PodType != model.ExternalType {
+		p.xds = &xds.Simulation{
+			Labels:    pod.Labels,
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+			IP:        p.Spec.IP,
+			PodType:   p.Spec.PodType,
+			// TODO: multicluster
+			Cluster: "pilot-load",
+		}
+		return p.xds.Run(ctx)
 	}
-	return p.xds.Run(ctx)
+	return nil
 }
 
 func (p *Pod) Cleanup(ctx model.Context) error {
@@ -66,7 +72,10 @@ func (p *Pod) Cleanup(ctx model.Context) error {
 			return err
 		}
 	}
-	return p.xds.Cleanup(ctx)
+	if p.Spec.PodType != model.ExternalType {
+		return p.xds.Cleanup(ctx)
+	}
+	return nil
 }
 
 func (p *Pod) Name() string {
@@ -75,14 +84,17 @@ func (p *Pod) Name() string {
 
 func (p *Pod) getPod() *v1.Pod {
 	s := p.Spec
+	labels := map[string]string{
+		"app": s.App,
+	}
+	if p.Spec.PodType == model.SidecarType {
+		labels["security.istio.io/tlsMode"] = "istio"
+	}
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.Name(),
 			Namespace: s.Namespace,
-			Labels: map[string]string{
-				"app": s.App,
-				"security.istio.io/tlsMode": "istio",
-			},
+			Labels:    labels,
 		},
 		Spec: v1.PodSpec{
 			Volumes: nil,

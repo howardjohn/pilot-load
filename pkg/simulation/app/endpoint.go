@@ -13,7 +13,8 @@ type EndpointSpec struct {
 	Node      string
 	App       string
 	Namespace string
-	IPs       []string
+	// Map of pod name to IP
+	IPs map[string]string
 }
 
 type Endpoint struct {
@@ -27,7 +28,7 @@ func NewEndpoint(s EndpointSpec) *Endpoint {
 	return &Endpoint{Spec: &s}
 }
 
-func (e *Endpoint) SetAddresses(ctx model.Context, ips []string) error {
+func (e *Endpoint) SetAddresses(ctx model.Context, ips map[string]string) error {
 	if reflect.DeepEqual(e.Spec.IPs, ips) {
 		return nil
 	}
@@ -56,8 +57,15 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 		},
 	}
 	subset := v1.EndpointSubset{}
-	for _, ip := range s.IPs {
-		subset.Addresses = append(subset.Addresses, v1.EndpointAddress{IP: ip, NodeName: &s.Node})
+	for pod, ip := range s.IPs {
+		subset.Addresses = append(subset.Addresses, v1.EndpointAddress{
+			IP:       ip,
+			NodeName: &s.Node,
+			TargetRef: &v1.ObjectReference{
+				Kind:      "Pod",
+				Namespace: s.Namespace,
+				Name:      pod,
+			}})
 	}
 	subset.Ports = []v1.EndpointPort{{
 		Name: "http",

@@ -53,6 +53,7 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig) *app.Applicat
 		// TODO implement different service accounts
 		ServiceAccount: "default",
 		Instances:      args.Instances,
+		PodType:        args.PodType,
 	})
 }
 

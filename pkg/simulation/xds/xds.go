@@ -14,6 +14,7 @@ type Simulation struct {
 	IP        string
 	// Defaults to "Kubernetes"
 	Cluster string
+	PodType model.PodType
 	cancel  context.CancelFunc
 	done    chan struct{}
 }
@@ -41,7 +42,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 			Namespace: x.Namespace,
 			Workload:  x.Name,
 			Meta:      meta,
-			NodeType:  "sidecar",
+			NodeType:  string(x.PodType),
 			IP:        x.IP,
 			Context:   c,
 		})
