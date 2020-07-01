@@ -126,6 +126,7 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 
 type Args struct {
 	PilotAddress  string
+	InjectAddress string
 	KubeConfig    string
 	ClusterConfig ClusterConfig
 }

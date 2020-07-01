@@ -1,10 +1,18 @@
 package app
 
 import (
+	"bytes"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"net/http"
 
+	"istio.io/pkg/log"
+	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
@@ -52,6 +60,9 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	p.created = true
 
 	if p.Spec.PodType != model.ExternalType {
+		if err := sendInjectionRequest(ctx.Args.InjectAddress, p.getPod()); err != nil {
+			return err
+		}
 		p.xds = &xds.Simulation{
 			Labels:    pod.Labels,
 			Namespace: pod.Namespace,
@@ -118,4 +129,53 @@ func (p *Pod) getPod() *v1.Pod {
 			PodIPs:     []v1.PodIP{{s.IP}},
 		},
 	}
+}
+
+var client = http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	},
+}
+
+func sendInjectionRequest(address string, pod *v1.Pod) error {
+	if address == "" {
+		return nil
+	}
+	jbytes, err := json.Marshal(pod)
+	if err != nil {
+		return err
+	}
+	request := &v1beta1.AdmissionRequest{
+		UID:                types.UID(util.GenUID()),
+		Kind:               metav1.GroupVersionKind{Version: "v1", Kind: "Pod"},
+		Resource:           metav1.GroupVersionResource{Version: "v1", Resource: "pods"},
+		RequestKind:        &metav1.GroupVersionKind{Version: "v1", Kind: "Pod"},
+		RequestResource:    &metav1.GroupVersionResource{Version: "v1", Resource: "pods"},
+		RequestSubResource: "",
+		Name:               pod.Name,
+		Namespace:          pod.Namespace,
+		Operation:          v1beta1.Create,
+		Object:             runtime.RawExtension{Raw: jbytes},
+		DryRun:             util.BoolPointer(false),
+		Options:            runtime.RawExtension{},
+	}
+	requestBytes, err := json.Marshal(&v1beta1.AdmissionReview{Request: request})
+	if err != nil {
+		return err
+	}
+	log.Infof("%v", string(requestBytes))
+	req, err := http.NewRequest(http.MethodPost, address, bytes.NewReader(requestBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("got bad response to injection: %v", resp.StatusCode)
+	}
+	return nil
 }
