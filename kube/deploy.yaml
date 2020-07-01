@@ -24,6 +24,9 @@ metadata:
   labels:
     app: etcd
 spec:
+  selector:
+    matchLabels:
+      app: etcd
   template:
     metadata:
       name: etcd
@@ -34,14 +37,22 @@ spec:
     spec:
       containers:
       - name: etcd
-        image: gcr.io/google_containers/etcd:3.4.3
+        image: k8s.gcr.io/etcd:3.4.7-0
         args:
         - etcd
+        - --data-dir=/var/lib/etcd
         - --listen-client-urls=http://0.0.0.0:2379
         - --advertise-client-urls=http://0.0.0.0:2379
-  selector:
-    matchLabels:
-      app: etcd
+        resources:
+          requests:
+            memory: 2048Mi
+            cpu: 1000m
+        volumeMounts:
+          - mountPath: /var/lib/etcd
+            name: etcd-data
+      volumes:
+      - emptyDir: {}
+        name: etcd-data
 ---
 apiVersion: v1
 kind: Service
@@ -74,7 +85,7 @@ spec:
     spec:
       containers:
       - name: apiserver
-        image: k8s.gcr.io/kube-apiserver:v1.17.0
+        image: k8s.gcr.io/kube-apiserver:v1.18.5
         command:
         - kube-apiserver
         - --etcd-servers=http://etcd:2379
@@ -88,6 +99,10 @@ spec:
         env:
         - name: KUBE_ADMISSION_CONTROL
           value: ""
+        resources:
+          requests:
+            memory: 2048Mi
+            cpu: 1000m
 ---
 apiVersion: v1
 kind: Secret

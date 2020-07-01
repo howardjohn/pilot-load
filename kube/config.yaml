@@ -6,16 +6,16 @@ namespaces:
 - name: default
   replicas: 1
   applications:
-#  - name: tall
-#    replicas: 1
-#    instances: 3
-#  - name: wide
-#    replicas: 2
-#    instances: 1
-#  - name: external
-#    replicas: 1
-#    instances: 1
-#    podType: external
+  - name: tall
+    replicas: 1
+    instances: 3
+  - name: wide
+    replicas: 2
+    instances: 1
+  - name: external
+    replicas: 1
+    instances: 1
+    podType: external
   - name: gateway
     replicas: 1
     instances: 1
