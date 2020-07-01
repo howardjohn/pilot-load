@@ -33,6 +33,18 @@ func (s *Service) Run(ctx model.Context) (err error) {
 
 func (s *Service) getService() *v1.Service {
 	p := s.Spec
+	ports := []v1.ServicePort{
+		{
+			Name:       "http",
+			Port:       80,
+			TargetPort: intstr.FromInt(80),
+		},
+		{
+			Name:       "https",
+			Port:       443,
+			TargetPort: intstr.FromInt(443),
+		},
+	}
 	return &v1.Service{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -41,14 +53,7 @@ func (s *Service) getService() *v1.Service {
 		},
 		Spec: v1.ServiceSpec{
 			// TODO port customization
-			Ports: []v1.ServicePort{
-				{
-					Name:       "http",
-					Port:       80,
-					Protocol:   v1.ProtocolTCP,
-					TargetPort: intstr.FromInt(80),
-				},
-			},
+			Ports: ports,
 			Selector: map[string]string{
 				"app": p.App,
 			},

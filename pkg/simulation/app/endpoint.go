@@ -70,6 +70,9 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 	subset.Ports = []v1.EndpointPort{{
 		Name: "http",
 		Port: 80,
+	}, {
+		Name: "https",
+		Port: 443,
 	}}
 	if len(s.IPs) > 0 {
 		ep.Subsets = append(ep.Subsets, subset)

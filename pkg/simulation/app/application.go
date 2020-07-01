@@ -25,6 +25,7 @@ type Application struct {
 	pods           []*Pod
 	service        *Service
 	virtualService *config.VirtualService
+	gateway        *config.Gateway
 	destRule       *config.DestinationRule
 }
 
@@ -52,12 +53,15 @@ func NewApplication(s ApplicationSpec) *Application {
 	w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
-	})
-	w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
-		App:       s.App,
-		Namespace: s.Namespace,
+		IsGateway: s.PodType == model.GatewayType,
 		Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
 	})
+	if s.PodType == model.GatewayType {
+		w.gateway = config.NewGateway(config.GatewaySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+		})
+	}
 	w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
 		App:       s.App,
 		Namespace: s.Namespace,
@@ -82,10 +86,14 @@ func (w *Application) makePod() *Pod {
 }
 
 func (w *Application) getSims() []model.Simulation {
-	sims := []model.Simulation{w.service, w.endpoint, w.virtualService, w.destRule}
+	sims := []model.Simulation{w.service, w.virtualService, w.destRule}
+	if w.gateway != nil {
+		sims = append(sims, w.gateway)
+	}
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}
+	sims = append(sims, w.endpoint)
 	return sims
 }
 

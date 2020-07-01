@@ -28,7 +28,7 @@ func Adsc(a model.Args) error {
 		Name:      "adsc",
 		IP:        "1.2.3.4",
 		// TODO: multicluster
-		Cluster: "pilot-load",
+		Cluster: "Kubernetes",
 	})
 }
 

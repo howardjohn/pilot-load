@@ -1,18 +1,22 @@
 nodeMetadata: {}
 jitter:
-  workloads: "15s"
-  config: "15s"
+  workloads: "0s"
+  config: "0s"
 namespaces:
 - name: default
   replicas: 1
   applications:
-  - name: tall
+#  - name: tall
+#    replicas: 1
+#    instances: 3
+#  - name: wide
+#    replicas: 2
+#    instances: 1
+#  - name: external
+#    replicas: 1
+#    instances: 1
+#    podType: external
+  - name: gateway
     replicas: 1
-    instances: 3
-  - name: wide
-    replicas: 2
     instances: 1
-  - name: external
-    replicas: 1
-    instances: 100
-    podType: external
+    podType: router

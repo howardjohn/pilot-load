@@ -59,7 +59,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			IP:        p.Spec.IP,
 			PodType:   p.Spec.PodType,
 			// TODO: multicluster
-			Cluster: "pilot-load",
+			Cluster: "Kubernetes",
 		}
 		return p.xds.Run(ctx)
 	}

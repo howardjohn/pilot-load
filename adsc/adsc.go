@@ -17,8 +17,10 @@ import (
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	envoy_extensions_filters_network_http_connection_manager_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	"github.com/golang/protobuf/ptypes"
 
 	"istio.io/pkg/log"
 
@@ -286,13 +288,10 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	for _, l := range ll {
 		f0 := l.FilterChains[0].Filters[0]
 		if f0.Name == "envoy.http_connection_manager" {
-
-			// Getting from config is too painful..
-			port := l.Address.GetSocketAddress().GetPortValue()
-			if port == 15002 {
-				routes = append(routes, "http_proxy")
-			} else {
-				routes = append(routes, fmt.Sprintf("%d", port))
+			hcm := &envoy_extensions_filters_network_http_connection_manager_v3.HttpConnectionManager{}
+			_ = ptypes.UnmarshalAny(f0.GetTypedConfig(), hcm)
+			if route := hcm.GetRds().GetRouteConfigName(); route != "" {
+				routes = append(routes, route)
 			}
 		}
 	}
@@ -304,7 +303,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 				dumpScope.Errorf("Error in LDS: %v", err)
 			}
 
-			dumpScope.Debugf("%d: %v", i, b)
+			dumpScope.Debugf("lds %d: %v", i, b)
 		}
 	}
 	a.mutex.Lock()
@@ -370,7 +369,7 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 				dumpScope.Errorf("Error in CDS: %v", err)
 			}
 
-			dumpScope.Debugf("%d: %v", i, b)
+			dumpScope.Debugf("cds %d: %v", i, b)
 		}
 	}
 
@@ -411,7 +410,7 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 				dumpScope.Errorf("Error in EDS: %v", err)
 			}
 
-			dumpScope.Debugf("%d: %v", i, b)
+			dumpScope.Debugf("eds %d: %v", i, b)
 		}
 	}
 	if !a.InitialLoad {
@@ -451,7 +450,7 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 				dumpScope.Errorf("Error in RDS: %v", err)
 			}
 
-			dumpScope.Debugf("%d: %v", i, b)
+			dumpScope.Debugf("rds %d: %v", i, b)
 		}
 	}
 
