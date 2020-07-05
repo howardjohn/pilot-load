@@ -83,7 +83,7 @@ data:
       config: "15s"
     namespaces:
       - name: default
-        replicas: 50
+        replicas: 1
         applications:
         - name: tall
           replicas: 1

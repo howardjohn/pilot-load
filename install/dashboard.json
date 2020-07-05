@@ -19,6 +19,20 @@
   "links": [],
   "panels": [
     {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 19,
+      "panels": [],
+      "title": "Istiod",
+      "type": "row"
+    },
+    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -36,7 +50,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "hiddenSeries": false,
       "id": 11,
@@ -50,7 +64,7 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
       "options": {
@@ -199,7 +213,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 0
+        "y": 1
       },
       "hiddenSeries": false,
       "id": 9,
@@ -213,7 +227,7 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
       "options": {
@@ -229,29 +243,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(container_cpu_usage_seconds_total{container=\"discovery\", pod=~\"istiod-.*|istio-pilot-.*\"}[1m]))",
+          "expr": "sum(irate(container_cpu_usage_seconds_total{container=\"discovery\", pod=~\"istiod-.*\"}[1m]))",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Discovery (container)",
+          "legendFormat": "CPU Usage",
           "refId": "A"
         },
         {
-          "expr": "irate(process_cpu_seconds_total{app=\"istiod\"}[1m])",
+          "expr": "sum(irate(container_cpu_cfs_throttled_seconds_total{container=\"discovery\", pod=~\"istiod-.*\"}[1m]))",
           "format": "time_series",
           "hide": false,
-          "intervalFactor": 2,
-          "legendFormat": "Discovery (process)",
-          "refId": "C",
-          "step": 2
-        },
-        {
-          "expr": "sum(irate(container_cpu_usage_seconds_total{container=\"istio-proxy\", pod=~\"istiod-.*|istio-pilot-.*\"}[1m]))",
-          "format": "time_series",
-          "hide": false,
-          "intervalFactor": 2,
-          "legendFormat": "Sidecar (container)",
-          "refId": "B",
-          "step": 2
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Throttled",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -313,7 +319,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 0
+        "y": 1
       },
       "hiddenSeries": false,
       "id": 3,
@@ -407,7 +413,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 0
+        "y": 1
       },
       "hiddenSeries": false,
       "id": 2,
@@ -421,7 +427,7 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
@@ -502,7 +508,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 7
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 13,
@@ -606,6 +612,100 @@
     },
     {
       "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "hiddenSeries": false,
+      "id": 5,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": false,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(pilot_push_triggers[1m])) by (type)",
+          "interval": "",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Push Triggers",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
       "bars": false,
       "dashLength": 10,
       "dashes": false,
@@ -622,8 +722,8 @@
       "gridPos": {
         "h": 8,
         "w": 6,
-        "x": 6,
-        "y": 7
+        "x": 12,
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 15,
@@ -637,7 +737,7 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
       "options": {
@@ -734,13 +834,13 @@
         },
         "overrides": []
       },
-      "fill": 1,
+      "fill": 2,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 6,
-        "x": 12,
-        "y": 7
+        "x": 18,
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 7,
@@ -754,7 +854,120 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "Connected XDS Clients",
+          "color": "#5794F2"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(pilot_xds)",
+          "interval": "",
+          "legendFormat": "Connected XDS Clients",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Clients",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 21,
+      "panels": [],
+      "title": "Load",
+      "type": "row"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 17
+      },
+      "hiddenSeries": false,
+      "id": 24,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
@@ -769,17 +982,135 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(pilot_inbound_updates[1m])) by (type)",
+          "expr": "container_memory_usage_bytes{pod=~\"apiserver-.*\", container=\"apiserver\"}",
           "interval": "",
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{pod}}",
           "refId": "A"
+        },
+        {
+          "expr": "container_memory_usage_bytes{pod=~\"etcd-.*\", container=\"etcd\"}",
+          "interval": "",
+          "legendFormat": "{{pod}}",
+          "refId": "B"
+        },
+        {
+          "expr": "container_memory_usage_bytes{pod=~\"pilot-loa-.*\", container=\"pilot-load\"}",
+          "interval": "",
+          "legendFormat": "{{pod}}",
+          "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Inbound Update Types",
+      "title": "Memory",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 17
+      },
+      "hiddenSeries": false,
+      "id": 23,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "irate(container_cpu_usage_seconds_total{pod=~\"apiserver-.*\", container=\"apiserver\"}[1m])",
+          "interval": "",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        },
+        {
+          "expr": "irate(container_cpu_usage_seconds_total{pod=~\"etcd-.*\", container=\"etcd\"}[1m])",
+          "interval": "",
+          "legendFormat": "{{pod}}",
+          "refId": "B"
+        },
+        {
+          "expr": "irate(container_cpu_usage_seconds_total{pod=~\"pilot-loa-.*\", container=\"pilot-load\"}[1m])",
+          "interval": "",
+          "legendFormat": "{{pod}}",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "CPU",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -833,11 +1164,11 @@
       "gridPos": {
         "h": 8,
         "w": 6,
-        "x": 18,
-        "y": 7
+        "x": 12,
+        "y": 17
       },
       "hiddenSeries": false,
-      "id": 5,
+      "id": 26,
       "legend": {
         "avg": false,
         "current": false,
@@ -848,7 +1179,113 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "GC CPU Percentage",
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "go_gc_duration_seconds{app=\"istiod\"}",
+          "interval": "",
+          "legendFormat": "{{quantile}}",
+          "refId": "A"
+        },
+        {
+          "expr": "go_memstats_gc_cpu_fraction{app=\"istiod\"}",
+          "interval": "",
+          "legendFormat": "GC CPU Percentage",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "GC Duration",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "decimals": 3,
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 17
+      },
+      "hiddenSeries": false,
+      "id": 28,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
@@ -863,9 +1300,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(pilot_push_triggers[1m])) by (type)",
+          "expr": "sum(etcd_object_counts{resource=~\"pods|namespaces|services|gateways.networking.istio.io|virtualservices.networking.istio.io\"}) by (resource)\n",
           "interval": "",
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{resource}}",
           "refId": "A"
         }
       ],
@@ -873,7 +1310,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Push Triggers",
+      "title": "Resource Counts",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -919,7 +1356,7 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -938,5 +1375,5 @@
   "timezone": "",
   "title": "Pilot Load Dashbard",
   "uid": "jBJdIfWMk",
-  "version": 1
+  "version": 6
 }

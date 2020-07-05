@@ -82,6 +82,9 @@ spec:
       name: apiserver
       labels:
         app: apiserver
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "18090"
     spec:
       containers:
       - name: apiserver
