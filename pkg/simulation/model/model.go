@@ -111,9 +111,6 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 			if dp.Replicas == 0 {
 				dp.Replicas = 1
 			}
-			if dp.Instances == 0 {
-				dp.Instances = 1
-			}
 			if dp.PodType == "" {
 				dp.PodType = SidecarType
 			}

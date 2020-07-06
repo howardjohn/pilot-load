@@ -93,7 +93,7 @@ var rootCmd = &cobra.Command{
 
 var defaultConfig = model.ClusterConfig{
 	Namespaces: []model.NamespaceConfig{{
-		Applications: []model.ApplicationConfig{{}},
+		Applications: []model.ApplicationConfig{{Instances: 1}},
 	}},
 }
 
