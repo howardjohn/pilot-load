@@ -82,10 +82,14 @@ data:
       workloads: "0s"
       config: "0s"
     namespaces:
-      - name: default
+    - name: default
+      replicas: 1
+      applications:
+      - name: tall
         replicas: 1
-        applications:
-        - name: tall
-          replicas: 10
-          instances: 10000
-          podType: external
+        instances: 10
+        podType: external
+      - name: wide
+        replicas: 5
+        instances: 2
+        podType: external

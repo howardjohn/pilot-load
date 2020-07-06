@@ -67,8 +67,11 @@ func (c *Client) Delete(o runtime.Object) error {
 	gvr, kind := toGvr(o)
 	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
 	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+	scope.Debugf("deleting resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 	return cl.Delete(context.TODO(), us.GetName(), metav1.DeleteOptions{GracePeriodSeconds: &deletePeriod})
 }
+
+var scope = log.RegisterScope("kube", "", 0)
 
 func init() {
 	if err := istioscheme.AddToScheme(scheme.Scheme); err != nil {
@@ -119,19 +122,19 @@ func (c *Client) Apply(o runtime.Object) error {
 		cur, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
 		switch {
 		case errors.IsNotFound(err):
-			log.Debugf("%+v %+v", gvr, us.GetObjectKind().GroupVersionKind())
+			scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			if _, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
 				return err
 			}
 			if _, f := us.Object["status"]; f {
-				log.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
+				scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}
 			}
 			return nil
 		case err == nil:
-			log.Debugf("updating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			scope.Debugf("updating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			us.SetResourceVersion(cur.GetResourceVersion())
 			bytes, err := us.MarshalJSON()
 			if err != nil {

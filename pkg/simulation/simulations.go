@@ -11,6 +11,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
@@ -23,13 +24,21 @@ func Cluster(a model.Args) error {
 }
 
 func Adsc(a model.Args) error {
-	return ExecuteSimulations(a, &xds.Simulation{
-		Namespace: "default",
-		Name:      "adsc",
-		IP:        "1.2.3.4",
-		// TODO: multicluster
-		Cluster: "Kubernetes",
-	})
+	sims := []model.Simulation{}
+	count := a.AdsConfig.Count
+	if count == 0 {
+		count = 1
+	}
+	for i := 0; i < count; i++ {
+		sims = append(sims, &xds.Simulation{
+			Namespace: "default",
+			Name:      "adsc",
+			IP:        util.GetIP(),
+			// TODO: multicluster
+			Cluster: "Kubernetes",
+		})
+	}
+	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims})
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {

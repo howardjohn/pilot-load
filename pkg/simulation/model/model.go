@@ -124,11 +124,16 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 	return *ret
 }
 
+type AdscConfig struct {
+	Count int
+}
+
 type Args struct {
 	PilotAddress  string
 	InjectAddress string
 	KubeConfig    string
 	ClusterConfig ClusterConfig
+	AdsConfig     AdscConfig
 }
 
 type Context struct {

@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
-	"github.com/howardjohn/pilot-load/pkg/simulation"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
 	"istio.io/pkg/log"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 var (
@@ -20,12 +21,15 @@ var (
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	configFile     = ""
 	loggingOptions = defaultLogOptions()
+	adscConfig     = model.AdscConfig{}
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
+
+	rootCmd.PersistentFlags().IntVar(&adscConfig.Count, "adsc.count", adscConfig.Count, "number of adsc connections to make")
 }
 
 func defaultLogOptions() *log.Options {
@@ -67,6 +71,7 @@ var rootCmd = &cobra.Command{
 			PilotAddress:  pilotAddress,
 			KubeConfig:    kubeconfig,
 			ClusterConfig: config,
+			AdsConfig:     adscConfig,
 		}
 
 		switch sim {
