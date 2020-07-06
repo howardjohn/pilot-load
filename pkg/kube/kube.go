@@ -7,6 +7,7 @@ import (
 
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
+	"istio.io/istio/pkg/test/scopes"
 	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +22,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	authenticationv1 "k8s.io/api/authentication/v1"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
@@ -151,6 +154,34 @@ func (c *Client) Apply(o runtime.Object) error {
 		return fmt.Errorf("failed to apply %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
 	}
 	return nil
+}
+
+func (c *Client) FetchRootCert() (string, error) {
+	cm, err := c.kubernetes.CoreV1().ConfigMaps("istio-system").Get(context.TODO(), "istio-ca-root-cert", metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	return cm.Data["root-cert.pem"], nil
+}
+
+// 7 days
+var saTokenExpiration int64 = 60 * 24 * 7
+
+func (c *Client) CreateServiceAccountToken(ns string, serviceAccount string) (string, error) {
+	scopes.Framework.Debugf("Creating service account token for: %s/%s", ns, serviceAccount)
+
+	token, err := c.kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
+		&authenticationv1.TokenRequest{
+			Spec: authenticationv1.TokenRequestSpec{
+				Audiences:         []string{"istio-ca"},
+				ExpirationSeconds: &saTokenExpiration,
+			},
+		}, metav1.CreateOptions{})
+
+	if err != nil {
+		return "", err
+	}
+	return token.Status.Token, nil
 }
 
 func toUnstructured(o runtime.Object) *unstructured.Unstructured {

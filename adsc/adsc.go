@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"sync"
 	"time"
@@ -21,7 +20,6 @@ import (
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/golang/protobuf/ptypes"
-
 	"istio.io/pkg/log"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -56,6 +54,10 @@ type Config struct {
 
 	// Context used for early cancellation
 	Context context.Context
+
+	// Certificate options. If not provided, will use plaintext
+	RootCert   []byte
+	ClientCert tls.Certificate
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -74,8 +76,11 @@ type ADSC struct {
 
 	done chan error
 
-	certDir string
-	url     string
+	// Certificate options. If not provided, will use plaintext
+	RootCert   []byte
+	ClientCert tls.Certificate
+
+	url string
 
 	InitialLoad bool
 
@@ -95,13 +100,14 @@ var (
 )
 
 // Dial connects to a ADS server, with optional MTLS authentication if a cert dir is specified.
-func Dial(url string, certDir string, opts *Config) (*ADSC, error) {
+func Dial(url string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
-		done:    make(chan error),
-		Updates: make(chan string, 100),
-		certDir: certDir,
-		url:     url,
-		ctx:     opts.Context,
+		done:       make(chan error),
+		Updates:    make(chan string, 100),
+		RootCert:   opts.RootCert,
+		ClientCert: opts.ClientCert,
+		url:        url,
+		ctx:        opts.Context,
 	}
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
@@ -144,32 +150,6 @@ func getPrivateIPIfAvailable() net.IP {
 	return net.IPv4zero
 }
 
-func tlsConfig(certDir string) (*tls.Config, error) {
-	clientCert, err := tls.LoadX509KeyPair(certDir+"/cert-chain.pem",
-		certDir+"/key.pem")
-	if err != nil {
-		return nil, err
-	}
-
-	serverCABytes, err := ioutil.ReadFile(certDir + "/root-cert.pem")
-	if err != nil {
-		return nil, err
-	}
-	serverCAs := x509.NewCertPool()
-	if ok := serverCAs.AppendCertsFromPEM(serverCABytes); !ok {
-		return nil, err
-	}
-
-	return &tls.Config{
-		Certificates: []tls.Certificate{clientCert},
-		RootCAs:      serverCAs,
-		ServerName:   "istio-pilot.istio-system",
-		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			return nil
-		},
-	}, nil
-}
-
 // Close the stream.
 func (a *ADSC) Close() {
 	a.mutex.Lock()
@@ -185,32 +165,35 @@ func (a *ADSC) Close() {
 // Run will run the ADS client.
 func (a *ADSC) Run() error {
 	var err error
-	if len(a.certDir) > 0 {
-		tlsCfg, err := tlsConfig(a.certDir)
-		if err != nil {
+
+	if len(a.RootCert) > 0 {
+		serverCAs := x509.NewCertPool()
+		if ok := serverCAs.AppendCertsFromPEM(a.RootCert); !ok {
 			return err
+		}
+
+		tlsCfg := &tls.Config{
+			Certificates:       []tls.Certificate{a.ClientCert},
+			RootCAs:            serverCAs,
+			InsecureSkipVerify: true,
 		}
 		creds := credentials.NewTLS(tlsCfg)
 
-		opts := []grpc.DialOption{
-			// Verify Pilot cert and service account
-			grpc.WithTransportCredentials(creds),
-		}
-		a.conn, err = grpc.Dial(a.url, opts...)
+		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithTransportCredentials(creds))
 		if err != nil {
-			return err
+			return fmt.Errorf("dial context: %v", err)
 		}
 	} else {
 		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithInsecure())
 		if err != nil {
-			return err
+			return fmt.Errorf("dial context: %v", err)
 		}
 	}
 
 	xds := discovery.NewAggregatedDiscoveryServiceClient(a.conn)
 	edsstr, err := xds.StreamAggregatedResources(a.ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("stream: %v", err)
 	}
 	a.stream = edsstr
 	go a.handleRecv()

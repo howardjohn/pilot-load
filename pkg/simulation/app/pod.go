@@ -2,11 +2,20 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"time"
 
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
+	pkiutil "istio.io/istio/security/pkg/pki/util"
 	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -17,6 +26,8 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+
+	pb "istio.io/istio/security/proto"
 )
 
 type PodSpec struct {
@@ -60,9 +71,10 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	p.created = true
 
 	if p.Spec.PodType != model.ExternalType {
-		if err := sendInjectionRequest(ctx.Args.InjectAddress, p.getPod()); err != nil {
+		if err := sendInjectionRequest(ctx.Args.InjectAddress, pod); err != nil {
 			return err
 		}
+
 		p.xds = &xds.Simulation{
 			Labels:    pod.Labels,
 			Namespace: pod.Namespace,
@@ -72,9 +84,91 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			// TODO: multicluster
 			Cluster: "Kubernetes",
 		}
+
+		_, port, _ := net.SplitHostPort(ctx.Args.PilotAddress)
+		if port != "15010" {
+			cert, rootCert, err := sendCsr(ctx, p.Spec)
+			if err != nil {
+				return err
+			}
+			p.xds.ClientCert = cert
+			p.xds.RootCert = rootCert
+		}
 		return p.xds.Run(ctx)
 	}
 	return nil
+}
+
+func sendCsr(ctx model.Context, s *PodSpec) (tls.Certificate, []byte, error) {
+	rootCert, err := ctx.Client.FetchRootCert()
+	if err != nil {
+		return tls.Certificate{}, nil, errors.Wrap(err, "failed to fetch root cert")
+	}
+
+	token, err := ctx.Client.CreateServiceAccountToken(s.Namespace, s.ServiceAccount)
+	if err != nil {
+		return tls.Certificate{}, nil, errors.Wrap(err, "failed to create service account token")
+	}
+
+	san := fmt.Sprintf("spiffe://%s/ns/%s/sa/%s", "cluster.local", s.Namespace, s.ServiceAccount)
+	options := pkiutil.CertOptions{
+		Host:       san,
+		RSAKeySize: 2048,
+	}
+	// Generate the cert/key, send CSR to CA.
+	csrPEM, keyPEM, err := pkiutil.GenCSR(options)
+	if err != nil {
+		return tls.Certificate{}, nil, err
+	}
+
+	client, err := newCitadelClient(ctx.Args.PilotAddress, []byte(rootCert))
+	if err != nil {
+		return tls.Certificate{}, nil, errors.Wrap(err, "creating citadel client")
+	}
+	req := &pb.IstioCertificateRequest{
+		Csr:              string(csrPEM),
+		ValidityDuration: int64((time.Hour * 24 * 7).Seconds()),
+	}
+	rctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("Authorization", "Bearer "+token, "ClusterID", "Kubernetes"))
+	resp, err := client.CreateCertificate(rctx, req)
+	if err != nil {
+		return tls.Certificate{}, nil, errors.Wrap(err, "send CSR")
+	}
+	certChain := []byte{}
+	for _, c := range resp.CertChain {
+		certChain = append(certChain, []byte(c)...)
+	}
+
+	_ = keyPEM
+	clientCert, err := tls.X509KeyPair(certChain, keyPEM)
+	if err != nil {
+		return tls.Certificate{}, nil, err
+	}
+	return clientCert, []byte(rootCert), nil
+}
+
+// NewCitadelClient create a CA client for Citadel.
+func newCitadelClient(endpoint string, rootCert []byte) (pb.IstioCertificateServiceClient, error) {
+	certPool := x509.NewCertPool()
+	ok := certPool.AppendCertsFromPEM(rootCert)
+	if !ok {
+		return nil, fmt.Errorf("failed to append certificates")
+	}
+	config := tls.Config{
+		RootCAs:            certPool,
+		InsecureSkipVerify: true,
+	}
+	transportCreds := credentials.NewTLS(&config)
+
+	// TODO(JimmyCYJ): This connection is create at construction time. If conn is broken at anytime,
+	//  need a way to reconnect.
+	conn, err := grpc.Dial(endpoint, grpc.WithTransportCredentials(transportCreds))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to endpoint %s", endpoint)
+	}
+
+	client := pb.NewIstioCertificateServiceClient(conn)
+	return client, nil
 }
 
 func (p *Pod) Cleanup(ctx model.Context) error {

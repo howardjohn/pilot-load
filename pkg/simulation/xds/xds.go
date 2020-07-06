@@ -2,6 +2,7 @@ package xds
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -15,8 +16,13 @@ type Simulation struct {
 	// Defaults to "Kubernetes"
 	Cluster string
 	PodType model.PodType
-	cancel  context.CancelFunc
-	done    chan struct{}
+
+	// Certificate options. If not provided, will use plaintext
+	RootCert   []byte
+	ClientCert tls.Certificate
+
+	cancel context.CancelFunc
+	done   chan struct{}
 }
 
 func (x *Simulation) Run(ctx model.Context) error {
@@ -45,6 +51,9 @@ func (x *Simulation) Run(ctx model.Context) error {
 			NodeType:  string(x.PodType),
 			IP:        x.IP,
 			Context:   c,
+
+			RootCert:   x.RootCert,
+			ClientCert: x.ClientCert,
 		})
 		close(x.done)
 	}()

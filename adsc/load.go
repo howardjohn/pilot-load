@@ -13,7 +13,7 @@ func Connect(pilotAddress string, config *Config) {
 	}
 	for {
 		log("Connecting: %v", config.IP)
-		con, err := Dial(pilotAddress, "", config)
+		con, err := Dial(pilotAddress, config)
 		if err != nil {
 			log("Error in ADS connection: %v", err)
 			attempts++
