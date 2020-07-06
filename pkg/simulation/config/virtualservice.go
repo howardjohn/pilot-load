@@ -20,7 +20,7 @@ type SubsetSpec struct {
 type VirtualServiceSpec struct {
 	App       string
 	Namespace string
-	IsGateway bool
+	Gateways  []string
 	Subsets   []SubsetSpec
 }
 
@@ -80,10 +80,6 @@ func (v *VirtualService) getVirtualService() *v1alpha3.VirtualService {
 				Port:   &networkingv1alpha3.PortSelector{Number: 80},
 			}})
 	}
-	gateways := []string{}
-	if v.Spec.IsGateway {
-		gateways = []string{s.App}
-	}
 	return &v1alpha3.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.App,
@@ -91,7 +87,7 @@ func (v *VirtualService) getVirtualService() *v1alpha3.VirtualService {
 		},
 		Spec: networkingv1alpha3.VirtualService{
 			Hosts:    []string{s.App + ".example.com"},
-			Gateways: gateways,
+			Gateways: s.Gateways,
 			Http: []*networkingv1alpha3.HTTPRoute{
 				{
 					Route: routes,

@@ -79,7 +79,17 @@ type ApplicationConfig struct {
 	PodType   PodType       `json:"podType"`
 	Replicas  int           `json:"replicas"`
 	Instances int           `json:"instances"`
+	Gateways  GatewayConfig `json:"gateways"`
 	GetNode   func() string `json:"-"`
+}
+
+type GatewayConfig struct {
+	// Defaults to app name. Setting allows a stable identifier
+	Name string `json:"name"`
+	// Set true to create a gateway
+	Enabled bool `json:"enabled"`
+	// Which gateways virtual services will use
+	VirtualServices []string `json:"virtualServices"`
 }
 
 type NamespaceConfig struct {

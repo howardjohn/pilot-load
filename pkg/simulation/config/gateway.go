@@ -8,11 +8,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type GatewaySpec struct {
 	App       string
 	Namespace string
+	Name      string
 }
 
 type Gateway struct {
@@ -37,7 +39,7 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 	s := v.Spec
 	return &v1alpha3.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      s.App,
+			Name:      util.StringDefault(s.Name, s.App),
 			Namespace: s.Namespace,
 		},
 		Spec: networkingv1alpha3.Gateway{

@@ -17,6 +17,7 @@ type ApplicationSpec struct {
 	ServiceAccount string
 	Instances      int
 	PodType        model.PodType
+	GatewayConfig  model.GatewayConfig
 }
 
 type Application struct {
@@ -50,23 +51,26 @@ func NewApplication(s ApplicationSpec) *Application {
 		App:       s.App,
 		Namespace: s.Namespace,
 	})
-	w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
-		App:       s.App,
-		Namespace: s.Namespace,
-		IsGateway: s.PodType == model.GatewayType,
-		Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
-	})
-	if s.PodType == model.GatewayType {
+	if s.GatewayConfig.Enabled {
 		w.gateway = config.NewGateway(config.GatewaySpec{
+			Name:      s.GatewayConfig.Name,
 			App:       s.App,
 			Namespace: s.Namespace,
 		})
 	}
-	w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
-		App:       s.App,
-		Namespace: s.Namespace,
-		Subsets:   []string{"a", "b"},
-	})
+	if s.PodType != model.ExternalType {
+		w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			Gateways:  s.GatewayConfig.VirtualServices,
+			Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
+		})
+		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			Subsets:   []string{"a", "b"},
+		})
+	}
 	return w
 }
 
@@ -86,7 +90,13 @@ func (w *Application) makePod() *Pod {
 }
 
 func (w *Application) getSims() []model.Simulation {
-	sims := []model.Simulation{w.service, w.virtualService, w.destRule}
+	sims := []model.Simulation{w.service}
+	if w.virtualService != nil {
+		sims = append(sims, w.virtualService)
+	}
+	if w.destRule != nil {
+		sims = append(sims, w.destRule)
+	}
 	if w.gateway != nil {
 		sims = append(sims, w.gateway)
 	}

@@ -12,6 +12,8 @@ namespaces:
   - name: wide
     replicas: 2
     instances: 1
+    gateways:
+      virtualServices: [main]
   - name: external
     replicas: 1
     instances: 1
@@ -19,3 +21,6 @@ namespaces:
   - name: gateway
     replicas: 1
     instances: 1
+    gateways:
+      name: main
+      enabled: true
