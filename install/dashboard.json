@@ -14,7 +14,7 @@
   },
   "editable": true,
   "gnetId": null,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": 8,
   "links": [],
   "panels": [
@@ -442,10 +442,22 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(pilot_k8s_reg_events{event!=\"updatesame\"}[1m])) by (type, event)",
+          "expr": "sum(irate(pilot_k8s_reg_events{event=~\"add\"}[1m])) by (type, event)",
           "interval": "",
           "legendFormat": "{{event}} {{type}}",
           "refId": "A"
+        },
+        {
+          "expr": "-sum(irate(pilot_k8s_reg_events{event=\"delete\"}[1m])) by (type, event)",
+          "interval": "",
+          "legendFormat": "{{event}} {{type}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(irate(pilot_k8s_reg_events{event=~\"update\"}[1m])) by (type, event)",
+          "interval": "",
+          "legendFormat": "{{event}} {{type}}",
+          "refId": "C"
         }
       ],
       "thresholds": [],
@@ -1356,7 +1368,7 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {
@@ -1375,5 +1387,5 @@
   "timezone": "",
   "title": "Pilot Load Dashbard",
   "uid": "jBJdIfWMk",
-  "version": 6
+  "version": 7
 }

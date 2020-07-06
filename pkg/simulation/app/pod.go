@@ -108,7 +108,7 @@ func (p *Pod) getPod() *v1.Pod {
 			Labels:    labels,
 		},
 		Spec: v1.PodSpec{
-			Volumes: nil,
+			ServiceAccountName: s.ServiceAccount,
 			InitContainers: []v1.Container{{
 				Name:  "istio-init",
 				Image: "istio/proxyv2",

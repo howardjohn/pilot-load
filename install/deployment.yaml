@@ -79,15 +79,13 @@ data:
   config.yaml: |
     nodeMetadata: {}
     jitter:
-      workloads: "1s"
-      config: "15s"
+      workloads: "0s"
+      config: "0s"
     namespaces:
       - name: default
         replicas: 1
         applications:
         - name: tall
-          replicas: 1
-          instances: 100
-        - name: wide
           replicas: 10
-          instances: 10
+          instances: 10000
+          podType: external

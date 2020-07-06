@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+	"github.com/howardjohn/pilot-load/pkg/simulation"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
 	"istio.io/pkg/log"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 var (
@@ -51,7 +51,7 @@ var rootCmd = &cobra.Command{
 			sim = args[0]
 		}
 		if kubeconfig == "" {
-			kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/configFile")
+			kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/config")
 		}
 		config, err := readConfigFile(configFile)
 		if err != nil {
