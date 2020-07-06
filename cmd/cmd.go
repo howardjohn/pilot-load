@@ -64,11 +64,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
 		config = config.ApplyDefaults()
-		bytes, err := yaml.Marshal(config)
-		if err != nil {
-			return err
-		}
-		log.Infof("Starting simulation with config:\n%v", string(bytes))
+		logConfig(config)
 		if qps == 0 {
 			qps = 100
 		}
@@ -89,6 +85,23 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc}", sim)
 		}
 	},
+}
+
+func logConfig(config model.ClusterConfig) {
+	bytes, err := yaml.Marshal(config)
+	if err != nil {
+		panic(err.Error())
+	}
+	log.Infof("Starting simulation with config:\n%v", string(bytes))
+	namespaces, pods, applications := 0, 0, 0
+	for _, ns := range config.Namespaces {
+		namespaces += ns.Replicas
+		for _, app := range ns.Applications {
+			applications += app.Replicas
+			pods += app.Replicas * app.Instances
+		}
+	}
+	log.Infof("Initial configuration: %d namespaces, %d applications, and %d pods", namespaces, applications, pods)
 }
 
 var defaultConfig = model.ClusterConfig{
