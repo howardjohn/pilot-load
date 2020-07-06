@@ -5,7 +5,7 @@ set -eux
 WD=$(dirname "$0")
 WD=$(cd "$WD"; pwd)
 
-kubectl apply -f kube/deploy.yaml
+kubectl apply -f ${WD}/deploy.yaml
 
 kubectl wait -n pilot-load --for=condition=available deployment/apiserver
 
@@ -14,6 +14,7 @@ kubectl port-forward -n pilot-load svc/apiserver 18090 &
 sleep 1
 
 if [[ "${PATCH:-}" != "false" ]]; then
+  kubectl label secret -n istio-system pilot-load-multicluster istio/multiCluster-
   cat <<EOF > /tmp/patch.json
 {
     "spec": {
@@ -46,7 +47,6 @@ if [[ "${PATCH:-}" != "false" ]]; then
 }
 EOF
   kubectl patch deployment -n istio-system istiod --patch "$(cat /tmp/patch.json)"
-  kubectl label secret -n istio-system pilot-load-multicluster istio/multiCluster-
 fi
 
 if [[ "${SINGLE:-}" != "false" ]]; then
@@ -55,10 +55,10 @@ if [[ "${SINGLE:-}" != "false" ]]; then
 fi
 
 
-export KUBECONFIG=kube/local-kubeconfig.yaml
+export KUBECONFIG=${WD}/local-kubeconfig.yaml
 kubectl create namespace istio-system || true
 kubectl apply -f $GOPATH/src/istio.io/istio/manifests/charts/base/crds/
 kubectl apply -f $WD/telemetryv2.yaml
 
 echo To start test: go run main.go
-echo 'export KUBECONFIG=kube/local-kubeconfig.yaml'
+echo "export KUBECONFIG=${WD}/local-kubeconfig.yaml"

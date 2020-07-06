@@ -45,8 +45,8 @@ spec:
         - --advertise-client-urls=http://0.0.0.0:2379
         resources:
           requests:
-            memory: 2048Mi
-            cpu: 1000m
+            memory: 4096Mi
+            cpu: 2000m
         volumeMounts:
           - mountPath: /var/lib/etcd
             name: etcd-data
@@ -104,16 +104,16 @@ spec:
           value: ""
         resources:
           requests:
-            memory: 2048Mi
-            cpu: 1000m
+            memory: 4096Mi
+            cpu: 2000m
 ---
-#apiVersion: v1
-#kind: Secret
-#metadata:
-#  name: pilot-load-multicluster
-#  namespace: istio-system
-#  labels:
-#    istio/multiCluster: "true"
-#type: Opaque
-#data:
-#  pilot-load: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIHNlcnZlcjogaHR0cDovL2FwaXNlcnZlci5waWxvdC1sb2FkOjE4MDkwCiAgbmFtZTogbG9hZApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogbG9hZAogICAgdXNlcjogZmFrZQogIG5hbWU6IGxvYWQKY3VycmVudC1jb250ZXh0OiBsb2FkCmtpbmQ6IENvbmZpZwpwcmVmZXJlbmNlczoge30KdXNlcnM6Ci0gbmFtZTogZmFrZQo=
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pilot-load-multicluster
+  namespace: istio-system
+  labels:
+    istio/multiCluster: "true"
+type: Opaque
+data:
+  pilot-load: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIHNlcnZlcjogaHR0cDovL2FwaXNlcnZlci5waWxvdC1sb2FkOjE4MDkwCiAgbmFtZTogbG9hZApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogbG9hZAogICAgdXNlcjogZmFrZQogIG5hbWU6IGxvYWQKY3VycmVudC1jb250ZXh0OiBsb2FkCmtpbmQ6IENvbmZpZwpwcmVmZXJlbmNlczoge30KdXNlcnM6Ci0gbmFtZTogZmFrZQo=

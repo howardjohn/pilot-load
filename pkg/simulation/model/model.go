@@ -132,6 +132,7 @@ type Args struct {
 	PilotAddress  string
 	InjectAddress string
 	KubeConfig    string
+	Qps           int
 	ClusterConfig ClusterConfig
 	AdsConfig     AdscConfig
 }

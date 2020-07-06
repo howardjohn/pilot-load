@@ -30,14 +30,13 @@ type Client struct {
 	kubernetes kubernetes.Interface
 }
 
-func NewClient(kubeconfig string) (*Client, error) {
+func NewClient(kubeconfig string, qps int) (*Client, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, err
 	}
-	// Gotta go fast
-	config.QPS = 1000
-	config.Burst = 2000
+	config.QPS = float32(qps)
+	config.Burst = qps * 2
 	d, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, err

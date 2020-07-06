@@ -22,12 +22,14 @@ var (
 	configFile     = ""
 	loggingOptions = defaultLogOptions()
 	adscConfig     = model.AdscConfig{}
+	qps            = 100
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
+	rootCmd.PersistentFlags().IntVar(&qps, "qps", qps, "qps for kube client")
 
 	rootCmd.PersistentFlags().IntVar(&adscConfig.Count, "adsc.count", adscConfig.Count, "number of adsc connections to make")
 }
@@ -67,9 +69,13 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		log.Infof("Starting simulation with config:\n%v", string(bytes))
+		if qps == 0 {
+			qps = 100
+		}
 		a := model.Args{
 			PilotAddress:  pilotAddress,
 			KubeConfig:    kubeconfig,
+			Qps:           qps,
 			ClusterConfig: config,
 			AdsConfig:     adscConfig,
 		}

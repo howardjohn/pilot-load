@@ -42,7 +42,7 @@ func Adsc(a model.Args) error {
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
-	cl, err := kube.NewClient(a.KubeConfig)
+	cl, err := kube.NewClient(a.KubeConfig, a.Qps)
 	if err != nil {
 		return err
 	}
