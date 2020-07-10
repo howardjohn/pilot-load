@@ -18,8 +18,7 @@ type EndpointSpec struct {
 }
 
 type Endpoint struct {
-	Spec    *EndpointSpec
-	running bool
+	Spec *EndpointSpec
 }
 
 var _ model.Simulation = &Endpoint{}

@@ -486,7 +486,7 @@ func (a *ADSC) Watch() {
 		TypeUrl:       resource.ClusterType,
 	}, "init")
 	if err != nil {
-		scope.Errorf("Error sending request: ", err)
+		scope.Errorf("Error sending request: %v", err)
 	}
 }
 
