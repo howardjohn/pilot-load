@@ -5,11 +5,13 @@ go 1.13
 require (
 	github.com/cncf/udpa/go v0.0.0-20200313221541-5f7e5dd04533
 	github.com/envoyproxy/go-control-plane v0.9.5
+	github.com/felixge/fgprof v0.9.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.3.5
 	github.com/lthibault/jitterbug v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.0.0
+	go.uber.org/atomic v1.4.0
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa // indirect
 	google.golang.org/genproto v0.0.0-20200113173426-e1de0a7b01eb // indirect
 	google.golang.org/grpc v1.29.1

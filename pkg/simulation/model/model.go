@@ -60,8 +60,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 }
 
 type ClusterJitterConfig struct {
-	Workloads Duration `json:"workloads"`
-	Config    Duration `json:"config"`
+	Workloads Duration `json:"workloads,omitempty"`
+	Config    Duration `json:"config,omitempty"`
 }
 
 type PodType string
@@ -75,36 +75,36 @@ const (
 )
 
 type ApplicationConfig struct {
-	Name      string        `json:"name"`
-	PodType   PodType       `json:"podType"`
-	Replicas  int           `json:"replicas"`
-	Instances int           `json:"instances"`
-	Gateways  GatewayConfig `json:"gateways"`
+	Name      string        `json:"name,omitempty"`
+	PodType   PodType       `json:"podType,omitempty"`
+	Replicas  int           `json:"replicas,omitempty"`
+	Instances int           `json:"instances,omitempty"`
+	Gateways  GatewayConfig `json:"gateways,omitempty"`
 	GetNode   func() string `json:"-"`
 }
 
 type GatewayConfig struct {
 	// Defaults to app name. Setting allows a stable identifier
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// Set true to create a gateway
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled,omitempty"`
 	// Which gateways virtual services will use
-	VirtualServices []string `json:"virtualServices"`
+	VirtualServices []string `json:"virtualServices,omitempty"`
 }
 
 type NamespaceConfig struct {
-	Name         string              `json:"name"`
-	Replicas     int                 `json:"replicas"`
-	Applications []ApplicationConfig `json:"applications"`
+	Name         string              `json:"name,omitempty"`
+	Replicas     int                 `json:"replicas,omitempty"`
+	Applications []ApplicationConfig `json:"applications,omitempty"`
 }
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
 type ClusterConfig struct {
-	Jitter       ClusterJitterConfig    `json:"jitter"`
-	Namespaces   []NamespaceConfig      `json:"namespaces"`
-	Nodes        int                    `json:"nodes"`
-	NodeMetadata map[string]interface{} `json:"nodeMetadata"`
+	Jitter       ClusterJitterConfig    `json:"jitter,omitempty"`
+	Namespaces   []NamespaceConfig      `json:"namespaces,omitempty"`
+	Nodes        int                    `json:"nodes,omitempty"`
+	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
 }
 
 func (c ClusterConfig) ApplyDefaults() ClusterConfig {

@@ -6,18 +6,11 @@ namespaces:
 - name: default
   replicas: 1
   applications:
-  - name: tall
-    replicas: 1
-    instances: 3
   - name: wide
-    replicas: 2
+    replicas: 10
     instances: 1
     gateways:
       virtualServices: [main]
-  - name: external
-    replicas: 1
-    instances: 1
-    podType: external
   - name: gateway
     replicas: 1
     instances: 1

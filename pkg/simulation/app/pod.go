@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
-	pkiutil "istio.io/istio/security/pkg/pki/util"
 	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -24,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 
@@ -87,10 +87,12 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 
 		_, port, _ := net.SplitHostPort(ctx.Args.PilotAddress)
 		if port != "15010" {
+			t0 := time.Now()
 			cert, rootCert, err := sendCsr(ctx, p.Spec)
 			if err != nil {
 				return err
 			}
+			log.Debugf("csr for %v complete in %v", pod.Name, time.Since(t0))
 			p.xds.ClientCert = cert
 			p.xds.RootCert = rootCert
 		}
@@ -100,33 +102,26 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 }
 
 func sendCsr(ctx model.Context, s *PodSpec) (tls.Certificate, []byte, error) {
-	rootCert, err := ctx.Client.FetchRootCert()
+	rootCert, err := security.GetRootCert(ctx.Client)
 	if err != nil {
 		return tls.Certificate{}, nil, errors.Wrap(err, "failed to fetch root cert")
 	}
 
-	token, err := ctx.Client.CreateServiceAccountToken(s.Namespace, s.ServiceAccount)
+	token, err := security.GetServiceAccountToken(ctx.Client, s.Namespace, s.ServiceAccount)
 	if err != nil {
 		return tls.Certificate{}, nil, errors.Wrap(err, "failed to create service account token")
 	}
 
-	san := fmt.Sprintf("spiffe://%s/ns/%s/sa/%s", "cluster.local", s.Namespace, s.ServiceAccount)
-	options := pkiutil.CertOptions{
-		Host:       san,
-		RSAKeySize: 2048,
-	}
-	// Generate the cert/key, send CSR to CA.
-	csrPEM, keyPEM, err := pkiutil.GenCSR(options)
+	kp, err := security.GenerateKey(s.Namespace, s.ServiceAccount)
 	if err != nil {
-		return tls.Certificate{}, nil, err
+		return tls.Certificate{}, nil, errors.Wrap(err, "failed to create csr")
 	}
-
 	client, err := newCitadelClient(ctx.Args.PilotAddress, []byte(rootCert))
 	if err != nil {
 		return tls.Certificate{}, nil, errors.Wrap(err, "creating citadel client")
 	}
 	req := &pb.IstioCertificateRequest{
-		Csr:              string(csrPEM),
+		Csr:              string(kp.CsrPEM),
 		ValidityDuration: int64((time.Hour * 24 * 7).Seconds()),
 	}
 	rctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("Authorization", "Bearer "+token, "ClusterID", "Kubernetes"))
@@ -139,11 +134,11 @@ func sendCsr(ctx model.Context, s *PodSpec) (tls.Certificate, []byte, error) {
 		certChain = append(certChain, []byte(c)...)
 	}
 
-	_ = keyPEM
-	clientCert, err := tls.X509KeyPair(certChain, keyPEM)
+	clientCert, err := tls.X509KeyPair(certChain, kp.KeyPEM)
 	if err != nil {
 		return tls.Certificate{}, nil, err
 	}
+
 	return clientCert, []byte(rootCert), nil
 }
 
