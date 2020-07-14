@@ -97,8 +97,8 @@ func logConfig(config model.ClusterConfig) {
 	for _, ns := range config.Namespaces {
 		namespaces += ns.Replicas
 		for _, app := range ns.Applications {
-			applications += app.Replicas
-			pods += app.Replicas * app.Instances
+			applications += app.Replicas * ns.Replicas
+			pods += app.Replicas * app.Instances * ns.Replicas
 		}
 	}
 	log.Infof("Initial configuration: %d namespaces, %d applications, and %d pods", namespaces, applications, pods)

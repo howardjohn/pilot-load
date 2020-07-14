@@ -4,8 +4,8 @@ metadata:
   name: pilot-load-config
 data:
   # Each namespace has 1 25 replica service, 5 5 replica services, and 25 1 replica services. 75 pods each
-  # 10 namespaces means 750 pods for the mesh. Each service is exposed by a single Gateway, which has 100 instances
-  # Overall this gives 750+100=850 pods
+  # Each service is exposed by a single Gateway, which has 200 instances
+  # Overall this gives 64*75+200=5000 pods
   config.yaml: |
     nodeMetadata: {}
     jitter:
@@ -13,7 +13,7 @@ data:
       config: "15s"
     namespaces:
     - name: mesh
-      replicas: 10
+      replicas: 64
       applications:
       - name: tall
         replicas: 25
@@ -35,7 +35,7 @@ data:
       applications:
       - name: ingress
         replicas: 1
-        instances: 100
+        instances: 200
         gateways:
           name: main
           enabled: true

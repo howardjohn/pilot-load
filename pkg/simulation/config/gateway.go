@@ -62,7 +62,8 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 					Tls: &networkingv1alpha3.ServerTLSSettings{
 						HttpsRedirect: false,
 						// TODO create a real cert, use simple
-						Mode: networkingv1alpha3.ServerTLSSettings_ISTIO_MUTUAL,
+						Mode: networkingv1alpha3.ServerTLSSettings_SIMPLE,
+						CredentialName: "my-cert",
 					},
 				},
 			},
