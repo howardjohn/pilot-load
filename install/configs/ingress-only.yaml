@@ -21,19 +21,19 @@ data:
         instances: 25
         podType: external
         gateways:
-          virtualServices:[gateway/main]
+          virtualServices: [gateway/main]
       - name: medium
         replicas: 5
         instances: 5
         podType: external
         gateways:
-          virtualServices:[gateway/main]
+          virtualServices: [gateway/main]
       - name: small
         replicas: 25
         instances: 1
         podType: external
         gateways:
-          virtualServices:[gateway/main]
+          virtualServices: [gateway/main]
     - name: gateway
       replicas: 1
       applications:
