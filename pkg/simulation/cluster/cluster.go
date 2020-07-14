@@ -40,8 +40,12 @@ func NewCluster(s ClusterSpec) *Cluster {
 				d.GetNode = cluster.SelectNode
 				deployments[i] = d
 			}
+			name := util.StringDefault(ns.Name, "namespace")
+			if ns.Replicas > 1 {
+				name = fmt.Sprintf("%s-%s", name, util.GenUID())
+			}
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
-				Name:        fmt.Sprintf("%s-%s", util.StringDefault(ns.Name, "namespace"), util.GenUID()),
+				Name:        name,
 				Deployments: deployments,
 			}))
 		}

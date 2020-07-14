@@ -50,7 +50,7 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 						Name:     "http",
 						Protocol: "HTTP",
 					},
-					Hosts: []string{s.App + ".example.com"},
+					Hosts: []string{"*.example.com"},
 				},
 				{
 					Port: &networkingv1alpha3.Port{
@@ -58,11 +58,11 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 						Name:     "https",
 						Protocol: "HTTPS",
 					},
-					Hosts: []string{s.App + ".example.com"},
+					Hosts: []string{"*.example.com"},
 					Tls: &networkingv1alpha3.ServerTLSSettings{
 						HttpsRedirect: false,
 						// TODO create a real cert, use simple
-						Mode: networkingv1alpha3.ServerTLSSettings_SIMPLE,
+						Mode:           networkingv1alpha3.ServerTLSSettings_SIMPLE,
 						CredentialName: "my-cert",
 					},
 				},

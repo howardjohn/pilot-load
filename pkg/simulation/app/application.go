@@ -59,23 +59,29 @@ func NewApplication(s ApplicationSpec) *Application {
 		})
 	}
 	if s.PodType != model.ExternalType {
-		w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			Gateways:  s.GatewayConfig.VirtualServices,
-			Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
-		})
 		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
 			Subsets:   []string{"a", "b"},
 		})
 	}
+	if s.PodType == model.SidecarType || s.GatewayConfig.VirtualServices != nil {
+		w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			Gateways:  s.GatewayConfig.VirtualServices,
+			Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
+		})
+	}
 	return w
 }
 
 func (w *Application) GetConfigs() []model.RefreshableSimulation {
-	return []model.RefreshableSimulation{w.virtualService}
+	sims := []model.RefreshableSimulation{}
+	if w.virtualService != nil {
+		sims = append(sims, w.virtualService)
+	}
+	return sims
 }
 
 func (w *Application) makePod() *Pod {
