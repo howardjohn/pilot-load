@@ -15,9 +15,9 @@ data:
     - name: mesh
       replicas: 64
       applications:
-      - name: tall
-        replicas: 25
-        instances: 1
+      - name: big
+        replicas: 1
+        instances: 25
         gateways:
           virtualServices: [main]
       - name: medium
@@ -25,9 +25,9 @@ data:
         instances: 5
         gateways:
           virtualServices: [main]
-      - name: wide
-        replicas: 1
-        instances: 25
+      - name: small
+        replicas: 25
+        instances: 1
         gateways:
           virtualServices: [main]
     - name: gateway

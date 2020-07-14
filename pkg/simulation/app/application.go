@@ -119,16 +119,19 @@ func (w *Application) Refresh(ctx model.Context) error {
 	if len(w.pods) == 0 {
 		return nil
 	}
-	newPod := w.makePod()
-	if err := newPod.Run(ctx); err != nil {
-		return err
-	}
+
 	i := 0
 	if len(w.pods) > 1 {
 		i = rand.IntnRange(0, len(w.pods)-1)
 	}
+
+	newPod := w.makePod()
 	removed := w.pods[i]
+
 	w.pods[i] = newPod
+	if err := newPod.Run(ctx); err != nil {
+		return err
+	}
 
 	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
 		return fmt.Errorf("endpoints: %v", err)
@@ -138,9 +141,6 @@ func (w *Application) Refresh(ctx model.Context) error {
 		return err
 	}
 
-	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
-		return fmt.Errorf("endpoints: %v", err)
-	}
 	return nil
 }
 

@@ -3,9 +3,25 @@ jitter:
   workloads: "1s"
   config: "0s"
 namespaces:
-- name: default
+- name: mesh
   replicas: 1
   applications:
-  - name: wide
+  - name: big
+    replicas: 1
+    instances: 2
+    gateways:
+      virtualServices: [main]
+  - name: small
     replicas: 2
     instances: 1
+    gateways:
+      virtualServices: [main]
+- name: gateway
+  replicas: 1
+  applications:
+  - name: ingress
+    replicas: 1
+    instances: 1
+    gateways:
+      name: main
+      enabled: true
