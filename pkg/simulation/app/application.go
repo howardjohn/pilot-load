@@ -115,13 +115,31 @@ func (w *Application) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{model.ReverseSimulations(w.getSims())}.CleanupParallel(ctx)
 }
 
-// TODO scale up first, but make sure we don't immediately scale that one down
 func (w *Application) Refresh(ctx model.Context) error {
-	if err := w.Scale(ctx, -1); err != nil {
-		return fmt.Errorf("scale down: %v", err)
+	if len(w.pods) == 0 {
+		return nil
 	}
-	if err := w.Scale(ctx, 1); err != nil {
-		return fmt.Errorf("scale up: %v", err)
+	newPod := w.makePod()
+	if err := newPod.Run(ctx); err != nil {
+		return err
+	}
+	i := 0
+	if len(w.pods) > 1 {
+		i = rand.IntnRange(0, len(w.pods)-1)
+	}
+	removed := w.pods[i]
+	w.pods[i] = newPod
+
+	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
+		return fmt.Errorf("endpoints: %v", err)
+	}
+
+	if err := removed.Cleanup(ctx); err != nil {
+		return err
+	}
+
+	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
+		return fmt.Errorf("endpoints: %v", err)
 	}
 	return nil
 }

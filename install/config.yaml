@@ -1,19 +1,11 @@
 nodeMetadata: {}
 jitter:
-  workloads: "0s"
+  workloads: "1s"
   config: "0s"
 namespaces:
 - name: default
   replicas: 1
   applications:
   - name: wide
-    replicas: 10
+    replicas: 2
     instances: 1
-    gateways:
-      virtualServices: [main]
-  - name: gateway
-    replicas: 1
-    instances: 1
-    gateways:
-      name: main
-      enabled: true
