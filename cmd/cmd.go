@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	pilotAddress   = "localhost:15012"
+	pilotAddress   = "localhost:15010"
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	configFile     = ""
 	loggingOptions = defaultLogOptions()

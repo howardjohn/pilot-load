@@ -8,6 +8,7 @@ require (
 	github.com/felixge/fgprof v0.9.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.3.5
+	github.com/golang/sync v0.0.0-20180314180146-1d60e4601c6f
 	github.com/lthibault/jitterbug v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.0.0

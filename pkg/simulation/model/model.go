@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/sync/errgroup"
 	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
@@ -165,6 +166,21 @@ type AggregateSimulation struct {
 
 var _ Simulation = AggregateSimulation{}
 
+func (a AggregateSimulation) RunParallel(ctx Context) error {
+	g := errgroup.Group{}
+	for _, s := range a.Simulations {
+		s := s
+		log.Debugf("running simulation in parallel %T", s)
+		g.Go(func() error {
+			if err := s.Run(ctx); err != nil {
+				return fmt.Errorf("failed running simulation %T: %v", s, err)
+			}
+			return nil
+		})
+	}
+	return g.Wait()
+}
+
 func (a AggregateSimulation) Run(ctx Context) error {
 	for _, s := range a.Simulations {
 		if util.IsDone(ctx) {
@@ -179,7 +195,21 @@ func (a AggregateSimulation) Run(ctx Context) error {
 	return nil
 }
 
-// TODO parallelize?
+func (a AggregateSimulation) CleanupParallel(ctx Context) error {
+	g := errgroup.Group{}
+	for _, s := range a.Simulations {
+		s := s
+		log.Debugf("cleaning simulation %T", s)
+		g.Go(func() error {
+			if err := s.Cleanup(ctx); err != nil {
+				err = util.AddError(err, fmt.Errorf("failed cleaning simulation %T: %v", s, err))
+			}
+			return nil
+		})
+	}
+	return g.Wait()
+}
+
 func (a AggregateSimulation) Cleanup(ctx Context) error {
 	var err error
 	for _, s := range a.Simulations {

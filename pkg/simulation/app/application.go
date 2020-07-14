@@ -108,11 +108,11 @@ func (w *Application) getSims() []model.Simulation {
 }
 
 func (w *Application) Run(ctx model.Context) (err error) {
-	return model.AggregateSimulation{w.getSims()}.Run(ctx)
+	return model.AggregateSimulation{w.getSims()}.RunParallel(ctx)
 }
 
 func (w *Application) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{model.ReverseSimulations(w.getSims())}.Cleanup(ctx)
+	return model.AggregateSimulation{model.ReverseSimulations(w.getSims())}.CleanupParallel(ctx)
 }
 
 // TODO scale up first, but make sure we don't immediately scale that one down
