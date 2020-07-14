@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pilot-load-config
+data:
+  config.yaml: |
+    nodeMetadata: {}
+    jitter:
+      workloads: "0s"
+      config: "0s"
+    namespaces:
+    - name: mesh
+      replicas: 1
+      applications:
+      - name: default
+        replicas: 1
+        instances: 1
