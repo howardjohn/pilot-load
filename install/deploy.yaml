@@ -120,13 +120,11 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: pilot-load-multicluster
+  name: istio-kubeconfig
   namespace: istio-system
-  labels:
-    istio/multiCluster: "true"
 type: Opaque
 data:
-  pilot-load: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIHNlcnZlcjogaHR0cDovL2FwaXNlcnZlci5waWxvdC1sb2FkOjE4MDkwCiAgbmFtZTogbG9hZApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogbG9hZAogICAgdXNlcjogZmFrZQogIG5hbWU6IGxvYWQKY3VycmVudC1jb250ZXh0OiBsb2FkCmtpbmQ6IENvbmZpZwpwcmVmZXJlbmNlczoge30KdXNlcnM6Ci0gbmFtZTogZmFrZQo=
+  config: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIHNlcnZlcjogaHR0cDovL2FwaXNlcnZlci5waWxvdC1sb2FkOjE4MDkwCiAgbmFtZTogbG9hZApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogbG9hZAogICAgdXNlcjogZmFrZQogIG5hbWU6IGxvYWQKY3VycmVudC1jb250ZXh0OiBsb2FkCmtpbmQ6IENvbmZpZwpwcmVmZXJlbmNlczoge30KdXNlcnM6Ci0gbmFtZTogZmFrZQo=
 ---
 # This is public - since its meant for testing only
 apiVersion: v1
