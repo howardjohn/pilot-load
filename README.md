@@ -60,3 +60,15 @@ The expense of this is dropping coverage:
       pilot-load cluster --config example-config.yaml
       ```
 1. Optional: Import the [load testing dashboard](./install/dashboard.json) in Grafana.
+
+## XDS Only
+
+To just simulate XDS connections, without any api-server interaction, the adsc mode can be used:
+
+```shell script
+pilot-load adsc --adsc.count=2
+```
+
+This will start up two XDS connections.
+
+NOTE: these connections will not be associated with any Services, and as such will get a different config than real pods, including sidecar scoping.
