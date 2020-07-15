@@ -26,6 +26,7 @@ spec:
           - "cluster"
           - "--pilot-address=istiod.istio-system:15010"
           - "--config=/etc/config/config/config.yaml"
+          - "--qps=500"
         env:
         - name: KUBECONFIG
           value: /etc/config/kubeconfig/kubeconfig.yaml

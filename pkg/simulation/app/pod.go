@@ -97,6 +97,8 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			p.xds.RootCert = rootCert
 		}
 		return p.xds.Run(ctx)
+	} else {
+		log.Infof("Starting pod %v", pod.Name)
 	}
 	return nil
 }
