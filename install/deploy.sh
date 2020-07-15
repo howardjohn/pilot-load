@@ -5,8 +5,9 @@ set -eux
 WD=$(dirname "$0")
 WD=$(cd "$WD"; pwd)
 
-kubectl apply -f ${WD}/deploy.yaml
+kubectl apply -f ${WD}/base-deployment.yaml
 
+kubectl wait -n pilot-load --for=condition=available deployment/etcd
 kubectl wait -n pilot-load --for=condition=available deployment/apiserver
 
 kubectl port-forward -n pilot-load svc/apiserver 18090 &
