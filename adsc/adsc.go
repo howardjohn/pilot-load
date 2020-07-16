@@ -224,20 +224,15 @@ func (a *ADSC) handleRecv() {
 				ll := &listener.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
-				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == resource.ClusterType {
 				ll := &cluster.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
-				names = append(names, ll.Name)
 			} else if rsc.TypeUrl == resource.EndpointType {
-				// As an optimization. We don't need to inspect these like LDS/CDS
-				if dumpScope.DebugEnabled() {
-					ll := &endpoint.ClusterLoadAssignment{}
-					_ = proto.Unmarshal(valBytes, ll)
-					eds = append(eds, ll)
-					names = append(names, ll.ClusterName)
-				}
+				ll := &endpoint.ClusterLoadAssignment{}
+				_ = proto.Unmarshal(valBytes, ll)
+				eds = append(eds, ll)
+				names = append(names, ll.ClusterName)
 			} else if rsc.TypeUrl == resource.RouteType {
 				ll := &route.RouteConfiguration{}
 				_ = proto.Unmarshal(valBytes, ll)
@@ -501,10 +496,6 @@ func (a *ADSC) sendRequest(typeurl string, rsc []string) {
 
 func (a *ADSC) ack(msg *discovery.DiscoveryResponse, names []string) {
 	sendNames := names
-	// Pilot currently breaks if we do this properly.. send only routes
-	if msg.TypeUrl != resource.RouteType {
-		sendNames = []string{}
-	}
 	_ = a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
