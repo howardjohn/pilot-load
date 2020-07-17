@@ -229,22 +229,26 @@ func (a *ADSC) handleRecv() {
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
 			} else if rsc.TypeUrl == resource.EndpointType {
-				ll := &endpoint.ClusterLoadAssignment{}
-				_ = proto.Unmarshal(valBytes, ll)
-				eds = append(eds, ll)
-				names = append(names, ll.ClusterName)
+				if dumpScope.DebugEnabled() {
+					ll := &endpoint.ClusterLoadAssignment{}
+					_ = proto.Unmarshal(valBytes, ll)
+					eds = append(eds, ll)
+					names = append(names, ll.ClusterName)
+				}
 			} else if rsc.TypeUrl == resource.RouteType {
-				ll := &route.RouteConfiguration{}
-				_ = proto.Unmarshal(valBytes, ll)
-				routes = append(routes, ll)
-				names = append(names, ll.Name)
+				if dumpScope.DebugEnabled() {
+					ll := &route.RouteConfiguration{}
+					_ = proto.Unmarshal(valBytes, ll)
+					routes = append(routes, ll)
+					names = append(names, ll.Name)
+				}
 			}
 		}
 
 		// TODO: add hook to inject nacks
-		a.mutex.Lock()
-		a.ack(msg, names)
-		a.mutex.Unlock()
+		//a.mutex.Lock()
+		//a.ack(msg, names)
+		//a.mutex.Unlock()
 
 		switch msg.TypeUrl {
 		case resource.ListenerType:

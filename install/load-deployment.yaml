@@ -32,8 +32,8 @@ spec:
           value: /etc/config/kubeconfig/kubeconfig.yaml
         resources:
           requests:
-            cpu: 40m
-            memory: 128Mi
+            cpu: 4000m
+            memory: 4Gi
         volumeMounts:
         - name: kubeconfig
           mountPath: /etc/config/kubeconfig

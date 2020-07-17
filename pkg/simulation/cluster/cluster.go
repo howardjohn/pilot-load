@@ -98,5 +98,5 @@ func (n *Cluster) Run(ctx model.Context) error {
 }
 
 func (n *Cluster) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{model.ReverseSimulations(n.getSims())}.Cleanup(ctx)
+	return model.AggregateSimulation{model.ReverseSimulations(n.getSims())}.CleanupParallel(ctx)
 }
