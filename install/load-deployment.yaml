@@ -16,6 +16,19 @@ spec:
       labels:
         app: pilot-load
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              namespaces: [istio-system]
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - istio
+              topologyKey: kubernetes.io/hostname
       # May take a while to shut down
       terminationGracePeriodSeconds: 2000
       containers:
