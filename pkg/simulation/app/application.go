@@ -62,7 +62,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
-			Subsets:   []string{"a", "b"},
+			Subsets:   []string{"a"},
 		})
 	}
 	if s.PodType == model.SidecarType || s.GatewayConfig.VirtualServices != nil {
@@ -70,7 +70,7 @@ func NewApplication(s ApplicationSpec) *Application {
 			App:       s.App,
 			Namespace: s.Namespace,
 			Gateways:  s.GatewayConfig.VirtualServices,
-			Subsets:   []config.SubsetSpec{{"a", 50}, {"b", 50}},
+			Subsets:   []config.SubsetSpec{{"a", 100}},
 		})
 	}
 	return w

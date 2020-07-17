@@ -35,7 +35,7 @@ data:
       applications:
       - name: ingress
         replicas: 1
-        instances: 200
+        instances: 20
         podType: router
         gateways:
           name: main
