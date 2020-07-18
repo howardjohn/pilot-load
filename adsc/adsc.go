@@ -480,7 +480,6 @@ func (a *ADSC) send(dr *discovery.DiscoveryRequest, reason string) error {
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
 	err := a.send(&discovery.DiscoveryRequest{
-		ResponseNonce: time.Now().String(),
 		Node:          a.node,
 		TypeUrl:       resource.ClusterType,
 	}, "init")
