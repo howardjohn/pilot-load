@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pilot-load
+  name: adsc-load
   labels:
-    app: pilot-load
+    app: adsc-load
 spec:
   replicas: 1
   template:
     metadata:
-      name: pilot-load
+      name: adsc-load
       annotations:
         sidecar.istio.io/inject: "false"
         prometheus.io/scrape: "true"
         prometheus.io/port: "8765"
       labels:
-        app: pilot-load
+        app: adsc-load
     spec:
       affinity:
         podAntiAffinity:
@@ -36,10 +36,10 @@ spec:
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
         args:
-          - "cluster"
-          - "--pilot-address=istiod.istio-system:15010"
-          - "--config=/etc/config/config/config.yaml"
-          - "--qps=500"
+        - "adsc"
+        - "--pilot-address=istiod.istio-system:15010"
+        - "--adsc.count=10000"
+        - "--qps=500"
         env:
         - name: KUBECONFIG
           value: /etc/config/kubeconfig/kubeconfig.yaml
@@ -50,18 +50,13 @@ spec:
         volumeMounts:
         - name: kubeconfig
           mountPath: /etc/config/kubeconfig
-        - name: config
-          mountPath: /etc/config/config
       volumes:
       - name: kubeconfig
         configMap:
           name: pilot-load-kubeconfig
-      - name: config
-        configMap:
-          name: pilot-load-config
   selector:
     matchLabels:
-      app: pilot-load
+      app: adsc-load
 ---
 apiVersion: v1
 kind: ConfigMap
