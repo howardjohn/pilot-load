@@ -64,7 +64,7 @@ func NewPod(s PodSpec) *Pod {
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
-	if err = ctx.Client.Apply(pod); err != nil {
+	if err = ctx.Client.ApplyFast(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
 

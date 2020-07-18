@@ -110,6 +110,13 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 }
 
 func (c *Client) Apply(o runtime.Object) error {
+	return c.internalApply(o, false)
+}
+func (c *Client) ApplyFast(o runtime.Object) error {
+	return c.internalApply(o, true)
+}
+
+func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 	us := toUnstructured(o)
 	if us == nil {
 		return fmt.Errorf("bad object %v", o)
@@ -117,9 +124,27 @@ func (c *Client) Apply(o runtime.Object) error {
 	gvr, kind := toGvr(o)
 	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
 	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
-
-	// TODO do we need to do this manually? We only need it for Istio types
 	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+
+	if skipGet {
+		err := retry.RetryOnConflict(backoff, func() error {
+			scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			if _, err := cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
+				return err
+			}
+			if _, f := us.Object["status"]; f {
+				scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
+				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+		}
+		return nil
+	}
 	err := retry.RetryOnConflict(backoff, func() error {
 		cur, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
 		switch {

@@ -480,8 +480,8 @@ func (a *ADSC) send(dr *discovery.DiscoveryRequest, reason string) error {
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
 	err := a.send(&discovery.DiscoveryRequest{
-		Node:          a.node,
-		TypeUrl:       resource.ClusterType,
+		Node:    a.node,
+		TypeUrl: resource.ClusterType,
 	}, "init")
 	if err != nil {
 		scope.Errorf("Error sending request: %v", err)

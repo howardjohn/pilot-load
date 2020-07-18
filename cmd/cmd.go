@@ -81,6 +81,8 @@ var rootCmd = &cobra.Command{
 			return simulation.Cluster(a)
 		case "adsc":
 			return simulation.Adsc(a)
+		case "api":
+			return simulation.ApiServer(a)
 		default:
 			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc}", sim)
 		}

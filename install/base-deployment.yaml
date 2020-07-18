@@ -35,14 +35,22 @@ spec:
       labels:
         app: etcd
     spec:
+      initContainers:
+      - name: volume-mount-hack
+        image: busybox
+        command: ["sh", "-c", "chmod 0700 /var/lib/etcd"]
+        volumeMounts:
+        - name: etcd-data
+          mountPath: /var/lib/etcd
       containers:
       - name: etcd
-        image: k8s.gcr.io/etcd:3.4.7-0
+        image: gcr.io/etcd-development/etcd:v3.4.10
         args:
         - etcd
         - --data-dir=/var/lib/etcd
         - --listen-client-urls=http://0.0.0.0:2379
         - --advertise-client-urls=http://0.0.0.0:2379
+        - --unsafe-no-fsync
         resources:
           requests:
             memory: 4096Mi
@@ -51,7 +59,8 @@ spec:
           - mountPath: /var/lib/etcd
             name: etcd-data
       volumes:
-      - emptyDir: {}
+      - emptyDir:
+          medium: Memory
         name: etcd-data
 ---
 apiVersion: v1
