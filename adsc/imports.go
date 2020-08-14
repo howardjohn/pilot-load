@@ -4,6 +4,7 @@ package adsc
 // when using them in the "typed_config" attributes.
 import (
 	udpa "github.com/cncf/udpa/go/udpa/type/v1"
+
 	// TODO https://github.com/istio/istio/issues/20177
 	_ "github.com/envoyproxy/go-control-plane/envoy/admin/v2alpha"
 	_ "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
@@ -229,6 +230,7 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/pkg/test/resource/v3"
 	_ "github.com/envoyproxy/go-control-plane/pkg/test/v2"
 	_ "github.com/envoyproxy/go-control-plane/pkg/test/v3"
+
 	_ "istio.io/istio/security/proto/envoy/config/filter/http/alpn/v2alpha1"
 )
 

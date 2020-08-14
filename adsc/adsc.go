@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -19,14 +20,14 @@ import (
 	envoy_extensions_filters_network_http_connection_manager_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
-	"github.com/golang/protobuf/ptypes"
-	"istio.io/pkg/log"
-
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"istio.io/pkg/log"
 )
 
 var scope = log.RegisterScope("adsc", "", 0)
@@ -191,7 +192,7 @@ func (a *ADSC) Run() error {
 	}
 
 	xds := discovery.NewAggregatedDiscoveryServiceClient(a.conn)
-	edsstr, err := xds.StreamAggregatedResources(a.ctx)
+	edsstr, err := xds.StreamAggregatedResources(a.ctx, grpc.MaxCallRecvMsgSize(math.MaxInt32))
 	if err != nil {
 		return fmt.Errorf("stream: %v", err)
 	}
@@ -204,7 +205,7 @@ func (a *ADSC) handleRecv() {
 	for {
 		msg, err := a.stream.Recv()
 		if err != nil {
-			scope.Debugf("Connection closed for %v: %v", a.nodeID, err)
+			scope.Infof("Connection closed for %v: %v", a.nodeID, err)
 			a.Close()
 			a.WaitClear()
 			a.Updates <- "close"

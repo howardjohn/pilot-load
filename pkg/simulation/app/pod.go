@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
-	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +27,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 
 	pb "istio.io/istio/security/proto"
+	"istio.io/pkg/log"
 )
 
 type PodSpec struct {

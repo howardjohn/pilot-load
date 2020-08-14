@@ -9,11 +9,12 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
-	"istio.io/pkg/log"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+
+	"istio.io/pkg/log"
 )
 
 var (

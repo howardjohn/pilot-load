@@ -8,6 +8,7 @@ data:
   # Overall this gives 64*75+200=5000 pods
   config.yaml: |
     nodeMetadata: {}
+    gracePeriod: 10s
     jitter:
       workloads: "1s"
       config: "15s"

@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/golang/sync/errgroup"
-	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+
+	"istio.io/pkg/log"
 )
 
 type Simulation interface {
@@ -102,6 +103,8 @@ type NamespaceConfig struct {
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
 type ClusterConfig struct {
+	// Time between each namespace creation at startup
+	GracePeriod  Duration               `json:"gracePeriod,omitempty"`
 	Jitter       ClusterJitterConfig    `json:"jitter,omitempty"`
 	Namespaces   []NamespaceConfig      `json:"namespaces,omitempty"`
 	Nodes        int                    `json:"nodes,omitempty"`

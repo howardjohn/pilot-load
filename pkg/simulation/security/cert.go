@@ -5,9 +5,10 @@ import (
 	"sync"
 
 	"go.uber.org/atomic"
-	pkiutil "istio.io/istio/security/pkg/pki/util"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
+
+	pkiutil "istio.io/istio/security/pkg/pki/util"
 )
 
 // map of SAN to KeyPair. Use to avoid repetitive CSR creations

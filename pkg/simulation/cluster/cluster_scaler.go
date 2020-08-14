@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/lthibault/jitterbug"
-	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+
+	"istio.io/pkg/log"
 )
 
 type ClusterScaler struct {
@@ -47,7 +48,9 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 				if len(wls) == 0 {
 					continue
 				}
-				if err := wls[rand.Intn(len(wls))].Refresh(ctx); err != nil {
+				wl := wls[rand.Intn(len(wls))]
+				log.Infof("refresh workload %s", wl.Spec.App)
+				if err := wl.Refresh(ctx); err != nil {
 					log.Errorf("failed to jitter workload: %v", err)
 				}
 			case <-configJitterT:

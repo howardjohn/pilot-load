@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -18,6 +17,8 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+
+	"istio.io/pkg/log"
 )
 
 type ApiServerSimulation struct {

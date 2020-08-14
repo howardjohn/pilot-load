@@ -3,11 +3,13 @@ package cluster
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
-	"istio.io/pkg/log"
-
+	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+
+	"istio.io/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -53,8 +55,8 @@ func NewCluster(s ClusterSpec) *Cluster {
 	return cluster
 }
 
-func (c *Cluster) GetRefreshableInstances() []model.RefreshableSimulation {
-	var wls []model.RefreshableSimulation
+func (c *Cluster) GetRefreshableInstances() []*app.Application {
+	var wls []*app.Application
 	for _, ns := range c.namespaces {
 		for _, w := range ns.deployments {
 			wls = append(wls, w)
@@ -89,14 +91,27 @@ func (c *Cluster) getSims() []model.Simulation {
 	return sims
 }
 
-func (n *Cluster) Run(ctx model.Context) error {
-	if err := (model.AggregateSimulation{n.getSims()}.Run(ctx)); err != nil {
-		return fmt.Errorf("failed to bootstrap cluster: %v", err)
+func (c *Cluster) Run(ctx model.Context) error {
+	nodes := []model.Simulation{}
+	for _, ns := range c.nodes {
+		nodes = append(nodes, ns)
 	}
-	log.Infof("cluster %q synced, starting cluster scaler", n.Name)
-	return (&ClusterScaler{Cluster: n}).Run(ctx)
+	if err := (model.AggregateSimulation{nodes}.Run(ctx)); err != nil {
+		return fmt.Errorf("failed to bootstrap nodes: %v", err)
+	}
+
+	for _, ns := range c.namespaces {
+		log.Infof("starting namespace %v", ns.Spec.Name)
+		if err := (model.AggregateSimulation{[]model.Simulation{ns}}.Run(ctx)); err != nil {
+			return fmt.Errorf("failed to bootstrap nodes: %v", err)
+		}
+		time.Sleep(time.Duration(c.Spec.Config.GracePeriod))
+	}
+
+	log.Infof("cluster %q synced, starting cluster scaler", c.Name)
+	return (&ClusterScaler{Cluster: c}).Run(ctx)
 }
 
-func (n *Cluster) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{model.ReverseSimulations(n.getSims())}.CleanupParallel(ctx)
+func (c *Cluster) Cleanup(ctx model.Context) error {
+	return model.AggregateSimulation{model.ReverseSimulations(c.getSims())}.CleanupParallel(ctx)
 }
