@@ -75,6 +75,16 @@ func (c *Cluster) GetRefreshableConfig() []model.RefreshableSimulation {
 	return cfgs
 }
 
+func (c *Cluster) GetRefreshableSecrets() []model.RefreshableSimulation {
+	var cfgs []model.RefreshableSimulation
+	for _, ns := range c.namespaces {
+		for _, w := range ns.deployments {
+			cfgs = append(cfgs, w.GetSecrets()...)
+		}
+	}
+	return cfgs
+}
+
 // Return a random node
 func (c *Cluster) SelectNode() string {
 	return c.nodes[rand.Intn(len(c.nodes))].Spec.Name

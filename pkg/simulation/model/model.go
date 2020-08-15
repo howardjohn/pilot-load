@@ -64,6 +64,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 type ClusterJitterConfig struct {
 	Workloads Duration `json:"workloads,omitempty"`
 	Config    Duration `json:"config,omitempty"`
+	Secrets   Duration `json:"secrets,omitempty"`
 }
 
 type PodType string
@@ -87,9 +88,8 @@ type ApplicationConfig struct {
 
 type GatewayConfig struct {
 	// Defaults to app name. Setting allows a stable identifier
-	Name string `json:"name,omitempty"`
-	// Set true to create a gateway
-	Enabled bool `json:"enabled,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Replicas int    `json:"replicas,omitempty"`
 	// Which gateways virtual services will use
 	VirtualServices []string `json:"virtualServices,omitempty"`
 }

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pilot-load-config
+data:
+  # Can be used with a real API server; creates GW/VS/Secrets
+  config.yaml: |
+    jitter:
+      secrets: "5s"
+    namespaces:
+    - name: gateway
+      replicas: 1
+      applications:
+      - name: ingress
+        replicas: 1
+        instances: 0
+        podType: router
+        gateways:
+          name: main
+          replicas: 100
+          enabled: true

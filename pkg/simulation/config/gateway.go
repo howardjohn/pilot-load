@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -12,6 +14,7 @@ import (
 
 type GatewaySpec struct {
 	App       string
+	UID       string
 	Namespace string
 	Name      string
 }
@@ -23,6 +26,9 @@ type Gateway struct {
 var _ model.Simulation = &Gateway{}
 
 func NewGateway(s GatewaySpec) *Gateway {
+	if s.UID == "" {
+		s.UID = util.GenUID()
+	}
 	return &Gateway{Spec: &s}
 }
 
@@ -34,12 +40,17 @@ func (v *Gateway) Cleanup(ctx model.Context) error {
 	return ctx.Client.Delete(v.getGateway())
 }
 
-func (v *Gateway) getGateway() *v1alpha3.Gateway {
+func (v *Gateway) Name() string {
 	s := v.Spec
+	return fmt.Sprintf("%s-%s", util.StringDefault(s.Name, s.App), s.UID)
+}
+
+func (v *Gateway) getGateway() *v1alpha3.Gateway {
+	n := v.Name()
 	return &v1alpha3.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      util.StringDefault(s.Name, s.App),
-			Namespace: s.Namespace,
+			Name:      n,
+			Namespace: v.Spec.Namespace,
 		},
 		Spec: networkingv1alpha3.Gateway{
 			Servers: []*networkingv1alpha3.Server{
@@ -49,7 +60,7 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 						Name:     "http",
 						Protocol: "HTTP",
 					},
-					Hosts: []string{"*.example.com"},
+					Hosts: []string{n},
 				},
 				{
 					Port: &networkingv1alpha3.Port{
@@ -57,17 +68,16 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 						Name:     "https",
 						Protocol: "HTTPS",
 					},
-					Hosts: []string{"*.example.com"},
+					Hosts: []string{n},
 					Tls: &networkingv1alpha3.ServerTLSSettings{
-						HttpsRedirect: false,
-						// TODO create a real cert, use simple
+						HttpsRedirect:  false,
 						Mode:           networkingv1alpha3.ServerTLSSettings_SIMPLE,
-						CredentialName: "my-cert",
+						CredentialName: n,
 					},
 				},
 			},
 			Selector: map[string]string{
-				"app": s.App,
+				"app": v.Spec.App,
 			},
 		},
 	}

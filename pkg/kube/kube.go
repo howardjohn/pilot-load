@@ -94,6 +94,8 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return v1.SchemeGroupVersion.WithResource("serviceaccounts"), "ServiceAccount"
 	case *v1.Namespace:
 		return v1.SchemeGroupVersion.WithResource("namespaces"), "Namespace"
+	case *v1.Secret:
+		return v1.SchemeGroupVersion.WithResource("secrets"), "Secret"
 	case *v1.Endpoints:
 		return v1.SchemeGroupVersion.WithResource("endpoints"), "Endpoints"
 	case *v1alpha3.VirtualService:

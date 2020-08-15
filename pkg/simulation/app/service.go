@@ -46,7 +46,6 @@ func (s *Service) getService() *v1.Service {
 		},
 	}
 	return &v1.Service{
-		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.App,
 			Namespace: p.Namespace,

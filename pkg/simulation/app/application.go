@@ -27,7 +27,8 @@ type Application struct {
 	pods           []*Pod
 	service        *Service
 	virtualService *config.VirtualService
-	gateway        *config.Gateway
+	gateways       []*config.Gateway
+	secrets        []*config.Secret
 	destRule       *config.DestinationRule
 }
 
@@ -52,12 +53,17 @@ func NewApplication(s ApplicationSpec) *Application {
 		App:       s.App,
 		Namespace: s.Namespace,
 	})
-	if s.GatewayConfig.Enabled {
-		w.gateway = config.NewGateway(config.GatewaySpec{
+	for i := 0; i < s.GatewayConfig.Replicas; i++ {
+		gw := config.NewGateway(config.GatewaySpec{
 			Name:      s.GatewayConfig.Name,
 			App:       s.App,
 			Namespace: s.Namespace,
 		})
+		w.gateways = append(w.gateways, gw)
+		w.secrets = append(w.secrets, config.NewSecret(config.SecretSpec{
+			Namespace: s.Namespace,
+			Name:      gw.Name(),
+		}))
 	}
 	if s.PodType != model.ExternalType {
 		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
@@ -85,6 +91,14 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	return sims
 }
 
+func (w *Application) GetSecrets() []model.RefreshableSimulation {
+	sims := []model.RefreshableSimulation{}
+	for _, scr := range w.secrets {
+		sims = append(sims, scr)
+	}
+	return sims
+}
+
 func (w *Application) makePod() *Pod {
 	s := w.Spec
 	return NewPod(PodSpec{
@@ -104,8 +118,11 @@ func (w *Application) getSims() []model.Simulation {
 	if w.destRule != nil {
 		sims = append(sims, w.destRule)
 	}
-	if w.gateway != nil {
-		sims = append(sims, w.gateway)
+	for _, gw := range w.gateways {
+		sims = append(sims, gw)
+	}
+	for _, scr := range w.secrets {
+		sims = append(sims, scr)
 	}
 	for _, p := range w.pods {
 		sims = append(sims, p)
