@@ -3,6 +3,7 @@ package xds
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -41,9 +42,6 @@ func (x *Simulation) Run(ctx model.Context) error {
 		"SDS":           "true",
 	}
 	go func() {
-		// TODO trigger full injection and CA bootstrap flow
-		// TODO use XDS v3
-		// TODO allow routers
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
 			Workload:  x.Name,
@@ -52,8 +50,9 @@ func (x *Simulation) Run(ctx model.Context) error {
 			IP:        x.IP,
 			Context:   c,
 
-			RootCert:   x.RootCert,
-			ClientCert: x.ClientCert,
+			SystemCerts: strings.HasSuffix(ctx.Args.PilotAddress, ":443"),
+			RootCert:    x.RootCert,
+			ClientCert:  x.ClientCert,
 		})
 		close(x.done)
 	}()

@@ -57,8 +57,9 @@ type Config struct {
 	Context context.Context
 
 	// Certificate options. If not provided, will use plaintext
-	RootCert   []byte
-	ClientCert tls.Certificate
+	RootCert    []byte
+	SystemCerts bool
+	ClientCert  tls.Certificate
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -78,8 +79,9 @@ type ADSC struct {
 	done chan error
 
 	// Certificate options. If not provided, will use plaintext
-	RootCert   []byte
-	ClientCert tls.Certificate
+	RootCert    []byte
+	SystemCerts bool
+	ClientCert  tls.Certificate
 
 	url string
 
@@ -103,12 +105,13 @@ var (
 // Dial connects to a ADS server, with optional MTLS authentication if a cert dir is specified.
 func Dial(url string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
-		done:       make(chan error),
-		Updates:    make(chan string, 100),
-		RootCert:   opts.RootCert,
-		ClientCert: opts.ClientCert,
-		url:        url,
-		ctx:        opts.Context,
+		done:        make(chan error),
+		Updates:     make(chan string, 100),
+		RootCert:    opts.RootCert,
+		SystemCerts: opts.SystemCerts,
+		ClientCert:  opts.ClientCert,
+		url:         url,
+		ctx:         opts.Context,
 	}
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
@@ -181,6 +184,11 @@ func (a *ADSC) Run() error {
 		creds := credentials.NewTLS(tlsCfg)
 
 		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithTransportCredentials(creds))
+		if err != nil {
+			return fmt.Errorf("dial context: %v", err)
+		}
+	} else if a.SystemCerts {
+		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 		if err != nil {
 			return fmt.Errorf("dial context: %v", err)
 		}
