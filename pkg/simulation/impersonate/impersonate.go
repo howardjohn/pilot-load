@@ -42,6 +42,11 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 	total := 0
 	for n := 1; n <= i.Spec.Replicas; n++ {
 		for _, pod := range plist {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
 			total++
 			pod := pod
 			meta := map[string]interface{}{
