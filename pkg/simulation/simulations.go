@@ -13,6 +13,7 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
+	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
@@ -78,6 +79,18 @@ var _ model.Simulation = &ApiServerSimulation{}
 // Load testing api-server
 func ApiServer(a model.Args) error {
 	if err := ExecuteSimulations(a, &ApiServerSimulation{}); err != nil {
+		return fmt.Errorf("error executing: %v", err)
+	}
+	return nil
+}
+
+func Impersonate(a model.Args) error {
+	sim := impersonate.NewSimulation(impersonate.ImpersonateSpec{
+		Selector: model.Selector(a.ImpersonateConfig.Selector),
+		Replicas: a.ImpersonateConfig.Replicas,
+		Delay:    a.ImpersonateConfig.Delay,
+	})
+	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}
 	return nil

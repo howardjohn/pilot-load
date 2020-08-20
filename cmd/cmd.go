@@ -18,12 +18,16 @@ import (
 )
 
 var (
-	pilotAddress   = "localhost:15010"
-	kubeconfig     = os.Getenv("KUBECONFIG")
-	configFile     = ""
-	loggingOptions = defaultLogOptions()
-	adscConfig     = model.AdscConfig{}
-	qps            = 100
+	pilotAddress      = "localhost:15010"
+	kubeconfig        = os.Getenv("KUBECONFIG")
+	configFile        = ""
+	loggingOptions    = defaultLogOptions()
+	adscConfig        = model.AdscConfig{}
+	impersonateConfig = model.ImpersonateConfig{
+		Replicas: 1,
+		Selector: string(model.SidecarSelector),
+	}
+	qps = 100
 )
 
 func init() {
@@ -33,6 +37,10 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&qps, "qps", qps, "qps for kube client")
 
 	rootCmd.PersistentFlags().IntVar(&adscConfig.Count, "adsc.count", adscConfig.Count, "number of adsc connections to make")
+
+	rootCmd.PersistentFlags().DurationVar(&impersonateConfig.Delay, "impersonate.delay", impersonateConfig.Delay, "delay between each connection")
+	rootCmd.PersistentFlags().IntVar(&impersonateConfig.Replicas, "impersonate.replicas", impersonateConfig.Replicas, "number of connections to make for each pod")
+	rootCmd.PersistentFlags().StringVar(&impersonateConfig.Selector, "impersonate.selector", impersonateConfig.Selector, "selector to use {sidecar,external,both}")
 }
 
 func defaultLogOptions() *log.Options {
@@ -70,11 +78,12 @@ var rootCmd = &cobra.Command{
 			qps = 100
 		}
 		a := model.Args{
-			PilotAddress:  pilotAddress,
-			KubeConfig:    kubeconfig,
-			Qps:           qps,
-			ClusterConfig: config,
-			AdsConfig:     adscConfig,
+			PilotAddress:      pilotAddress,
+			KubeConfig:        kubeconfig,
+			Qps:               qps,
+			ClusterConfig:     config,
+			AdsConfig:         adscConfig,
+			ImpersonateConfig: impersonateConfig,
 		}
 
 		switch sim {
@@ -82,6 +91,8 @@ var rootCmd = &cobra.Command{
 			return simulation.Cluster(a)
 		case "adsc":
 			return simulation.Adsc(a)
+		case "impersonate":
+			return simulation.Impersonate(a)
 		case "api":
 			return simulation.ApiServer(a)
 		default:

@@ -35,7 +35,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 		cluster = "Kubernetes"
 	}
 	meta := map[string]interface{}{
-		"ISTIO_VERSION": "1.6.0",
+		"ISTIO_VERSION": "1.7.0",
 		"CLUSTER_ID":    cluster,
 		"LABELS":        x.Labels,
 		"NAMESPACE":     x.Namespace,

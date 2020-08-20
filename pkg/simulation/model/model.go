@@ -139,13 +139,28 @@ type AdscConfig struct {
 	Count int
 }
 
+type Selector string
+
+var (
+	SidecarSelector  Selector = "sidecar"
+	ExternalSelector Selector = "external"
+	BothSelector     Selector = "both"
+)
+
+type ImpersonateConfig struct {
+	Replicas int
+	Delay    time.Duration
+	Selector string
+}
+
 type Args struct {
-	PilotAddress  string
-	InjectAddress string
-	KubeConfig    string
-	Qps           int
-	ClusterConfig ClusterConfig
-	AdsConfig     AdscConfig
+	PilotAddress      string
+	InjectAddress     string
+	KubeConfig        string
+	Qps               int
+	ClusterConfig     ClusterConfig
+	AdsConfig         AdscConfig
+	ImpersonateConfig ImpersonateConfig
 }
 
 type Context struct {

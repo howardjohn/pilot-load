@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
@@ -55,6 +56,11 @@ func NewClient(kubeconfig string, qps int) (*Client, error) {
 }
 
 var deletePeriod int64 = 0
+
+func (c *Client) Informers() informers.SharedInformerFactory {
+	inf := informers.NewSharedInformerFactory(c.kubernetes, 0)
+	return inf
+}
 
 func (c *Client) Finalize(ns *v1.Namespace) error {
 	_, err := c.kubernetes.CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
