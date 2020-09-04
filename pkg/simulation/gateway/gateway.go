@@ -203,7 +203,10 @@ func runProbe(ctx model.Context, gw string, index int) proberStatus {
 }
 
 func (p *ProberSimulation) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{model.ReverseSimulations(p.Simulations)}.Cleanup(ctx)
+	if err := (model.AggregateSimulation{p.Simulations[1:]}.CleanupParallel(ctx)); err != nil {
+		return err
+	}
+	return p.Simulations[0].Cleanup(ctx)
 }
 
 const namespace = "gateway-test"
