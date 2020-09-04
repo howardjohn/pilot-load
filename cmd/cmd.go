@@ -27,6 +27,9 @@ var (
 		Replicas: 1,
 		Selector: string(model.SidecarSelector),
 	}
+	proberConfig = model.ProberConfig{
+		Replicas: 1,
+	}
 	qps = 100
 )
 
@@ -41,6 +44,9 @@ func init() {
 	rootCmd.PersistentFlags().DurationVar(&impersonateConfig.Delay, "impersonate.delay", impersonateConfig.Delay, "delay between each connection")
 	rootCmd.PersistentFlags().IntVar(&impersonateConfig.Replicas, "impersonate.replicas", impersonateConfig.Replicas, "number of connections to make for each pod")
 	rootCmd.PersistentFlags().StringVar(&impersonateConfig.Selector, "impersonate.selector", impersonateConfig.Selector, "selector to use {sidecar,external,both}")
+
+	rootCmd.PersistentFlags().DurationVar(&proberConfig.Delay, "prober.delay", proberConfig.Delay, "delay between each connection")
+	rootCmd.PersistentFlags().IntVar(&proberConfig.Replicas, "prober.replicas", proberConfig.Replicas, "number of connections to make for each pod")
 }
 
 func defaultLogOptions() *log.Options {
@@ -73,7 +79,6 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
 		config = config.ApplyDefaults()
-		logConfig(config)
 		if qps == 0 {
 			qps = 100
 		}
@@ -84,15 +89,23 @@ var rootCmd = &cobra.Command{
 			ClusterConfig:     config,
 			AdsConfig:         adscConfig,
 			ImpersonateConfig: impersonateConfig,
+			ProberConfig:      proberConfig,
 		}
 
 		switch sim {
 		case "cluster":
+			logConfig(a.ClusterConfig)
+			logClusterConfig(a.ClusterConfig)
 			return simulation.Cluster(a)
 		case "adsc":
+			logConfig(a.AdsConfig)
 			return simulation.Adsc(a)
 		case "impersonate":
+			logConfig(a.ImpersonateConfig)
 			return simulation.Impersonate(a)
+		case "prober":
+			logConfig(a.ProberConfig)
+			return simulation.GatewayProber(a)
 		case "api":
 			return simulation.ApiServer(a)
 		default:
@@ -101,12 +114,15 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func logConfig(config model.ClusterConfig) {
+func logConfig(config interface{}) {
 	bytes, err := yaml.Marshal(config)
 	if err != nil {
 		panic(err.Error())
 	}
 	log.Infof("Starting simulation with config:\n%v", string(bytes))
+}
+
+func logClusterConfig(config model.ClusterConfig) {
 	namespaces, pods, applications := 0, 0, 0
 	for _, ns := range config.Namespaces {
 		namespaces += ns.Replicas

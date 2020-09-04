@@ -13,6 +13,7 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
+	"github.com/howardjohn/pilot-load/pkg/simulation/gateway"
 	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
@@ -84,6 +85,16 @@ func ApiServer(a model.Args) error {
 	return nil
 }
 
+func GatewayProber(a model.Args) error {
+	sim := gateway.NewSimulation(gateway.ProberSpec{
+		Replicas: a.ProberConfig.Replicas,
+		Delay:    a.ProberConfig.Delay,
+	})
+	if err := ExecuteSimulations(a, sim); err != nil {
+		return fmt.Errorf("error executing: %v", err)
+	}
+	return nil
+}
 func Impersonate(a model.Args) error {
 	sim := impersonate.NewSimulation(impersonate.ImpersonateSpec{
 		Selector: model.Selector(a.ImpersonateConfig.Selector),
@@ -131,7 +142,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	go captureTermination(ctx, cancel)
 	defer cancel()
 	go monitoring.StartMonitoring(ctx, 8765)
-	simulationContext := model.Context{ctx, a, cl}
+	simulationContext := model.Context{ctx, a, cl, cancel}
 	if err := simulation.Run(simulationContext); err != nil {
 		return err
 	}

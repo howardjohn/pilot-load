@@ -9,6 +9,8 @@ import (
 
 type KubernetesNamespaceSpec struct {
 	Name string
+	// If true, will treat this as a real cluster and not attempt to force cleanup
+	RealCluster bool
 }
 
 type KubernetesNamespace struct {
@@ -29,7 +31,10 @@ func (n *KubernetesNamespace) Cleanup(ctx model.Context) error {
 	if err := ctx.Client.Delete(n.getKubernetesNamespace()); err != nil {
 		return err
 	}
-	return ctx.Client.Finalize(n.getKubernetesNamespace())
+	if n.Spec.RealCluster {
+		return ctx.Client.Finalize(n.getKubernetesNamespace())
+	}
+	return nil
 }
 
 func (n *KubernetesNamespace) getKubernetesNamespace() *v1.Namespace {

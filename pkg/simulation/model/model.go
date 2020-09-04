@@ -153,6 +153,11 @@ type ImpersonateConfig struct {
 	Selector string
 }
 
+type ProberConfig struct {
+	Replicas int
+	Delay    time.Duration
+}
+
 type Args struct {
 	PilotAddress      string
 	InjectAddress     string
@@ -161,6 +166,7 @@ type Args struct {
 	ClusterConfig     ClusterConfig
 	AdsConfig         AdscConfig
 	ImpersonateConfig ImpersonateConfig
+	ProberConfig      ProberConfig
 }
 
 type Context struct {
@@ -168,6 +174,7 @@ type Context struct {
 	context.Context
 	Args   Args
 	Client *kube.Client
+	Cancel context.CancelFunc
 }
 
 func ReverseSimulations(sims []Simulation) []Simulation {

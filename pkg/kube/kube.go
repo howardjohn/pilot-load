@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,6 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
