@@ -60,28 +60,37 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 
 	t0 := time.Now()
 	results := make(chan proberStatus, p.Spec.Replicas)
-	for i := 0; i < p.Spec.Replicas; i++ {
-		i := i
-		vs := config.NewGeneric(createVirtualService(i))
-		p.Simulations = append(p.Simulations, vs)
-		// TODO start proper
-		go func() {
-			if err := vs.Run(ctx); err != nil {
-				scope.Errorf("failed to run virtual service: %v", err)
+	completed := p.Spec.Replicas
+	func() {
+		for i := 0; i < p.Spec.Replicas; i++ {
+			select {
+			case <-ctx.Done():
+				completed = i - 1
+				return
+			default:
 			}
-			scope.Infof("starting prober %d", i)
-			res := runProbe(ctx, p.Spec.Address, i)
-			res.prober = i
-			results <- res
-		}()
-		if i > p.Spec.DelayThreshold {
-			time.Sleep(p.Spec.Delay)
+			i := i
+			vs := config.NewGeneric(createVirtualService(i))
+			p.Simulations = append(p.Simulations, vs)
+			// TODO start proper
+			go func() {
+				if err := vs.Run(ctx); err != nil {
+					scope.Errorf("failed to run virtual service: %v", err)
+				}
+				scope.Infof("starting prober %d", i)
+				res := runProbe(ctx, p.Spec.Address, i)
+				res.prober = i
+				results <- res
+			}()
+			if i > p.Spec.DelayThreshold {
+				time.Sleep(p.Spec.Delay)
+			}
 		}
-	}
+	}()
 
 	finals := []proberStatus{}
 
-	for i := 0; i < p.Spec.Replicas; i++ {
+	for i := 0; i < completed; i++ {
 		got := <-results
 		finals = append(finals, got)
 	}
