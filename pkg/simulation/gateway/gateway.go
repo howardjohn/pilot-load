@@ -10,7 +10,7 @@ import (
 
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"istio.io/pkg/log"
+	ilog "istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
@@ -18,12 +18,13 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-var scope = log.RegisterScope("probe", "", 0)
+var scope = ilog.RegisterScope("probe", "", 0)
 
 type ProberSpec struct {
-	Delay      time.Duration
-	Replicas   int
-	GatewayUrl string
+	Delay          time.Duration
+	DelayThreshold int
+	Replicas       int
+	Address        string
 }
 
 type ProberSimulation struct {
@@ -38,13 +39,16 @@ func NewSimulation(spec ProberSpec) *ProberSimulation {
 }
 
 type proberStatus struct {
-	prober int
+	prober   int
 	ttl      time.Duration
 	attempts int
 	err      error
 }
 
 func (p *ProberSimulation) Run(ctx model.Context) error {
+	if p.Spec.Address == "" {
+		return fmt.Errorf("gateway address must be set")
+	}
 	sims := []model.Simulation{}
 	sims = append(sims, cluster.NewKubernetesNamespace(cluster.KubernetesNamespaceSpec{Name: namespace, RealCluster: true}))
 	sims = append(sims, config.NewGeneric(createGateway()))
@@ -63,14 +67,16 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 		// TODO start proper
 		go func() {
 			if err := vs.Run(ctx); err != nil {
-				log.Errorf("failed to run virtual service: %v", err)
+				scope.Errorf("failed to run virtual service: %v", err)
 			}
-			log.Infof("starting prober %d", i)
-			res := runProbe(ctx, "104.197.141.217", i)
+			scope.Infof("starting prober %d", i)
+			res := runProbe(ctx, p.Spec.Address, i)
 			res.prober = i
 			results <- res
 		}()
-		time.Sleep(p.Spec.Delay)
+		if i > p.Spec.DelayThreshold {
+			time.Sleep(p.Spec.Delay)
+		}
 	}
 
 	finals := []proberStatus{}
@@ -83,7 +89,7 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 		return finals[i].prober < finals[j].prober
 	})
 
-	log.Infof("Total test time: %v", time.Since(t0))
+	scope.Infof("Total test time: %v", time.Since(t0))
 	logResults(finals)
 	writeCsv(finals)
 	ctx.Cancel()
@@ -93,7 +99,7 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 func writeCsv(finals []proberStatus) {
 	f, err := ioutil.TempFile("/tmp", "")
 	if err != nil {
-		log.Errorf("failed to write csv: %v", err)
+		scope.Errorf("failed to write csv: %v", err)
 	}
 	sb := strings.Builder{}
 	sb.WriteString("prober,ttl,attempts\n")
@@ -101,9 +107,9 @@ func writeCsv(finals []proberStatus) {
 		sb.WriteString(fmt.Sprintf("%d,%d,%d\n", r.prober, r.ttl.Milliseconds(), r.attempts))
 	}
 	if err := ioutil.WriteFile(f.Name(), []byte(sb.String()), 0644); err != nil {
-		log.Errorf("failed to write csv: %v")
+		scope.Errorf("failed to write csv: %v")
 	}
-	log.Infof("wrote csv results to %v", f.Name())
+	scope.Infof("wrote csv results to %v", f.Name())
 }
 
 func logResults(res []proberStatus) {
@@ -116,14 +122,14 @@ func logResults(res []proberStatus) {
 	sort.SliceStable(ttls, func(i, j int) bool {
 		return ttls[i] < ttls[j]
 	})
-	log.Infof("Completed %d probes", len(ttls))
-	log.Infof("Total requests: %v", attempts)
-	log.Infof("Average requests until success: %v", attempts/len(ttls))
-	log.Infof("Average TTL: %v", sum(ttls)/time.Duration(len(ttls)))
-	log.Infof("Max TTL: %v", max(ttls))
+	scope.Infof("Completed %d probes", len(ttls))
+	scope.Infof("Total requests: %v", attempts)
+	scope.Infof("Average requests until success: %v", attempts/len(ttls))
+	scope.Infof("Average TTL: %v", sum(ttls)/time.Duration(len(ttls)))
+	scope.Infof("Max TTL: %v", max(ttls))
 	for _, r := range res {
 		if r.err != nil {
-			log.Errorf("Got error: %v", r.err)
+			scope.Errorf("Got error: %v", r.err)
 		}
 	}
 }
@@ -165,7 +171,9 @@ func runProbe(ctx model.Context, gw string, index int) proberStatus {
 		}
 		req.Host = fmt.Sprintf("vs-%d.example.com", index)
 		req.Header.Set("virtual-service", fmt.Sprintf("vs-%d", index))
+		t1 := time.Now()
 		resp, err := client.Do(req)
+		scope.Debugf("probe %d request latency: %v", index, time.Since(t1))
 		if err != nil {
 			scope.Warnf("probe %d failed on attempt %d: %v", index, attempts, err)
 			time.Sleep(time.Millisecond * 10 * time.Duration(attempts))

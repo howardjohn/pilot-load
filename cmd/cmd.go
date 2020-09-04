@@ -45,8 +45,10 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&impersonateConfig.Replicas, "impersonate.replicas", impersonateConfig.Replicas, "number of connections to make for each pod")
 	rootCmd.PersistentFlags().StringVar(&impersonateConfig.Selector, "impersonate.selector", impersonateConfig.Selector, "selector to use {sidecar,external,both}")
 
-	rootCmd.PersistentFlags().DurationVar(&proberConfig.Delay, "prober.delay", proberConfig.Delay, "delay between each connection")
-	rootCmd.PersistentFlags().IntVar(&proberConfig.Replicas, "prober.replicas", proberConfig.Replicas, "number of connections to make for each pod")
+	rootCmd.PersistentFlags().DurationVar(&proberConfig.Delay, "prober.delay", proberConfig.Delay, "delay between each virtual service")
+	rootCmd.PersistentFlags().IntVar(&proberConfig.DelayThreshold, "prober.delay-threshold", proberConfig.DelayThreshold, "if set, there will be no delay until we have this many virtual services")
+	rootCmd.PersistentFlags().IntVar(&proberConfig.Replicas, "prober.replicas", proberConfig.Replicas, "number of virtual services to make")
+	rootCmd.PersistentFlags().StringVar(&proberConfig.GatewayAddress, "prober.address", proberConfig.GatewayAddress, "address to gateway")
 }
 
 func defaultLogOptions() *log.Options {

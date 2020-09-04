@@ -154,8 +154,10 @@ type ImpersonateConfig struct {
 }
 
 type ProberConfig struct {
-	Replicas int
-	Delay    time.Duration
+	Replicas       int
+	DelayThreshold int
+	Delay          time.Duration
+	GatewayAddress string
 }
 
 type Args struct {

@@ -87,8 +87,10 @@ func ApiServer(a model.Args) error {
 
 func GatewayProber(a model.Args) error {
 	sim := gateway.NewSimulation(gateway.ProberSpec{
-		Replicas: a.ProberConfig.Replicas,
-		Delay:    a.ProberConfig.Delay,
+		Replicas:       a.ProberConfig.Replicas,
+		Delay:          a.ProberConfig.Delay,
+		DelayThreshold: a.ProberConfig.DelayThreshold,
+		Address:        a.ProberConfig.GatewayAddress,
 	})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)

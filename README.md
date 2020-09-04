@@ -72,3 +72,11 @@ pilot-load adsc --adsc.count=2
 This will start up two XDS connections.
 
 NOTE: these connections will not be associated with any Services, and as such will get a different config than real pods, including sidecar scoping.
+
+## Ingress Prober
+
+Note: this is independent of the above fake api server and can be run on a real cluster.
+
+This test continuously applies virtual services and sends traffic to see how long it takes for a virtual service to become ready.
+
+Usage: `pilot-load prober --prober.replicas=1000 --prober.delay=1s`.
