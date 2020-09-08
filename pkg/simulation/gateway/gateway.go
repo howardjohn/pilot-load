@@ -77,8 +77,13 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 				if err := vs.Run(ctx); err != nil {
 					scope.Errorf("failed to run virtual service: %v", err)
 				}
-				scope.Infof("starting prober %d", i)
-				res := runProbe(ctx, p.Spec.Address, i)
+				res := proberStatus{}
+				if i >= p.Spec.DelayThreshold {
+					scope.Infof("starting prober %d", i)
+					res = runProbe(ctx, p.Spec.Address, i)
+				} else {
+					scope.Infof("skipping prober %d", i)
+				}
 				res.prober = i
 				results <- res
 			}()
