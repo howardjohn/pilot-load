@@ -125,6 +125,8 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return v1alpha3.SchemeGroupVersion.WithResource("gateways"), "Gateway"
 	case *v1alpha3.DestinationRule:
 		return v1alpha3.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
+	case *v1alpha3.ServiceEntry:
+		return v1alpha3.SchemeGroupVersion.WithResource("serviceentries"), "ServiceEntry"
 	default:
 		panic(fmt.Sprintf("unsupported type %T", o))
 	}

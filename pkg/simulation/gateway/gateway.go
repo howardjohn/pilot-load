@@ -71,11 +71,19 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 			}
 			i := i
 			vs := config.NewGeneric(createVirtualService(i))
+			se := config.NewGeneric(createServiceEntry(i))
 			p.Simulations = append(p.Simulations, vs)
-			// TODO start proper
+			p.Simulations = append(p.Simulations, se)
 			go func() {
 				if err := vs.Run(ctx); err != nil {
 					scope.Errorf("failed to run virtual service: %v", err)
+					results <- proberStatus{err: err}
+					return
+				}
+				if err := se.Run(ctx); err != nil {
+					scope.Errorf("failed to run service entry: %v", err)
+					results <- proberStatus{err: err}
+					return
 				}
 				res := proberStatus{}
 				if i >= p.Spec.DelayThreshold {
@@ -138,9 +146,11 @@ func logResults(res []proberStatus) {
 	})
 	scope.Infof("Completed %d probes", len(ttls))
 	scope.Infof("Total requests: %v", attempts)
-	scope.Infof("Average requests until success: %v", attempts/len(ttls))
-	scope.Infof("Average TTL: %v", sum(ttls)/time.Duration(len(ttls)))
-	scope.Infof("Max TTL: %v", max(ttls))
+	if len(ttls) > 0 {
+		scope.Infof("Average requests until success: %v", attempts/len(ttls))
+		scope.Infof("Average TTL: %v", sum(ttls)/time.Duration(len(ttls)))
+		scope.Infof("Max TTL: %v", max(ttls))
+	}
 	for _, r := range res {
 		if r.err != nil {
 			scope.Errorf("Got error: %v", r.err)
@@ -216,6 +226,25 @@ func (p *ProberSimulation) Cleanup(ctx model.Context) error {
 
 const namespace = "gateway-test"
 
+func createServiceEntry(index int) *v1alpha3.ServiceEntry {
+	return &v1alpha3.ServiceEntry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("se-%d", index),
+			Namespace: namespace,
+		},
+		Spec: networkingv1alpha3.ServiceEntry{
+			Hosts:      []string{fmt.Sprintf("se-%d.example.com", index)},
+			Resolution: networkingv1alpha3.ServiceEntry_STATIC,
+			Ports: []*networkingv1alpha3.Port{{
+				Number:   80,
+				Protocol: "HTTP",
+				Name:     "http",
+			}},
+			Endpoints: []*networkingv1alpha3.WorkloadEntry{{Address: "1.2.3.4"}},
+		},
+	}
+}
+
 func createVirtualService(index int) *v1alpha3.VirtualService {
 	return &v1alpha3.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{
@@ -236,7 +265,7 @@ func createVirtualService(index int) *v1alpha3.VirtualService {
 					Route: []*networkingv1alpha3.HTTPRouteDestination{
 						{
 							Destination: &networkingv1alpha3.Destination{
-								Host: "httpbin.org",
+								Host: fmt.Sprintf("se-%d.example.com", index),
 							},
 						},
 					},
