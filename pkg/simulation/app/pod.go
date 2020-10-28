@@ -26,7 +26,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 
-	pb "istio.io/istio/security/proto"
+	pb "istio.io/api/security/v1alpha1"
 	"istio.io/pkg/log"
 )
 

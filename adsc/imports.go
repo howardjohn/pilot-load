@@ -109,7 +109,6 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/transport_socket/alts/v2alpha"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/transport_socket/raw_buffer/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/transport_socket/tap/v2alpha"
-	_ "github.com/envoyproxy/go-control-plane/envoy/config/wasm/v2alpha"
 	_ "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/data/cluster/v2alpha"
@@ -231,7 +230,7 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/pkg/test/v2"
 	_ "github.com/envoyproxy/go-control-plane/pkg/test/v3"
 
-	_ "istio.io/istio/security/proto/envoy/config/filter/http/alpn/v2alpha1"
+	_ "istio.io/istio/pkg/envoy/config/filter/http/alpn/v2alpha1"
 )
 
 var (

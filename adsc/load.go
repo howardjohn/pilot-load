@@ -7,9 +7,9 @@ import (
 func Connect(pilotAddress string, config *Config) {
 	attempts := 0
 	log := func(template string, args ...interface{}) {
-		a := []interface{}{config.Workload}
+		a := []interface{}{"%v: " + template, config.Workload}
 		a = append(a, args...)
-		scope.Infof("%v: "+template, a...)
+		scope.Infof(a...)
 	}
 	for {
 		log("Connecting: %v", config.IP)
