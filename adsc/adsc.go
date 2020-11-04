@@ -26,7 +26,6 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
 	"istio.io/pkg/log"
 )
 
@@ -238,26 +237,22 @@ func (a *ADSC) handleRecv() {
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
 			} else if rsc.TypeUrl == resource.EndpointType {
-				if dumpScope.DebugEnabled() {
-					ll := &endpoint.ClusterLoadAssignment{}
-					_ = proto.Unmarshal(valBytes, ll)
-					eds = append(eds, ll)
-					names = append(names, ll.ClusterName)
-				}
+				ll := &endpoint.ClusterLoadAssignment{}
+				_ = proto.Unmarshal(valBytes, ll)
+				eds = append(eds, ll)
+				names = append(names, ll.ClusterName)
 			} else if rsc.TypeUrl == resource.RouteType {
-				if dumpScope.DebugEnabled() {
-					ll := &route.RouteConfiguration{}
-					_ = proto.Unmarshal(valBytes, ll)
-					routes = append(routes, ll)
-					names = append(names, ll.Name)
-				}
+				ll := &route.RouteConfiguration{}
+				_ = proto.Unmarshal(valBytes, ll)
+				routes = append(routes, ll)
+				names = append(names, ll.Name)
 			}
 		}
 
 		// TODO: add hook to inject nacks
-		//a.mutex.Lock()
-		//a.ack(msg, names)
-		//a.mutex.Unlock()
+		a.mutex.Lock()
+		a.ack(msg, names)
+		a.mutex.Unlock()
 
 		switch msg.TypeUrl {
 		case resource.ListenerType:
@@ -270,19 +265,30 @@ func (a *ADSC) handleRecv() {
 			a.handleRDS(routes)
 		}
 	}
+}
 
+func getFilterChains(l *listener.Listener) []*listener.FilterChain {
+	chains := l.FilterChains
+	if l.DefaultFilterChain != nil {
+
+		chains = append(chains, l.DefaultFilterChain)
+	}
+	return chains
 }
 
 // nolint: staticcheck
 func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	routes := []string{}
 	for _, l := range ll {
-		f0 := l.FilterChains[0].Filters[0]
-		if f0.Name == "envoy.http_connection_manager" {
-			hcm := &envoy_extensions_filters_network_http_connection_manager_v3.HttpConnectionManager{}
-			_ = ptypes.UnmarshalAny(f0.GetTypedConfig(), hcm)
-			if route := hcm.GetRds().GetRouteConfigName(); route != "" {
-				routes = append(routes, route)
+		for _, fc := range getFilterChains(l) {
+			for _, f := range fc.GetFilters() {
+				if f.GetTypedConfig().GetTypeUrl() == "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager" {
+					hcm := &envoy_extensions_filters_network_http_connection_manager_v3.HttpConnectionManager{}
+					_ = ptypes.UnmarshalAny(f.GetTypedConfig(), hcm)
+					if r := hcm.GetRds().GetRouteConfigName(); r != "" {
+						routes = append(routes, r)
+					}
+				}
 			}
 		}
 	}
@@ -407,9 +413,8 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 	if !a.InitialLoad {
 		// first load - Envoy loads listeners after endpoints
 		_ = a.send(&discovery.DiscoveryRequest{
-			ResponseNonce: time.Now().String(),
-			Node:          a.node,
-			TypeUrl:       resource.ListenerType,
+			Node:    a.node,
+			TypeUrl: resource.ListenerType,
 		}, "init")
 	}
 

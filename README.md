@@ -53,7 +53,7 @@ The expense of this is dropping coverage:
       ```shell script
       # Connect to the remote kubeconfig
       kubectl port-forward -n pilot-load svc/apiserver 18090
-      export KUBECONFIG=kube/local-kubeconfig.yaml
+      export KUBECONFIG=install/local-kubeconfig.yaml
       # Connect to Istiod, if its not running locally as well
       kubectl port-forward -n istio-system svc/istiod 15010
       # Apply the actual deployment
