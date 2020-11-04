@@ -135,8 +135,21 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 func (c *Client) Apply(o runtime.Object) error {
 	return c.internalApply(o, false)
 }
+
 func (c *Client) ApplyFast(o runtime.Object) error {
 	return c.internalApply(o, true)
+}
+
+func hasStatus(us *unstructured.Unstructured) bool {
+	ifc, f := us.Object["status"]
+	if !f {
+		return false
+	}
+	cst, ok := ifc.(map[string]interface{})
+	if ok && len(cst) == 0 {
+		return false
+	}
+	return true
 }
 
 func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
@@ -151,12 +164,12 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 
 	if skipGet {
 		err := retry.RetryOnConflict(backoff, func() error {
-			scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			scope.Debugf("fast creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			if _, err := cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
 				return err
 			}
-			if _, f := us.Object["status"]; f {
-				scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			if hasStatus(us) {
+				scope.Debugf("fast updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}
@@ -176,15 +189,15 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 			if _, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
 				return err
 			}
-			if _, f := us.Object["status"]; f {
-				scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			if hasStatus(us) {
+				scope.Debugf("updating resource status: %s/%s.%", us.GetKind(), us.GetName(), us.GetNamespace())
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}
 			}
 			return nil
 		case err == nil:
-			scope.Debugf("updating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			scope.Debugf("patching resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			us.SetResourceVersion(cur.GetResourceVersion())
 			bytes, err := us.MarshalJSON()
 			if err != nil {
