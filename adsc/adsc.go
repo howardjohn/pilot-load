@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -93,7 +94,14 @@ type ADSC struct {
 	// Updates includes the type of the last update received from the server.
 	Updates chan string
 
-	mutex sync.Mutex
+	mutex   sync.Mutex
+	watches map[string]Watch
+}
+
+type Watch struct {
+	resources   []string
+	lastNonce   string
+	lastVersion string
 }
 
 var (
@@ -106,6 +114,7 @@ func Dial(url string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
 		done:        make(chan error),
 		Updates:     make(chan string, 100),
+		watches:     map[string]Watch{},
 		RootCert:    opts.RootCert,
 		SystemCerts: opts.SystemCerts,
 		ClientCert:  opts.ClientCert,
@@ -249,7 +258,6 @@ func (a *ADSC) handleRecv() {
 			}
 		}
 
-		// TODO: add hook to inject nacks
 		a.mutex.Lock()
 		a.ack(msg, names)
 		a.mutex.Unlock()
@@ -292,6 +300,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 			}
 		}
 	}
+	sort.Strings(routes)
 
 	if dumpScope.DebugEnabled() {
 		for i, l := range ll {
@@ -303,16 +312,39 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 			dumpScope.Debugf("lds %d: %v", i, b)
 		}
 	}
+
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	if len(routes) > 0 {
-		a.sendRequest(resource.RouteType, routes)
-	}
+
+	a.handleResourceUpdate(resource.RouteType, routes)
 
 	select {
 	case a.Updates <- "lds":
 	default:
 	}
+}
+
+func (a *ADSC) handleResourceUpdate(typeUrl string, resources []string) {
+	if !listEqual(a.watches[typeUrl].resources, resources) {
+		scope.Debugf("%v type resources changed: %v -> %v", typeUrl, a.watches[typeUrl].resources, resources)
+		watch := a.watches[typeUrl]
+		watch.resources = resources
+		a.watches[typeUrl] = watch
+		a.request(typeUrl, watch)
+	}
+}
+
+// listEqual checks that two lists contain all the same elements
+func listEqual(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // compact representations, for simplified debugging/testing
@@ -355,10 +387,10 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 
 		cn = append(cn, c.Name)
 	}
+	sort.Strings(cn)
 
-	if len(cn) > 0 {
-		a.sendRequest(resource.EndpointType, cn)
-	}
+	a.handleResourceUpdate(resource.EndpointType, cn)
+
 	if dumpScope.DebugEnabled() {
 		for i, c := range ll {
 			b, err := marshal.MarshalToString(c)
@@ -372,6 +404,14 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
+	if !a.InitialLoad {
+		// first load - Envoy loads listeners after endpoints
+		_ = a.send(&discovery.DiscoveryRequest{
+			Node:    a.node,
+			TypeUrl: resource.ListenerType,
+		}, ReasonInit)
+		a.InitialLoad = true
+	}
 
 	select {
 	case a.Updates <- "cds":
@@ -410,13 +450,6 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 			dumpScope.Debugf("eds %d: %v", i, b)
 		}
 	}
-	if !a.InitialLoad {
-		// first load - Envoy loads listeners after endpoints
-		_ = a.send(&discovery.DiscoveryRequest{
-			Node:    a.node,
-			TypeUrl: resource.ListenerType,
-		}, "init")
-	}
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -433,10 +466,6 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 
 	for _, r := range configurations {
 		rds[r.Name] = r
-	}
-
-	if !a.InitialLoad {
-		a.InitialLoad = true
 	}
 
 	if dumpScope.DebugEnabled() {
@@ -496,28 +525,38 @@ func (a *ADSC) Watch() {
 	err := a.send(&discovery.DiscoveryRequest{
 		Node:    a.node,
 		TypeUrl: resource.ClusterType,
-	}, "init")
+	}, ReasonInit)
 	if err != nil {
 		scope.Errorf("Error sending request: %v", err)
 	}
 }
 
-func (a *ADSC) sendRequest(typeurl string, rsc []string) {
+const (
+	ReasonAck     = "ack"
+	ReasonRequest = "request"
+	ReasonInit    = "init"
+)
+
+func (a *ADSC) request(typeUrl string, watch Watch) {
 	_ = a.send(&discovery.DiscoveryRequest{
-		ResponseNonce: "",
+		ResponseNonce: watch.lastNonce,
+		TypeUrl:       typeUrl,
 		Node:          a.node,
-		TypeUrl:       typeurl,
-		ResourceNames: rsc,
-	}, "request")
+		VersionInfo:   watch.lastVersion,
+		ResourceNames: watch.resources,
+	}, ReasonRequest)
 }
 
 func (a *ADSC) ack(msg *discovery.DiscoveryResponse, names []string) {
-	sendNames := names
+	watch := a.watches[msg.TypeUrl]
+	watch.lastNonce = msg.Nonce
+	watch.lastVersion = msg.VersionInfo
+	a.watches[msg.TypeUrl] = watch
 	_ = a.send(&discovery.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
 		Node:          a.node,
 		VersionInfo:   msg.VersionInfo,
-		ResourceNames: sendNames,
-	}, "ack")
+		ResourceNames: names,
+	}, ReasonAck)
 }

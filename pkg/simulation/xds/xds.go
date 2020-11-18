@@ -44,7 +44,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 	go func() {
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
-			Workload:  x.Name,
+			Workload:  x.Name + "-" + x.IP,
 			Meta:      meta,
 			NodeType:  string(x.PodType),
 			IP:        x.IP,
