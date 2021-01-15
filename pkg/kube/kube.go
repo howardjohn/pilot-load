@@ -33,7 +33,7 @@ import (
 
 type Client struct {
 	dynamic    dynamic.Interface
-	kubernetes kubernetes.Interface
+	Kubernetes kubernetes.Interface
 }
 
 func NewClient(kubeconfig string, qps int) (*Client, error) {
@@ -64,19 +64,19 @@ func NewClient(kubeconfig string, qps int) (*Client, error) {
 	}
 	return &Client{
 		dynamic:    d,
-		kubernetes: k,
+		Kubernetes: k,
 	}, nil
 }
 
 var deletePeriod int64 = 0
 
 func (c *Client) Informers() informers.SharedInformerFactory {
-	inf := informers.NewSharedInformerFactory(c.kubernetes, 0)
+	inf := informers.NewSharedInformerFactory(c.Kubernetes, 0)
 	return inf
 }
 
 func (c *Client) Finalize(ns *v1.Namespace) error {
-	_, err := c.kubernetes.CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
+	_, err := c.Kubernetes.CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
 	return err
 }
 
@@ -218,7 +218,7 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 }
 
 func (c *Client) FetchRootCert() (string, error) {
-	cm, err := c.kubernetes.CoreV1().ConfigMaps("istio-system").Get(context.TODO(), "istio-ca-root-cert", metav1.GetOptions{})
+	cm, err := c.Kubernetes.CoreV1().ConfigMaps("istio-system").Get(context.TODO(), "istio-ca-root-cert", metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -231,7 +231,7 @@ var saTokenExpiration int64 = 60 * 24 * 7
 func (c *Client) CreateServiceAccountToken(ns string, serviceAccount string) (string, error) {
 	scopes.Framework.Debugf("Creating service account token for: %s/%s", ns, serviceAccount)
 
-	token, err := c.kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
+	token, err := c.Kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
 		&authenticationv1.TokenRequest{
 			Spec: authenticationv1.TokenRequestSpec{
 				Audiences:         []string{"istio-ca"},

@@ -153,6 +153,11 @@ type ImpersonateConfig struct {
 	Selector string
 }
 
+type StartupConfig struct {
+	Concurrency int
+	InCluster   bool
+}
+
 type ProberConfig struct {
 	Replicas       int
 	DelayThreshold int
@@ -168,6 +173,7 @@ type Args struct {
 	ClusterConfig     ClusterConfig
 	AdsConfig         AdscConfig
 	ImpersonateConfig ImpersonateConfig
+	StartupConfig     StartupConfig
 	ProberConfig      ProberConfig
 }
 

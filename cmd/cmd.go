@@ -27,6 +27,10 @@ var (
 		Replicas: 1,
 		Selector: string(model.SidecarSelector),
 	}
+	startupConfig = model.StartupConfig{
+		InCluster:   false,
+		Concurrency: 1,
+	}
 	proberConfig = model.ProberConfig{
 		Replicas: 1,
 	}
@@ -49,6 +53,9 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&proberConfig.DelayThreshold, "prober.delay-threshold", proberConfig.DelayThreshold, "if set, there will be no delay until we have this many virtual services")
 	rootCmd.PersistentFlags().IntVar(&proberConfig.Replicas, "prober.replicas", proberConfig.Replicas, "number of virtual services to make")
 	rootCmd.PersistentFlags().StringVar(&proberConfig.GatewayAddress, "prober.address", proberConfig.GatewayAddress, "address to gateway")
+
+	rootCmd.PersistentFlags().BoolVar(&startupConfig.InCluster, "startup.incluster", startupConfig.InCluster, "whether we are running in cluster. If enabled, we will check the readiness probe.")
+	rootCmd.PersistentFlags().IntVar(&startupConfig.Concurrency, "startup.concurrency", startupConfig.Concurrency, "number of pods to start concurrently")
 }
 
 func defaultLogOptions() *log.Options {
@@ -91,6 +98,7 @@ var rootCmd = &cobra.Command{
 			ClusterConfig:     config,
 			AdsConfig:         adscConfig,
 			ImpersonateConfig: impersonateConfig,
+			StartupConfig:     startupConfig,
 			ProberConfig:      proberConfig,
 		}
 
@@ -110,6 +118,8 @@ var rootCmd = &cobra.Command{
 			return simulation.GatewayProber(a)
 		case "api":
 			return simulation.ApiServer(a)
+		case "startup":
+			return simulation.PodStartup(a)
 		default:
 			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc, impersonate, prober}", sim)
 		}
