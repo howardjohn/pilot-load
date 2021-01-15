@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"istio.io/pkg/log"
 )
 
 type PodStartupSimulation struct {
@@ -39,12 +39,15 @@ func (a *PodStartupSimulation) createPod() *v1.Pod {
 }
 
 type result struct {
+	podName   string
 	read      time.Duration
 	initStart time.Duration
 	initEnd   time.Duration
 	start     time.Duration
 	ready     time.Duration
 }
+
+const cleanupDelay = time.Second * 0
 
 func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) {
 	work := func() (res result) {
@@ -55,8 +58,17 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 			return
 		}
 		defer func() {
-			if err := ctx.Client.Delete(pod); err != nil {
-				log.Warnf("pod cleanup: %v", err)
+			if cleanupDelay > 0 {
+				go func() {
+					time.Sleep(cleanupDelay)
+					if err := ctx.Client.Delete(pod); err != nil {
+						log.Warnf("pod cleanup: %v", err)
+					}
+				}()
+			} else {
+				if err := ctx.Client.Delete(pod); err != nil {
+					log.Warnf("pod cleanup: %v", err)
+				}
 			}
 		}()
 		for {
@@ -74,6 +86,7 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 			// TODO fetch init start, init end, container start
 			if res.read == 0 {
 				res.read = time.Since(t0)
+				res.podName = kpod.Name
 			}
 			start, end := GetInitContainerTimes(kpod, "istio-init")
 			if !start.IsZero() {
@@ -120,26 +133,24 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("Average:\tget:%v\tinitStart:%v\tinitEnd:%v\tstart:%v\tready:%v",
+			log.Infof("Average:\tget:%v\tstart:%v\tcomplete:%v\tready:%v",
 				avg(results, func(r result) time.Duration { return r.read }),
-				avg(results, func(r result) time.Duration { return r.initStart }),
-				avg(results, func(r result) time.Duration { return r.initStart }),
 				avg(results, func(r result) time.Duration { return r.start }),
 				avg(results, func(r result) time.Duration { return r.ready }),
+				avg(results, func(r result) time.Duration { return r.ready - r.start }),
 			)
-			log.Infof("Max:\tget:%v\tinitStart:%v\tinitEnd:%v\tstart:%v\tready:%v",
+			log.Infof("Max:\tget:%v\tstart:%v\tcomplete:%v\tready:%v",
 				max(results, func(r result) time.Duration { return r.read }),
-				max(results, func(r result) time.Duration { return r.initStart }),
-				max(results, func(r result) time.Duration { return r.initStart }),
 				max(results, func(r result) time.Duration { return r.start }),
 				max(results, func(r result) time.Duration { return r.ready }),
+				avg(results, func(r result) time.Duration { return r.ready - r.start }),
 			)
 			wg.Wait()
 			return nil
 		case report := <-c:
 			results = append(results, report)
-			log.Infof("Report:\tget:%v\tinitStart:%v\tinitEnd:%v\tstart:%v\tready:%v",
-				report.read, report.initStart, report.initStart, report.start, report.ready)
+			log.Infof("Report:\tget:%v\tstart:%v\tcomplete:%v\tready:%v\tname:%v",
+				report.read, report.start, report.ready, report.ready-report.start, report.podName)
 		}
 	}
 }
