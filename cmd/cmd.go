@@ -56,6 +56,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&startupConfig.InCluster, "startup.incluster", startupConfig.InCluster, "whether we are running in cluster. If enabled, we will check the readiness probe.")
 	rootCmd.PersistentFlags().IntVar(&startupConfig.Concurrency, "startup.concurrency", startupConfig.Concurrency, "number of pods to start concurrently")
+	rootCmd.PersistentFlags().StringVar(&startupConfig.Namespace, "startup.namespace", startupConfig.Namespace, "namespace to run in")
 }
 
 func defaultLogOptions() *log.Options {

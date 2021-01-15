@@ -20,12 +20,12 @@ type PodStartupSimulation struct {
 
 var grace = int64(0)
 
-func createPod() *v1.Pod {
+func (a *PodStartupSimulation) createPod() *v1.Pod {
 	id := util.GenUID()
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("startup-test-%s", id),
-			Namespace: "default", // TODO make configurable, or derive from current context
+			Namespace: a.Config.Namespace,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
@@ -48,7 +48,7 @@ type result struct {
 
 func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) {
 	work := func() (res result) {
-		pod := createPod()
+		pod := a.createPod()
 		t0 := time.Now()
 		if err := ctx.Client.Apply(pod); err != nil {
 			log.Warnf("pod creation failed: %v", err)

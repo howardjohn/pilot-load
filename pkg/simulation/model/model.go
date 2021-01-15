@@ -154,6 +154,7 @@ type ImpersonateConfig struct {
 }
 
 type StartupConfig struct {
+	Namespace   string
 	Concurrency int
 	InCluster   bool
 }
