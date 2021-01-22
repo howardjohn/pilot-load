@@ -44,7 +44,7 @@ install:
 
 .PHONY: docker
 docker:
-	docker buildx build . -t ${HUB}/pilot-load --import
+	docker buildx build . -t ${HUB}/pilot-load --load
 
 .PHONY: push
 push:
