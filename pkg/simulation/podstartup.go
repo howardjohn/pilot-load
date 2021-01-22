@@ -133,7 +133,7 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("Average:\tget:%v\tstart:%v\tcomplete:%v\tready:%v",
+			log.Infof("Avg:\tget:%v\tstart:%v\tcomplete:%v\tready:%v",
 				avg(results, func(r result) time.Duration { return r.read }),
 				avg(results, func(r result) time.Duration { return r.start }),
 				avg(results, func(r result) time.Duration { return r.ready }),
