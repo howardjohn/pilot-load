@@ -8,11 +8,11 @@ require (
 	github.com/felixge/fgprof v0.9.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.4.3
-	github.com/golang/sync v0.0.0-20180314180146-1d60e4601c6f
 	github.com/lthibault/jitterbug v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.1.1
 	go.uber.org/atomic v1.7.0
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	google.golang.org/grpc v1.35.0
 	istio.io/api v0.0.0-20210114003959-328c3a371318
 	istio.io/client-go v1.8.1

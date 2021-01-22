@@ -44,11 +44,11 @@ install:
 
 .PHONY: docker
 docker:
-	docker build . -t ${HUB}/pilot-load
+	docker buildx build . -t ${HUB}/pilot-load --import
 
 .PHONY: push
 push:
-	docker push ${HUB}/pilot-load
+	docker buildx build . -t ${HUB}/pilot-load --push
 
 .PHONY: setup
 setup:

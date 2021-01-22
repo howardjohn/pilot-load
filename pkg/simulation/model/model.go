@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/sync/errgroup"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
