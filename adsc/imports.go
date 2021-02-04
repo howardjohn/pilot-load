@@ -233,7 +233,5 @@ import (
 	_ "istio.io/istio/pkg/envoy/config/filter/http/alpn/v2alpha1"
 )
 
-var (
-	// Statically link protobuf descriptors from UDPA
-	_ = udpa.TypedStruct{}
-)
+// Statically link protobuf descriptors from UDPA
+var _ = udpa.TypedStruct{}

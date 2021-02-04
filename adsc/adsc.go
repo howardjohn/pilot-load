@@ -31,8 +31,10 @@ import (
 	"istio.io/pkg/log"
 )
 
-var scope = log.RegisterScope("adsc", "", 0)
-var dumpScope = log.RegisterScope("dump", "", 0)
+var (
+	scope     = log.RegisterScope("adsc", "", 0)
+	dumpScope = log.RegisterScope("dump", "", 0)
+)
 
 var marshal = &jsonpb.Marshaler{OrigName: true, Indent: "  "}
 
@@ -105,10 +107,8 @@ type Watch struct {
 	lastVersion string
 }
 
-var (
-	// ErrTimeout is returned by Wait if no update is received in the given time.
-	ErrTimeout = errors.New("timeout")
-)
+// ErrTimeout is returned by Wait if no update is received in the given time.
+var ErrTimeout = errors.New("timeout")
 
 // Dial connects to a ADS server, with optional MTLS authentication if a cert dir is specified.
 func Dial(url string, opts *Config) (*ADSC, error) {
@@ -279,7 +279,6 @@ func (a *ADSC) handleRecv() {
 func getFilterChains(l *listener.Listener) []*listener.FilterChain {
 	chains := l.FilterChains
 	if l.DefaultFilterChain != nil {
-
 		chains = append(chains, l.DefaultFilterChain)
 	}
 	return chains
@@ -462,7 +461,6 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 }
 
 func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
-
 	rds := map[string]*route.RouteConfiguration{}
 
 	for _, r := range configurations {
@@ -484,7 +482,6 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 	case a.Updates <- "rds":
 	default:
 	}
-
 }
 
 // WaitClear will clear the waiting events, so next call to Wait will get

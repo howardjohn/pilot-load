@@ -45,6 +45,7 @@ func GatewayProber(a model.Args) error {
 	}
 	return nil
 }
+
 func Impersonate(a model.Args) error {
 	sim := impersonate.NewSimulation(impersonate.ImpersonateSpec{
 		Selector: model.Selector(a.ImpersonateConfig.Selector),

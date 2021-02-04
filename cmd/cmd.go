@@ -7,12 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+	"github.com/howardjohn/pilot-load/pkg/simulation"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/grpclog"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 
 	"istio.io/pkg/log"
 )
@@ -170,8 +169,10 @@ func readConfigFile(filename string) (model.ClusterConfig, error) {
 
 func Execute() {
 	loggingOptions.AttachCobraFlags(rootCmd)
-	hiddenFlags := []string{"log_as_json", "log_rotate", "log_rotate_max_age", "log_rotate_max_backups",
-		"log_rotate_max_size", "log_stacktrace_level", "log_target", "log_caller"}
+	hiddenFlags := []string{
+		"log_as_json", "log_rotate", "log_rotate_max_age", "log_rotate_max_backups",
+		"log_rotate_max_size", "log_stacktrace_level", "log_target", "log_caller",
+	}
 	for _, opt := range hiddenFlags {
 		_ = rootCmd.PersistentFlags().MarkHidden(opt)
 	}

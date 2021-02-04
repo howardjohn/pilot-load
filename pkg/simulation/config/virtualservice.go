@@ -3,9 +3,8 @@ package config
 import (
 	"math/rand"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -27,8 +26,10 @@ type VirtualService struct {
 	Spec *VirtualServiceSpec
 }
 
-var _ model.Simulation = &VirtualService{}
-var _ model.RefreshableSimulation = &VirtualService{}
+var (
+	_ model.Simulation            = &VirtualService{}
+	_ model.RefreshableSimulation = &VirtualService{}
+)
 
 func NewVirtualService(s VirtualServiceSpec) *VirtualService {
 	return &VirtualService{Spec: &s}
@@ -77,7 +78,8 @@ func (v *VirtualService) getVirtualService() *v1alpha3.VirtualService {
 				Host:   s.App,
 				Subset: ss.Name,
 				Port:   &networkingv1alpha3.PortSelector{Number: 80},
-			}})
+			},
+		})
 	}
 	return &v1alpha3.VirtualService{
 		ObjectMeta: metav1.ObjectMeta{

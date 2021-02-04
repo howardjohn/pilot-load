@@ -8,11 +8,10 @@ import (
 	"strings"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -129,7 +128,7 @@ func writeCsv(finals []proberStatus) {
 	for _, r := range finals {
 		sb.WriteString(fmt.Sprintf("%d,%d,%d\n", r.prober, r.ttl.Milliseconds(), r.attempts))
 	}
-	if err := ioutil.WriteFile(f.Name(), []byte(sb.String()), 0644); err != nil {
+	if err := ioutil.WriteFile(f.Name(), []byte(sb.String()), 0o644); err != nil {
 		scope.Errorf("failed to write csv: %v")
 	}
 	scope.Infof("wrote csv results to %v", f.Name())
@@ -281,6 +280,7 @@ func createVirtualService(index int) *v1alpha3.VirtualService {
 		},
 	}
 }
+
 func createGateway() *v1alpha3.Gateway {
 	return &v1alpha3.Gateway{
 		ObjectMeta: metav1.ObjectMeta{

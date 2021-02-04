@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"go.uber.org/atomic"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
+	"go.uber.org/atomic"
 
 	pkiutil "istio.io/istio/security/pkg/pki/util"
 )

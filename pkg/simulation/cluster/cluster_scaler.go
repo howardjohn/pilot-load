@@ -5,9 +5,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lthibault/jitterbug"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/lthibault/jitterbug"
 
 	"istio.io/pkg/log"
 )

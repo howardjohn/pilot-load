@@ -3,10 +3,9 @@ package app
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"istio.io/pkg/log"
 )
@@ -32,9 +31,11 @@ type Application struct {
 	destRule       *config.DestinationRule
 }
 
-var _ model.Simulation = &Application{}
-var _ model.ScalableSimulation = &Application{}
-var _ model.RefreshableSimulation = &Application{}
+var (
+	_ model.Simulation            = &Application{}
+	_ model.ScalableSimulation    = &Application{}
+	_ model.RefreshableSimulation = &Application{}
+)
 
 func NewApplication(s ApplicationSpec) *Application {
 	w := &Application{Spec: &s}

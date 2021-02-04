@@ -3,15 +3,14 @@ package simulation
 import (
 	"time"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/pkg/log"
 )
 
-type ApiServerSimulation struct {
-}
+type ApiServerSimulation struct{}
 
 func (a ApiServerSimulation) Run(ctx model.Context) error {
 	pod := &v1.Pod{
@@ -59,7 +58,8 @@ func (a ApiServerSimulation) Cleanup(ctx model.Context) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
-		}})
+		},
+	})
 }
 
 var _ model.Simulation = &ApiServerSimulation{}
