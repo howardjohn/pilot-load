@@ -13,6 +13,6 @@ RUN --mount=target=. \
 
 FROM alpine
 
-COPY --from=build /out/pilot-load /app/pilot-load
+COPY --from=build /out/pilot-load /usr/bin/pilot-load
 
-ENTRYPOINT ["/app/pilot-load"]
+ENTRYPOINT ["/usr/bin/pilot-load"]

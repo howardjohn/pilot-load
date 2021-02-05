@@ -1,29 +1,29 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: impersonate
+  name: pilot
   namespace: pilot-load
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: impersonate-load
+  name: pilot-load
   namespace: pilot-load
   labels:
-    app: impersonate-load
+    app: pilot-load
 spec:
   replicas: 1
   template:
     metadata:
-      name: impersonate-load
+      name: pilot-load
       annotations:
         sidecar.istio.io/inject: "false"
         prometheus.io/scrape: "true"
         prometheus.io/port: "8765"
       labels:
-        app: impersonate-load
+        app: pilot-load
     spec:
-      serviceAccountName: impersonate
+      serviceAccountName: pilot
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -49,12 +49,12 @@ spec:
             memory: 2Gi
   selector:
     matchLabels:
-      app: impersonate-load
+      app: pilot-load
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: pilot-load-impersonate
+  name: pilot-load
   namespace: pilot-load
 rules:
 - apiGroups: [""]
@@ -64,13 +64,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: pilot-load-impersonate-binding
+  name: pilot-load-binding
   namespace: pilot-load
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pilot-load-impersonate
+  name: pilot-load
 subjects:
 - kind: ServiceAccount
-  name: impersonate
+  name: pilot
   namespace: pilot-load
