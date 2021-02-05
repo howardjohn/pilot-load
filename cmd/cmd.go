@@ -113,6 +113,8 @@ var rootCmd = &cobra.Command{
 		case "impersonate":
 			logConfig(a.ImpersonateConfig)
 			return simulation.Impersonate(a)
+		case "determinism":
+			return simulation.Determinism(a)
 		case "prober":
 			logConfig(a.ProberConfig)
 			return simulation.GatewayProber(a)

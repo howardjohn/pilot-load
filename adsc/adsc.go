@@ -94,11 +94,21 @@ type ADSC struct {
 	// If nil, the defaults will be used.
 	Metadata map[string]interface{}
 
+	// Responses we received last
+	Responses Responses
+
 	// Updates includes the type of the last update received from the server.
 	Updates chan string
 
 	mutex   sync.Mutex
 	watches map[string]Watch
+}
+
+type Responses struct {
+	Clusters  map[string]proto.Message
+	Listeners map[string]proto.Message
+	Routes    map[string]proto.Message
+	Endpoints map[string]proto.Message
 }
 
 type Watch struct {
@@ -113,9 +123,15 @@ var ErrTimeout = errors.New("timeout")
 // Dial connects to a ADS server, with optional MTLS authentication if a cert dir is specified.
 func Dial(url string, opts *Config) (*ADSC, error) {
 	adsc := &ADSC{
-		done:        make(chan error),
-		Updates:     make(chan string, 100),
-		watches:     map[string]Watch{},
+		done:    make(chan error),
+		Updates: make(chan string, 100),
+		watches: map[string]Watch{},
+		Responses: Responses{
+			Clusters:  map[string]proto.Message{},
+			Listeners: map[string]proto.Message{},
+			Routes:    map[string]proto.Message{},
+			Endpoints: map[string]proto.Message{},
+		},
 		RootCert:    opts.RootCert,
 		SystemCerts: opts.SystemCerts,
 		ClientCert:  opts.ClientCert,
@@ -236,30 +252,45 @@ func (a *ADSC) handleRecv() {
 		eds := []*endpoint.ClusterLoadAssignment{}
 		// TODO re-enable use of names. For now its skipped
 		names := []string{}
+		resp := map[string]proto.Message{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
 			if rsc.TypeUrl == resource.ListenerType {
 				ll := &listener.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
+				resp[ll.Name] = ll
 			} else if rsc.TypeUrl == resource.ClusterType {
 				ll := &cluster.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
+				resp[ll.Name] = ll
 			} else if rsc.TypeUrl == resource.EndpointType {
 				ll := &endpoint.ClusterLoadAssignment{}
 				_ = proto.Unmarshal(valBytes, ll)
 				eds = append(eds, ll)
 				names = append(names, ll.ClusterName)
+				resp[ll.ClusterName] = ll
 			} else if rsc.TypeUrl == resource.RouteType {
 				ll := &route.RouteConfiguration{}
 				_ = proto.Unmarshal(valBytes, ll)
 				routes = append(routes, ll)
 				names = append(names, ll.Name)
+				resp[ll.Name] = ll
 			}
 		}
 
 		a.mutex.Lock()
+		switch msg.TypeUrl {
+		case resource.ListenerType:
+			a.Responses.Listeners = resp
+		case resource.ClusterType:
+			a.Responses.Clusters = resp
+		case resource.EndpointType:
+			a.Responses.Endpoints = resp
+		case resource.RouteType:
+			a.Responses.Routes = resp
+		}
 		a.ack(msg, names)
 		a.mutex.Unlock()
 

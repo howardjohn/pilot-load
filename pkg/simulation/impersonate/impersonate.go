@@ -49,11 +49,10 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 			total++
 			pod := pod
 			meta := map[string]interface{}{
-				"ISTIO_VERSION": "1.7.0",
+				"ISTIO_VERSION": "1.10.0",
 				"CLUSTER_ID":    "Kubernetes",
 				"LABELS":        pod.Labels,
 				"NAMESPACE":     pod.Namespace,
-				"SDS":           "true",
 			}
 			done := make(chan struct{})
 			i.done = append(i.done, done)

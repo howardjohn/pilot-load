@@ -58,6 +58,14 @@ func Impersonate(a model.Args) error {
 	return nil
 }
 
+func Determinism(a model.Args) error {
+	sim := &DeterministicSimulation{}
+	if err := ExecuteSimulations(a, sim); err != nil {
+		return fmt.Errorf("error executing: %v", err)
+	}
+	return nil
+}
+
 func Cluster(a model.Args) error {
 	sim := cluster.NewCluster(cluster.ClusterSpec{a.ClusterConfig})
 	if err := ExecuteSimulations(a, sim); err != nil {
