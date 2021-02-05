@@ -42,15 +42,11 @@ spec:
       - name: pilot-load
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
-        args:
-        - "impersonate"
-        - "--pilot-address=istiod.istio-system:15010"
-        - "--impersonate.delay=50ms"
-        - "--impersonate.replicas=1"
+        command: ["sleep", "1000000000000"]
         resources:
           requests:
-            cpu: 4000m
-            memory: 4Gi
+            cpu: 2000m
+            memory: 2Gi
   selector:
     matchLabels:
       app: impersonate-load

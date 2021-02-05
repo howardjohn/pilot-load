@@ -123,7 +123,7 @@ var rootCmd = &cobra.Command{
 		case "startup":
 			return simulation.PodStartup(a)
 		default:
-			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc, impersonate, prober}", sim)
+			return fmt.Errorf("unknown simulation %v. Expected: {cluster, adsc, impersonate, prober, impersonate, startup}", sim)
 		}
 	},
 }
