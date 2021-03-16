@@ -7,10 +7,13 @@ import (
 
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type Simulation struct {
 	Labels    map[string]string
+	Metadata  map[string]interface{}
 	Namespace string
 	Name      string
 	IP        string
@@ -22,8 +25,18 @@ type Simulation struct {
 	RootCert   []byte
 	ClientCert tls.Certificate
 
+	GrpcOpts []grpc.DialOption
+
 	cancel context.CancelFunc
 	done   chan struct{}
+}
+
+func clone(m map[string]interface{}) map[string]interface{} {
+	n := map[string]interface{}{}
+	for k, v := range m {
+		n[k] = v
+	}
+	return n
 }
 
 func (x *Simulation) Run(ctx model.Context) error {
@@ -34,14 +47,14 @@ func (x *Simulation) Run(ctx model.Context) error {
 	if cluster == "" {
 		cluster = "Kubernetes"
 	}
-	meta := map[string]interface{}{
-		"ISTIO_VERSION": "1.7.0",
-		"CLUSTER_ID":    cluster,
-		"LABELS":        x.Labels,
-		"NAMESPACE":     x.Namespace,
-		"SDS":           "true",
-	}
+	meta := clone(x.Metadata)
+	meta["ISTIO_VERSION"] = "1.7.0"
+	meta["CLUSTER_ID"] = cluster
+	meta["LABELS"] = x.Labels
+	meta["NAMESPACE"] = x.Namespace
+	meta["SDS"] = "true"
 	go func() {
+		c = metadata.AppendToOutgoingContext(c, "trace", "true")
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
 			Workload:  x.Name + "-" + x.IP,
@@ -53,6 +66,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 			SystemCerts: strings.HasSuffix(ctx.Args.PilotAddress, ":443"),
 			RootCert:    x.RootCert,
 			ClientCert:  x.ClientCert,
+			GrpcOpts:    x.GrpcOpts,
 		})
 		close(x.done)
 	}()

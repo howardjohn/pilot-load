@@ -95,5 +95,6 @@ func Connect(pilotAddress string, config *Config) {
 			}
 		}
 		log("Disconnected: %v", config.IP)
+		time.Sleep(time.Millisecond * 500)
 	}
 }

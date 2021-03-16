@@ -27,7 +27,6 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
 	"istio.io/pkg/log"
 )
 
@@ -63,6 +62,8 @@ type Config struct {
 	RootCert    []byte
 	SystemCerts bool
 	ClientCert  tls.Certificate
+
+	GrpcOpts []grpc.DialOption
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -85,6 +86,8 @@ type ADSC struct {
 	RootCert    []byte
 	SystemCerts bool
 	ClientCert  tls.Certificate
+
+	GrpcOpts []grpc.DialOption
 
 	url string
 
@@ -135,6 +138,7 @@ func Dial(url string, opts *Config) (*ADSC, error) {
 		RootCert:    opts.RootCert,
 		SystemCerts: opts.SystemCerts,
 		ClientCert:  opts.ClientCert,
+		GrpcOpts:    opts.GrpcOpts,
 		url:         url,
 		ctx:         opts.Context,
 	}
@@ -194,7 +198,7 @@ func (a *ADSC) Close() {
 // Run will run the ADS client.
 func (a *ADSC) Run() error {
 	var err error
-
+	opts := a.GrpcOpts
 	if len(a.RootCert) > 0 {
 		serverCAs := x509.NewCertPool()
 		if ok := serverCAs.AppendCertsFromPEM(a.RootCert); !ok {
@@ -208,20 +212,15 @@ func (a *ADSC) Run() error {
 		}
 		creds := credentials.NewTLS(tlsCfg)
 
-		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithTransportCredentials(creds))
-		if err != nil {
-			return fmt.Errorf("dial context: %v", err)
-		}
+		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else if a.SystemCerts {
-		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
-		if err != nil {
-			return fmt.Errorf("dial context: %v", err)
-		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	} else {
-		a.conn, err = grpc.DialContext(a.ctx, a.url, grpc.WithInsecure())
-		if err != nil {
-			return fmt.Errorf("dial context: %v", err)
-		}
+		opts = append(opts, grpc.WithInsecure())
+	}
+	a.conn, err = grpc.DialContext(a.ctx, a.url, opts...)
+	if err != nil {
+		return fmt.Errorf("dial context: %v", err)
 	}
 
 	xds := discovery.NewAggregatedDiscoveryServiceClient(a.conn)

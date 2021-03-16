@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -19,6 +20,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	istiosecurity "istio.io/istio/pkg/security"
+	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
+	"istio.io/istio/security/pkg/stsservice"
+	"istio.io/istio/security/pkg/stsservice/server"
+	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,13 +66,34 @@ func NewPod(s PodSpec) *Pod {
 	}
 }
 
+type GrpcCredentials struct {
+	Metadata func() (map[string]string, error)
+}
+
+func (g GrpcCredentials) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return g.Metadata()
+}
+
+func (g GrpcCredentials) RequireTransportSecurity() bool {
+	return true
+}
+
+var _ credentials.PerRPCCredentials = &GrpcCredentials{}
+
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
 	if err = ctx.Client.ApplyFast(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
-
+	projectNumber := "700341650140"
+	trustDomain := "howardjohn-istio.svc.id.goog"
+	clusterURL := "https://container.googleapis.com/v1/projects/howardjohn-istio/locations/us-central1-c/clusters/howardjohn"
+	tmp, err := google.CreateTokenManagerPlugin(nil, trustDomain,
+		projectNumber, clusterURL, true)
+	if err != nil {
+		return err
+	}
 	p.created = true
 
 	if p.Spec.PodType != model.ExternalType {
@@ -82,10 +109,38 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			PodType:   p.Spec.PodType,
 			// TODO: multicluster
 			Cluster: "Kubernetes",
+			Metadata: map[string]interface{}{
+				"CLOUDRUN_ADDR": "asm-howardjohn-asm-managed-us-central1-c-p7morfnxsq-uc.a.run.app:443",
+			},
 		}
 
 		_, port, _ := net.SplitHostPort(ctx.Args.PilotAddress)
-		if port != "15010" {
+		if port == "443" {
+			token, err := security.GetServiceAccountToken(ctx.Client, pod.Namespace, p.Spec.ServiceAccount)
+			if err != nil {
+				return err
+			}
+			params := istiosecurity.StsRequestParameters{
+				Scope:            stsclient.Scope,
+				GrantType:        server.TokenExchangeGrantType,
+				SubjectToken:     strings.TrimSpace(token),
+				SubjectTokenType: server.SubjectTokenType,
+			}
+			et, err := tmp.ExchangeToken(params)
+			if err != nil {
+				return err
+			}
+			respData := &stsservice.StsResponseParameters{}
+			if err := json.Unmarshal(et, respData); err != nil {
+				return fmt.Errorf("failed to unmarshal access token response data: %v", err)
+			}
+			p.xds.GrpcOpts = []grpc.DialOption{grpc.WithPerRPCCredentials(GrpcCredentials{Metadata: func() (map[string]string, error) {
+				// TODO generate each time
+				meta, err := tmp.GetMetadata(false, google.GCPAuthProvider, respData.AccessToken)
+				log.Infof("%+v", meta)
+				return meta, err
+			}})}
+		} else if port != "15010" {
 			t0 := time.Now()
 			cert, rootCert, err := sendCsr(ctx, p.Spec)
 			if err != nil {
