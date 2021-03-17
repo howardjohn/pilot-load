@@ -42,7 +42,10 @@ var (
 )
 
 func DefaultAuthForAddress(addr string) AuthType {
-	_, port, _ := net.SplitHostPort(addr)
+	host, port, _ := net.SplitHostPort(addr)
+	if strings.Contains(host, "googleapis.com") {
+		return AuthTypeGoogle
+	}
 	switch port {
 	case "15010":
 		return AuthTypePlaintext
@@ -62,13 +65,13 @@ func (a *AuthOptions) AutoPopulate() error {
 	explicitlySet := a.ClusterURL != "" && a.ProjectNumber != "" && a.TrustDomain != ""
 	if !explicitlySet && platform.IsGCP() {
 		md := platform.NewGCP().Metadata()
-		if a.ClusterURL != "" {
+		if a.ClusterURL == "" {
 			a.ClusterURL = md[platform.GCPClusterURL]
 		}
-		if a.ProjectNumber != "" {
+		if a.ProjectNumber == "" {
 			a.ProjectNumber = md[platform.GCPProjectNumber]
 		}
-		if a.TrustDomain != "" {
+		if a.TrustDomain == "" {
 			a.TrustDomain = fmt.Sprintf("%s.svc.id.goog", md[platform.GCPProject])
 		}
 	}
