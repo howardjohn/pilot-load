@@ -11,7 +11,7 @@ RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     go build -o /out/pilot-load .
 
-FROM alpine
+FROM howardjohn/shell
 
 COPY --from=build /out/pilot-load /usr/bin/pilot-load
 

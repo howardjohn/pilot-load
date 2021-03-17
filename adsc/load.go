@@ -56,6 +56,7 @@ func Connect(pilotAddress string, config *Config) {
 		scope.Infof(a...)
 	}
 	for {
+		t0 := time.Now()
 		log("Connecting: %v", config.IP)
 		con, err := Dial(pilotAddress, config)
 		if err != nil {
@@ -72,7 +73,7 @@ func Connect(pilotAddress string, config *Config) {
 			continue
 		}
 
-		log("Connected: %v", config.IP)
+		log("Connected: %v in %v", config.IP, time.Since(t0))
 		con.Watch()
 
 		update := false
@@ -87,7 +88,7 @@ func Connect(pilotAddress string, config *Config) {
 					exit = true
 				} else if !update {
 					update = true
-					log("Got Initial Update: %v for %v", config.IP, u)
+					log("Got Initial Update: %v for %v in %v", config.IP, u, time.Since(t0))
 				}
 			case <-config.Context.Done():
 				// We are really done now. Shut everything down and stop

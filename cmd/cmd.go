@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	pilotAddress   = "localhost:15010"
+	pilotAddress   = defaultAddress()
 	xdsMetadata    = map[string]string{}
 	auth           = string(security.AuthTypeDefault)
 	kubeconfig     = os.Getenv("KUBECONFIG")
@@ -40,6 +40,14 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&authClusterUrl, "clusterURL", authClusterUrl, "cluster URL (for google auth)")
 	rootCmd.PersistentFlags().StringVar(&authTrustDomain, "trustDomain", authTrustDomain, "trust domain (for google auth)")
 	rootCmd.PersistentFlags().StringVar(&authProjectNumber, "projectNumber", authProjectNumber, "project number (for google auth)")
+}
+
+func defaultAddress() string {
+	_, inCluster := os.LookupEnv("KUBERNETES_SERVICE_HOST")
+	if inCluster {
+		return "istiod.istio-system.svc:15010"
+	}
+	return "localhost:15010"
 }
 
 func defaultLogOptions() *log.Options {
