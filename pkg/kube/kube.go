@@ -132,10 +132,12 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 }
 
 func (c *Client) Apply(o runtime.Object) error {
+	return nil
 	return c.internalApply(o, false)
 }
 
 func (c *Client) ApplyFast(o runtime.Object) error {
+	return nil
 	return c.internalApply(o, true)
 }
 
@@ -189,7 +191,7 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 				return err
 			}
 			if hasStatus(us) {
-				scope.Debugf("updating resource status: %s/%s.%", us.GetKind(), us.GetName(), us.GetNamespace())
+				scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}
@@ -227,13 +229,13 @@ func (c *Client) FetchRootCert() (string, error) {
 // 7 days
 var saTokenExpiration int64 = 60 * 24 * 7
 
-func (c *Client) CreateServiceAccountToken(ns string, serviceAccount string) (string, error) {
+func (c *Client) CreateServiceAccountToken(aud, ns, serviceAccount string) (string, error) {
 	scopes.Framework.Debugf("Creating service account token for: %s/%s", ns, serviceAccount)
 
 	token, err := c.Kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
 		&authenticationv1.TokenRequest{
 			Spec: authenticationv1.TokenRequestSpec{
-				Audiences:         []string{"istio-ca"},
+				Audiences:         []string{aud},
 				ExpirationSeconds: &saTokenExpiration,
 			},
 		}, metav1.CreateOptions{})

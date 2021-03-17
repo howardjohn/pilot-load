@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"golang.org/x/sync/errgroup"
 
@@ -168,13 +169,14 @@ type ProberConfig struct {
 type Args struct {
 	PilotAddress      string
 	InjectAddress     string
-	KubeConfig        string
-	Qps               int
+	Client            *kube.Client
+	Auth              *security.AuthOptions
 	ClusterConfig     ClusterConfig
 	AdsConfig         AdscConfig
 	ImpersonateConfig ImpersonateConfig
 	StartupConfig     StartupConfig
 	ProberConfig      ProberConfig
+	Metadata          map[string]string
 }
 
 type Context struct {

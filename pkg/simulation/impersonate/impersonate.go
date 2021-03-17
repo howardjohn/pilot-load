@@ -1,11 +1,10 @@
 package impersonate
 
 import (
-	"strings"
 	"time"
 
-	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 
@@ -48,26 +47,22 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 			}
 			total++
 			pod := pod
-			meta := map[string]interface{}{
-				"ISTIO_VERSION": "1.10.0",
-				"CLUSTER_ID":    "Kubernetes",
-				"LABELS":        pod.Labels,
-				"NAMESPACE":     pod.Namespace,
-			}
 			done := make(chan struct{})
 			i.done = append(i.done, done)
 			ip := pod.Status.PodIP
+
+			xsim := xds.Simulation{
+				Labels:    pod.Labels,
+				Namespace: pod.Namespace,
+				Name:      pod.Name,
+				IP:        ip,
+				Cluster:   "",
+				PodType:   "",
+				GrpcOpts:  ctx.Args.Auth.GrpcOptions(pod.Spec.ServiceAccountName, pod.Namespace),
+			}
 			log.Infof("Starting pod %v/%v (%v), replica %d", pod.Name, pod.Namespace, ip, n)
 			go func() {
-				adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
-					Namespace: pod.Namespace,
-					Workload:  pod.Name,
-					Meta:      meta,
-					IP:        ip,
-					Context:   ctx,
-
-					SystemCerts: strings.HasSuffix(ctx.Args.PilotAddress, ":443"),
-				})
+				xsim.Run(ctx)
 				close(done)
 			}()
 			time.Sleep(i.Spec.Delay)

@@ -21,7 +21,6 @@ func Fetch(pilotAddress string, config *Config) (*Responses, error) {
 	log("Connected: %v", config.IP)
 	con.Watch()
 
-	log("Got Initial Update: %v", config.IP)
 	exit := false
 	for !exit {
 		select {
@@ -76,7 +75,7 @@ func Connect(pilotAddress string, config *Config) {
 		log("Connected: %v", config.IP)
 		con.Watch()
 
-		log("Got Initial Update: %v", config.IP)
+		update := false
 		exit := false
 		for !exit {
 			select {
@@ -86,6 +85,9 @@ func Connect(pilotAddress string, config *Config) {
 					// Try the whole loop again
 					log("Closing: %v", config.IP)
 					exit = true
+				} else if !update {
+					update = true
+					log("Got Initial Update: %v for %v", config.IP, u)
 				}
 			case <-config.Context.Done():
 				// We are really done now. Shut everything down and stop
@@ -95,5 +97,6 @@ func Connect(pilotAddress string, config *Config) {
 			}
 		}
 		log("Disconnected: %v", config.IP)
+		time.Sleep(time.Millisecond * 500)
 	}
 }

@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -99,8 +98,6 @@ func (d DeterministicSimulation) checkPod(ctx model.Context, pod *v1.Pod, addres
 				Meta:      meta,
 				IP:        ip,
 				Context:   ctx,
-
-				SystemCerts: strings.HasSuffix(addr, ":443"),
 			})
 			if err != nil {
 				log.Errorf(err)

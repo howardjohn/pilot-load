@@ -40,14 +40,14 @@ func GetRootCert(c *kube.Client) (string, error) {
 	return cert, nil
 }
 
-func GetServiceAccountToken(c *kube.Client, ns, sa string) (string, error) {
+func GetServiceAccountToken(c *kube.Client, aud, ns, sa string) (string, error) {
 	san := san(ns, sa)
 
 	if got, f := cachedTokens.Load(san); f {
 		return got.(string), nil
 	}
 
-	token, err := c.CreateServiceAccountToken(ns, sa)
+	token, err := c.CreateServiceAccountToken(aud, ns, sa)
 	if err != nil {
 		return "", err
 	}

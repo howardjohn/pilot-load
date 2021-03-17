@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/gateway"
 	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
@@ -80,28 +79,27 @@ func Adsc(a model.Args) error {
 	if count == 0 {
 		count = 1
 	}
+	opts := a.Auth.GrpcOptions("default", "default")
+
 	for i := 0; i < count; i++ {
 		sims = append(sims, &xds.Simulation{
 			Namespace: "default",
 			Name:      "adsc",
 			IP:        util.GetIP(),
 			// TODO: multicluster
-			Cluster: "Kubernetes",
+			Cluster:  "Kubernetes",
+			GrpcOpts: opts,
 		})
 	}
 	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims})
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
-	cl, err := kube.NewClient(a.KubeConfig, a.Qps)
-	if err != nil {
-		return err
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)
 	defer cancel()
 	go monitoring.StartMonitoring(ctx, 8765)
-	simulationContext := model.Context{ctx, a, cl, cancel}
+	simulationContext := model.Context{ctx, a, a.Client, cancel}
 	if err := simulation.Run(simulationContext); err != nil {
 		return err
 	}

@@ -4,28 +4,20 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
-	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	pb "istio.io/api/security/v1alpha1"
 	"istio.io/pkg/log"
 )
 
@@ -60,13 +52,26 @@ func NewPod(s PodSpec) *Pod {
 	}
 }
 
+type GrpcCredentials struct {
+	Metadata func() (map[string]string, error)
+}
+
+func (g GrpcCredentials) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return g.Metadata()
+}
+
+func (g GrpcCredentials) RequireTransportSecurity() bool {
+	return true
+}
+
+var _ credentials.PerRPCCredentials = &GrpcCredentials{}
+
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
 	if err = ctx.Client.ApplyFast(pod); err != nil {
 		return fmt.Errorf("failed to apply config: %v", err)
 	}
-
 	p.created = true
 
 	if p.Spec.PodType != model.ExternalType {
@@ -81,90 +86,14 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			IP:        p.Spec.IP,
 			PodType:   p.Spec.PodType,
 			// TODO: multicluster
-			Cluster: "Kubernetes",
-		}
-
-		_, port, _ := net.SplitHostPort(ctx.Args.PilotAddress)
-		if port != "15010" {
-			t0 := time.Now()
-			cert, rootCert, err := sendCsr(ctx, p.Spec)
-			if err != nil {
-				return err
-			}
-			log.Debugf("csr for %v complete in %v", pod.Name, time.Since(t0))
-			p.xds.ClientCert = cert
-			p.xds.RootCert = rootCert
+			Cluster:  "Kubernetes",
+			GrpcOpts: ctx.Args.Auth.GrpcOptions(p.Spec.ServiceAccount, p.Spec.Namespace),
 		}
 		return p.xds.Run(ctx)
 	} else {
 		log.Infof("Starting pod %v", pod.Name)
 	}
 	return nil
-}
-
-func sendCsr(ctx model.Context, s *PodSpec) (tls.Certificate, []byte, error) {
-	rootCert, err := security.GetRootCert(ctx.Client)
-	if err != nil {
-		return tls.Certificate{}, nil, errors.Wrap(err, "failed to fetch root cert")
-	}
-
-	token, err := security.GetServiceAccountToken(ctx.Client, s.Namespace, s.ServiceAccount)
-	if err != nil {
-		return tls.Certificate{}, nil, errors.Wrap(err, "failed to create service account token")
-	}
-
-	kp, err := security.GenerateKey(s.Namespace, s.ServiceAccount)
-	if err != nil {
-		return tls.Certificate{}, nil, errors.Wrap(err, "failed to create csr")
-	}
-	client, err := newCitadelClient(ctx.Args.PilotAddress, []byte(rootCert))
-	if err != nil {
-		return tls.Certificate{}, nil, errors.Wrap(err, "creating citadel client")
-	}
-	req := &pb.IstioCertificateRequest{
-		Csr:              string(kp.CsrPEM),
-		ValidityDuration: int64((time.Hour * 24 * 7).Seconds()),
-	}
-	rctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("Authorization", "Bearer "+token, "ClusterID", "Kubernetes"))
-	resp, err := client.CreateCertificate(rctx, req)
-	if err != nil {
-		return tls.Certificate{}, nil, errors.Wrap(err, "send CSR")
-	}
-	certChain := []byte{}
-	for _, c := range resp.CertChain {
-		certChain = append(certChain, []byte(c)...)
-	}
-
-	clientCert, err := tls.X509KeyPair(certChain, kp.KeyPEM)
-	if err != nil {
-		return tls.Certificate{}, nil, err
-	}
-
-	return clientCert, []byte(rootCert), nil
-}
-
-// NewCitadelClient create a CA client for Citadel.
-func newCitadelClient(endpoint string, rootCert []byte) (pb.IstioCertificateServiceClient, error) {
-	certPool := x509.NewCertPool()
-	ok := certPool.AppendCertsFromPEM(rootCert)
-	if !ok {
-		return nil, fmt.Errorf("failed to append certificates")
-	}
-	config := tls.Config{
-		RootCAs:            certPool,
-		InsecureSkipVerify: true,
-	}
-	transportCreds := credentials.NewTLS(&config)
-
-	// TODO(JimmyCYJ): This connection is create at construction time. If conn is broken at anytime,
-	//  need a way to reconnect.
-	conn, err := grpc.Dial(endpoint, grpc.WithTransportCredentials(transportCreds))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to endpoint %s", endpoint)
-	}
-
-	client := pb.NewIstioCertificateServiceClient(conn)
-	return client, nil
 }
 
 func (p *Pod) Cleanup(ctx model.Context) error {
