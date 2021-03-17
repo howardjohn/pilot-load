@@ -103,7 +103,13 @@ func logConfig(config interface{}) {
 }
 
 func init() {
-	rootCmd.AddCommand(adscCmd)
+	rootCmd.AddCommand(
+		adscCmd,
+		clusterCmd,
+		impersonateCmd,
+		proberCmd,
+		startupCmd,
+	)
 }
 
 func Execute() {

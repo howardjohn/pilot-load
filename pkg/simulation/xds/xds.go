@@ -11,7 +11,6 @@ import (
 
 type Simulation struct {
 	Labels    map[string]string
-	Metadata  map[string]string
 	Namespace string
 	Name      string
 	IP        string
