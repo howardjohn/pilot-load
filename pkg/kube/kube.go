@@ -31,18 +31,27 @@ import (
 )
 
 type Client struct {
-	dynamic    dynamic.Interface
-	Kubernetes kubernetes.Interface
+	ClusterName string
+	dynamic     dynamic.Interface
+	Kubernetes  kubernetes.Interface
 }
 
 func NewClient(kubeconfig string, qps int) (*Client, error) {
 	var config *rest.Config
 	var err error
+	var clusterName string
 	if _, err := os.Stat(kubeconfig); err == nil {
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}, nil)
+		config, err = loader.ClientConfig()
 		if err != nil {
 			return nil, err
 		}
+		rc, err := loader.RawConfig()
+		if err != nil {
+			return nil, err
+		}
+		clusterName = rc.Contexts[rc.CurrentContext].Cluster
 	} else {
 		log.Infof("using in cluster kubeconfig")
 		// creates the in-cluster config
@@ -62,8 +71,9 @@ func NewClient(kubeconfig string, qps int) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		dynamic:    d,
-		Kubernetes: k,
+		ClusterName: clusterName,
+		dynamic:     d,
+		Kubernetes:  k,
 	}, nil
 }
 

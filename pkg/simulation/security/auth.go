@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
+	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -18,6 +19,7 @@ import (
 	"istio.io/istio/security/pkg/stsservice"
 	"istio.io/istio/security/pkg/stsservice/server"
 	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
+	"istio.io/pkg/log"
 )
 
 type AuthOptions struct {
@@ -58,12 +60,41 @@ func AuthTypeOptions() []AuthType {
 	return []AuthType{AuthTypePlaintext, AuthTypeMTLS, AuthTypeJWT, AuthTypeGoogle}
 }
 
+func parseClusterName(c string) (url, td, number string, rerr error) {
+	if !strings.HasPrefix(c, "gke_") {
+		return
+	}
+	parts := strings.Split(c, "_")
+	if len(parts) != 4 {
+		return
+	}
+	project := parts[1]
+	location := parts[2]
+	name := parts[3]
+	ctx := context.Background()
+	cloudresourcemanagerService, err := cloudresourcemanager.NewService(ctx)
+	if err != nil {
+		rerr = err
+		return
+	}
+	res, err := cloudresourcemanagerService.Projects.Get(project).Do()
+	if err != nil {
+		rerr = err
+		return
+	}
+	number = fmt.Sprint(res.ProjectNumber)
+	url = fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", project, location, name)
+	td = fmt.Sprintf("%s.svc.id.goog", project)
+	return
+}
+
 func (a *AuthOptions) AutoPopulate() error {
 	if a.Type != AuthTypeGoogle {
 		return nil
 	}
 	explicitlySet := a.ClusterURL != "" && a.ProjectNumber != "" && a.TrustDomain != ""
 	if !explicitlySet && platform.IsGCP() {
+		// Attempt to derive from in cluster
 		md := platform.NewGCP().Metadata()
 		if a.ClusterURL == "" {
 			a.ClusterURL = md[platform.GCPClusterURL]
@@ -74,9 +105,26 @@ func (a *AuthOptions) AutoPopulate() error {
 		if a.TrustDomain == "" {
 			a.TrustDomain = fmt.Sprintf("%s.svc.id.goog", md[platform.GCPProject])
 		}
+	} else if !explicitlySet {
+		// Attempt to derive from cluster name
+		cn := a.Client.ClusterName
+		url, td, number, err := parseClusterName(cn)
+		if err != nil {
+			return err
+		}
+		if a.ClusterURL == "" {
+			a.ClusterURL = url
+		}
+		if a.ProjectNumber == "" {
+			a.ProjectNumber = number
+		}
+		if a.TrustDomain == "" {
+			a.TrustDomain = td
+		}
 	}
+	log.Infof("running with google auth settings: ClusterURL=%q, ProjectNumber=%q, TrustDomain=%q", a.ClusterURL, a.ProjectNumber, a.TrustDomain)
 	if !(a.ClusterURL != "" && a.ProjectNumber != "" && a.TrustDomain != "") {
-		return fmt.Errorf("missing google settings: %q, %q, %q", a.ClusterURL, a.ProjectNumber, a.TrustDomain)
+		return fmt.Errorf("missing google settings")
 	}
 	tmp, err := google.CreateTokenManagerPlugin(nil, a.TrustDomain,
 		a.ProjectNumber, a.ClusterURL, true)

@@ -1,61 +1,57 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    istio-injection: disabled
+  name: pilot-load
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: pilot
+  name: pilot-load
   namespace: pilot-load
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pilot-load
+  name: adsc-load
   namespace: pilot-load
   labels:
-    app: pilot-load
+    app: adsc-load
 spec:
+  selector:
+    matchLabels:
+      app: adsc-load
   replicas: 1
   template:
     metadata:
-      name: pilot-load
+      name: adsc-load
       annotations:
         sidecar.istio.io/inject: "false"
         prometheus.io/scrape: "true"
         prometheus.io/port: "8765"
       labels:
-        app: pilot-load
+        app: adsc-load
     spec:
-      serviceAccountName: pilot
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              namespaces: [istio-system]
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - istiod
-              topologyKey: kubernetes.io/hostname
       # May take a while to shut down
+      serviceAccountName: pilot-load
+      terminationGracePeriodSeconds: 10
       containers:
       - name: pilot-load
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
-        command: ["sleep", "1000000000000"]
+        args:
+        - "adsc"
+        - "--pilot-address=meshconfig.googleapis.com:443"
+        - "--count=1"
         resources:
           requests:
-            cpu: 2000m
-            memory: 2Gi
-  selector:
-    matchLabels:
-      app: pilot-load
+            cpu: 100m
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: pilot-load
-  namespace: pilot-load
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -71,12 +67,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: pilot-load-binding
-  namespace: pilot-load
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: pilot-load
 subjects:
 - kind: ServiceAccount
-  name: pilot
+  name: pilot-load
   namespace: pilot-load

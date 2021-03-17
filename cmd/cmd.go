@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"istio.io/pkg/log"
@@ -61,6 +64,7 @@ func defaultLogOptions() *log.Options {
 }
 
 func GetArgs() (model.Args, error) {
+	var err error
 	if qps == 0 {
 		qps = 100
 	}
@@ -82,7 +86,14 @@ func GetArgs() (model.Args, error) {
 		ProjectNumber: authProjectNumber,
 		ClusterURL:    authClusterUrl,
 	}
-	if err := authOpts.AutoPopulate(); err != nil {
+	args := model.Args{
+		PilotAddress: pilotAddress,
+		Metadata:     xdsMetadata,
+		Client:       cl,
+		Auth:         authOpts,
+	}
+	args, err = setDefaultArgs(args)
+	if err != nil {
 		return model.Args{}, err
 	}
 	return model.Args{
@@ -91,6 +102,30 @@ func GetArgs() (model.Args, error) {
 		Client:       cl,
 		Auth:         authOpts,
 	}, nil
+}
+
+const CLOUDRUN_ADDR = "CLOUDRUN_ADDR"
+
+func setDefaultArgs(args model.Args) (model.Args, error) {
+	if err := args.Auth.AutoPopulate(); err != nil {
+		return model.Args{}, err
+	}
+	if _, f := xdsMetadata[CLOUDRUN_ADDR]; !f && args.Auth.Type == security.AuthTypeGoogle {
+		mwh, err := args.Client.Kubernetes.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.Background(), "istiod-asm-managed", metav1.GetOptions{})
+		if err != nil {
+			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: %v", err)
+		}
+		for _, wh := range mwh.Webhooks {
+			if wh.ClientConfig.URL == nil {
+				return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: clientConfig is not a URL")
+			}
+			addr, _ := url.Parse(*wh.ClientConfig.URL)
+			log.Infof("defaulted CLOUDRUNN_ADDR to %v", addr.Host)
+			xdsMetadata[CLOUDRUN_ADDR] = addr.Host
+			break
+		}
+	}
+	return args, nil
 }
 
 var rootCmd = &cobra.Command{
