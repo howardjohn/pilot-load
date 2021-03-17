@@ -2,8 +2,6 @@ package xds
 
 import (
 	"context"
-	"crypto/tls"
-	"strings"
 
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -13,7 +11,7 @@ import (
 
 type Simulation struct {
 	Labels    map[string]string
-	Metadata  map[string]interface{}
+	Metadata  map[string]string
 	Namespace string
 	Name      string
 	IP        string
@@ -21,17 +19,13 @@ type Simulation struct {
 	Cluster string
 	PodType model.PodType
 
-	// Certificate options. If not provided, will use plaintext
-	RootCert   []byte
-	ClientCert tls.Certificate
-
 	GrpcOpts []grpc.DialOption
 
 	cancel context.CancelFunc
 	done   chan struct{}
 }
 
-func clone(m map[string]interface{}) map[string]interface{} {
+func clone(m map[string]string) map[string]interface{} {
 	n := map[string]interface{}{}
 	for k, v := range m {
 		n[k] = v
@@ -47,8 +41,8 @@ func (x *Simulation) Run(ctx model.Context) error {
 	if cluster == "" {
 		cluster = "Kubernetes"
 	}
-	meta := clone(x.Metadata)
-	meta["ISTIO_VERSION"] = "1.7.0"
+	meta := clone(ctx.Args.Metadata)
+	meta["ISTIO_VERSION"] = "1.20.0-pilot-load"
 	meta["CLUSTER_ID"] = cluster
 	meta["LABELS"] = x.Labels
 	meta["NAMESPACE"] = x.Namespace
@@ -62,11 +56,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 			NodeType:  string(x.PodType),
 			IP:        x.IP,
 			Context:   c,
-
-			SystemCerts: strings.HasSuffix(ctx.Args.PilotAddress, ":443"),
-			RootCert:    x.RootCert,
-			ClientCert:  x.ClientCert,
-			GrpcOpts:    x.GrpcOpts,
+			GrpcOpts:  x.GrpcOpts,
 		})
 		close(x.done)
 	}()

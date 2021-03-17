@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
@@ -230,14 +229,13 @@ func (c *Client) FetchRootCert() (string, error) {
 // 7 days
 var saTokenExpiration int64 = 60 * 24 * 7
 
-func (c *Client) CreateServiceAccountToken(ns string, serviceAccount string) (string, error) {
+func (c *Client) CreateServiceAccountToken(aud, ns, serviceAccount string) (string, error) {
 	scopes.Framework.Debugf("Creating service account token for: %s/%s", ns, serviceAccount)
 
-	spew.Dump()
 	token, err := c.Kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
 		&authenticationv1.TokenRequest{
 			Spec: authenticationv1.TokenRequestSpec{
-				Audiences:         []string{"howardjohn-istio.svc.id.goog"},
+				Audiences:         []string{aud},
 				ExpirationSeconds: &saTokenExpiration,
 			},
 		}, metav1.CreateOptions{})

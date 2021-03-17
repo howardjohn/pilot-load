@@ -1,7 +1,6 @@
 package impersonate
 
 import (
-	"strings"
 	"time"
 
 	"github.com/howardjohn/pilot-load/adsc"
@@ -65,8 +64,6 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 					Meta:      meta,
 					IP:        ip,
 					Context:   ctx,
-
-					SystemCerts: strings.HasSuffix(ctx.Args.PilotAddress, ":443"),
 				})
 				close(done)
 			}()

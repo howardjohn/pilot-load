@@ -2,8 +2,6 @@ package adsc
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,7 +24,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+
 	"istio.io/pkg/log"
 )
 
@@ -58,11 +56,6 @@ type Config struct {
 	// Context used for early cancellation
 	Context context.Context
 
-	// Certificate options. If not provided, will use plaintext
-	RootCert    []byte
-	SystemCerts bool
-	ClientCert  tls.Certificate
-
 	GrpcOpts []grpc.DialOption
 }
 
@@ -81,11 +74,6 @@ type ADSC struct {
 	node   *core.Node
 
 	done chan error
-
-	// Certificate options. If not provided, will use plaintext
-	RootCert    []byte
-	SystemCerts bool
-	ClientCert  tls.Certificate
 
 	GrpcOpts []grpc.DialOption
 
@@ -135,12 +123,9 @@ func Dial(url string, opts *Config) (*ADSC, error) {
 			Routes:    map[string]proto.Message{},
 			Endpoints: map[string]proto.Message{},
 		},
-		RootCert:    opts.RootCert,
-		SystemCerts: opts.SystemCerts,
-		ClientCert:  opts.ClientCert,
-		GrpcOpts:    opts.GrpcOpts,
-		url:         url,
-		ctx:         opts.Context,
+		GrpcOpts: opts.GrpcOpts,
+		url:      url,
+		ctx:      opts.Context,
 	}
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
@@ -159,6 +144,10 @@ func Dial(url string, opts *Config) (*ADSC, error) {
 	adsc.nodeID = fmt.Sprintf("%s~%s~%s.%s~%s.svc.cluster.local", opts.NodeType, opts.IP,
 		opts.Workload, opts.Namespace, opts.Namespace)
 	adsc.node = adsc.makeNode()
+	if dumpScope.DebugEnabled() {
+		n, _ := marshal.MarshalToString(adsc.node)
+		dumpScope.Debugf("constructed node: %v", n)
+	}
 	err := adsc.Run()
 	return adsc, err
 }
@@ -198,27 +187,8 @@ func (a *ADSC) Close() {
 // Run will run the ADS client.
 func (a *ADSC) Run() error {
 	var err error
-	opts := a.GrpcOpts
-	if len(a.RootCert) > 0 {
-		serverCAs := x509.NewCertPool()
-		if ok := serverCAs.AppendCertsFromPEM(a.RootCert); !ok {
-			return err
-		}
 
-		tlsCfg := &tls.Config{
-			Certificates:       []tls.Certificate{a.ClientCert},
-			RootCAs:            serverCAs,
-			InsecureSkipVerify: true,
-		}
-		creds := credentials.NewTLS(tlsCfg)
-
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	} else if a.SystemCerts {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-	a.conn, err = grpc.DialContext(a.ctx, a.url, opts...)
+	a.conn, err = grpc.DialContext(a.ctx, a.url, a.GrpcOpts...)
 	if err != nil {
 		return fmt.Errorf("dial context: %v", err)
 	}
