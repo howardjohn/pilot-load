@@ -54,7 +54,7 @@ func (p *ProberSimulation) Run(ctx model.Context) error {
 	sims = append(sims, config.NewGeneric(createGateway()))
 	p.Simulations = sims
 
-	if err := (model.AggregateSimulation{p.Simulations}.Run(ctx)); err != nil {
+	if err := (model.AggregateSimulation{Simulations: p.Simulations}.Run(ctx)); err != nil {
 		return err
 	}
 
@@ -218,7 +218,7 @@ func runProbe(ctx model.Context, gw string, index int) proberStatus {
 }
 
 func (p *ProberSimulation) Cleanup(ctx model.Context) error {
-	if err := (model.AggregateSimulation{p.Simulations[1:]}.CleanupParallel(ctx)); err != nil {
+	if err := (model.AggregateSimulation{Simulations: p.Simulations[1:]}.CleanupParallel(ctx)); err != nil {
 		return err
 	}
 	return p.Simulations[0].Cleanup(ctx)

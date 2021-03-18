@@ -91,7 +91,7 @@ func Adsc(a model.Args) error {
 			GrpcOpts: opts,
 		})
 	}
-	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims})
+	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims, Delay: a.AdsConfig.Delay})
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {

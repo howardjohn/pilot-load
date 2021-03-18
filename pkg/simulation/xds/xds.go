@@ -66,8 +66,12 @@ func (x *Simulation) Cleanup(ctx model.Context) error {
 	if x == nil {
 		return nil
 	}
-	x.cancel()
-	<-x.done
+	if x.cancel != nil {
+		x.cancel()
+	}
+	if x.done != nil {
+		<-x.done
+	}
 	return nil
 }
 

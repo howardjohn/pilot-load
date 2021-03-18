@@ -76,9 +76,9 @@ func (n *Namespace) getSims() []model.Simulation {
 }
 
 func (n *Namespace) Run(ctx model.Context) error {
-	return model.AggregateSimulation{n.getSims()}.Run(ctx)
+	return model.AggregateSimulation{Simulations: n.getSims()}.Run(ctx)
 }
 
 func (n *Namespace) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{n.getSims()}.Cleanup(ctx)
+	return model.AggregateSimulation{Simulations: n.getSims()}.Cleanup(ctx)
 }

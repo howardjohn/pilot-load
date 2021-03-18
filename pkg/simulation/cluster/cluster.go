@@ -106,13 +106,13 @@ func (c *Cluster) Run(ctx model.Context) error {
 	for _, ns := range c.nodes {
 		nodes = append(nodes, ns)
 	}
-	if err := (model.AggregateSimulation{nodes}.Run(ctx)); err != nil {
+	if err := (model.AggregateSimulation{Simulations: nodes}.Run(ctx)); err != nil {
 		return fmt.Errorf("failed to bootstrap nodes: %v", err)
 	}
 
 	for _, ns := range c.namespaces {
 		log.Infof("starting namespace %v", ns.Spec.Name)
-		if err := (model.AggregateSimulation{[]model.Simulation{ns}}.Run(ctx)); err != nil {
+		if err := (model.AggregateSimulation{Simulations: []model.Simulation{ns}}.Run(ctx)); err != nil {
 			return fmt.Errorf("failed to bootstrap nodes: %v", err)
 		}
 		time.Sleep(time.Duration(c.Spec.Config.GracePeriod))
@@ -123,5 +123,5 @@ func (c *Cluster) Run(ctx model.Context) error {
 }
 
 func (c *Cluster) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{model.ReverseSimulations(c.getSims())}.CleanupParallel(ctx)
+	return model.AggregateSimulation{Simulations: model.ReverseSimulations(c.getSims())}.CleanupParallel(ctx)
 }

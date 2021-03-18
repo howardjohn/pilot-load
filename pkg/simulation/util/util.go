@@ -46,6 +46,13 @@ func IsDone(ctx context.Context) bool {
 	}
 }
 
+func ContextSleep(ctx context.Context, dur time.Duration) {
+	select {
+	case <-time.After(dur):
+	case <-ctx.Done():
+	}
+}
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }

@@ -137,6 +137,7 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 
 type AdscConfig struct {
 	Count int
+	Delay time.Duration
 }
 
 type Selector string
@@ -197,6 +198,7 @@ func ReverseSimulations(sims []Simulation) []Simulation {
 
 type AggregateSimulation struct {
 	Simulations []Simulation
+	Delay       time.Duration
 }
 
 var _ Simulation = AggregateSimulation{}
@@ -212,6 +214,7 @@ func (a AggregateSimulation) RunParallel(ctx Context) error {
 			}
 			return nil
 		})
+		util.ContextSleep(ctx, a.Delay)
 	}
 	return g.Wait()
 }
@@ -226,6 +229,7 @@ func (a AggregateSimulation) Run(ctx Context) error {
 		if err := s.Run(ctx); err != nil {
 			return fmt.Errorf("failed running simulation %T: %v", s, err)
 		}
+		util.ContextSleep(ctx, a.Delay)
 	}
 	return nil
 }

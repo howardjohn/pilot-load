@@ -133,11 +133,11 @@ func (w *Application) getSims() []model.Simulation {
 }
 
 func (w *Application) Run(ctx model.Context) (err error) {
-	return model.AggregateSimulation{w.getSims()}.RunParallel(ctx)
+	return model.AggregateSimulation{Simulations: w.getSims()}.RunParallel(ctx)
 }
 
 func (w *Application) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{model.ReverseSimulations(w.getSims())}.CleanupParallel(ctx)
+	return model.AggregateSimulation{Simulations: model.ReverseSimulations(w.getSims())}.CleanupParallel(ctx)
 }
 
 func (w *Application) Refresh(ctx model.Context) error {
