@@ -3,11 +3,10 @@ package security
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"go.uber.org/atomic"
-
-	pkiutil "istio.io/istio/security/pkg/pki/util"
 )
 
 // map of SAN to KeyPair. Use to avoid repetitive CSR creations
@@ -28,50 +27,26 @@ func san(ns, sa string) string {
 	return fmt.Sprintf("spiffe://%s/ns/%s/sa/%s", "cluster.local", ns, sa)
 }
 
-func GetRootCert(c *kube.Client) (string, error) {
-	if cert := rootCert.Load(); cert != "" {
-		return cert, nil
-	}
-	cert, err := c.FetchRootCert()
-	if err != nil {
-		return "", err
-	}
-	rootCert.Store(cert)
-	return cert, nil
+type token struct {
+	token      string
+	expiration time.Time
 }
 
 func GetServiceAccountToken(c *kube.Client, aud, ns, sa string) (string, error) {
 	san := san(ns, sa)
 
 	if got, f := cachedTokens.Load(san); f {
-		return got.(string), nil
+		t := got.(token)
+		if !t.expiration.After(time.Now().Add(-time.Minute)) {
+			return t.token, nil
+		}
+		// Otherwise, its expired, load a new one
 	}
 
-	token, err := c.CreateServiceAccountToken(aud, ns, sa)
+	t, exp, err := c.CreateServiceAccountToken(aud, ns, sa)
 	if err != nil {
 		return "", err
 	}
-	cachedTokens.Store(san, token)
-	return token, nil
-}
-
-func GenerateKey(ns, sa string) (KeyPair, error) {
-	san := san(ns, sa)
-
-	if got, f := cachedKeys.Load(san); f {
-		return got.(KeyPair), nil
-	}
-
-	options := pkiutil.CertOptions{
-		Host:       san,
-		RSAKeySize: 2048,
-	}
-	// Generate the cert/key, send CSR to CA.
-	csrPEM, keyPEM, err := pkiutil.GenCSR(options)
-	if err != nil {
-		return KeyPair{}, err
-	}
-	kp := KeyPair{KeyPEM: keyPEM, CsrPEM: csrPEM}
-	cachedKeys.Store(san, kp)
-	return kp, nil
+	cachedTokens.Store(san, token{t, exp})
+	return t, nil
 }

@@ -237,9 +237,9 @@ func (c *Client) FetchRootCert() (string, error) {
 }
 
 // 7 days
-var saTokenExpiration int64 = 60 * 24 * 7
+var saTokenExpiration int64 = 60 * 60 * 24 * 7
 
-func (c *Client) CreateServiceAccountToken(aud, ns, serviceAccount string) (string, error) {
+func (c *Client) CreateServiceAccountToken(aud, ns, serviceAccount string) (string, time.Time, error) {
 	scopes.Framework.Debugf("Creating service account token for: %s/%s", ns, serviceAccount)
 
 	token, err := c.Kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
@@ -250,9 +250,9 @@ func (c *Client) CreateServiceAccountToken(aud, ns, serviceAccount string) (stri
 			},
 		}, metav1.CreateOptions{})
 	if err != nil {
-		return "", err
+		return "", time.Time{}, err
 	}
-	return token.Status.Token, nil
+	return token.Status.Token, token.Status.ExpirationTimestamp.Time, nil
 }
 
 func toUnstructured(o runtime.Object) *unstructured.Unstructured {
