@@ -6,7 +6,6 @@ import (
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 type Simulation struct {
@@ -47,7 +46,6 @@ func (x *Simulation) Run(ctx model.Context) error {
 	meta["NAMESPACE"] = x.Namespace
 	meta["SDS"] = "true"
 	go func() {
-		c = metadata.AppendToOutgoingContext(c, "trace", "true")
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
 			Workload:  x.Name + "-" + x.IP,
