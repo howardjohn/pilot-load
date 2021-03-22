@@ -85,6 +85,7 @@ func (c *Client) Informers() informers.SharedInformerFactory {
 }
 
 func (c *Client) Finalize(ns *v1.Namespace) error {
+	scope.Debugf("finalizing namespace: %v", ns.Name)
 	_, err := c.Kubernetes.CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
 	return err
 }
@@ -142,12 +143,10 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 }
 
 func (c *Client) Apply(o runtime.Object) error {
-	return nil
 	return c.internalApply(o, false)
 }
 
 func (c *Client) ApplyFast(o runtime.Object) error {
-	return nil
 	return c.internalApply(o, true)
 }
 

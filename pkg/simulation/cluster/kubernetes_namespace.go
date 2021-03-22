@@ -30,7 +30,7 @@ func (n *KubernetesNamespace) Cleanup(ctx model.Context) error {
 	if err := ctx.Client.Delete(n.getKubernetesNamespace()); err != nil {
 		return err
 	}
-	if n.Spec.RealCluster {
+	if !n.Spec.RealCluster {
 		return ctx.Client.Finalize(n.getKubernetesNamespace())
 	}
 	return nil

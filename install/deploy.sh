@@ -5,6 +5,7 @@ set -eux
 WD=$(dirname "$0")
 WD=$(cd "$WD"; pwd)
 
+kubectl create namespace istio-system || true
 kubectl apply -f ${WD}/base-deployment.yaml
 
 kubectl wait -n pilot-load --for=condition=available deployment/etcd
