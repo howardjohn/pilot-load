@@ -43,7 +43,8 @@ spec:
         args:
         - "adsc"
         - "--pilot-address=meshconfig.googleapis.com:443"
-        - "--count=25"
+        - "--count=1000"
+        - "--delay=100ms"
         resources:
           requests:
             cpu: 100m

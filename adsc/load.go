@@ -3,6 +3,8 @@ package adsc
 import (
 	"fmt"
 	"time"
+
+	"github.com/cenkalti/backoff"
 )
 
 func Fetch(pilotAddress string, config *Config) (*Responses, error) {
@@ -55,6 +57,11 @@ func Connect(pilotAddress string, config *Config) {
 		a = append(a, args...)
 		scope.Infof(a...)
 	}
+	// Follow envoy defaults https://github.com/envoyproxy/envoy/blob/v1.12.1/source/common/config/grpc_stream.h#L40-L43
+	b := backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = 0
+	b.MaxInterval = time.Second * 30
+	b.InitialInterval = time.Millisecond * 500
 	for {
 		t0 := time.Now()
 		log("Connecting: %v", config.IP)
@@ -62,13 +69,14 @@ func Connect(pilotAddress string, config *Config) {
 		if err != nil {
 			log("Error in ADS connection: %v", err)
 			attempts++
+			bo := b.NextBackOff()
 			select {
 			case <-config.Context.Done():
 				log("Context closed, exiting stream")
 				con.Close()
 				return
-			case <-time.After(time.Second * time.Duration(attempts)):
-				log("Starting retry %v", attempts)
+			case <-time.After(bo):
+				log("Starting retry %v after %v", attempts, bo)
 			}
 			continue
 		}
@@ -88,6 +96,7 @@ func Connect(pilotAddress string, config *Config) {
 					exit = true
 				} else if !update {
 					update = true
+					b.Reset()
 					log("Got Initial Update: %v for %v in %v", config.IP, u, time.Since(t0))
 				}
 			case <-config.Context.Done():
@@ -97,7 +106,14 @@ func Connect(pilotAddress string, config *Config) {
 				return
 			}
 		}
-		log("Disconnected: %v", config.IP)
-		time.Sleep(time.Millisecond * 500)
+		bo := b.NextBackOff()
+		log("Disconnected: %v, retrying in %v", config.IP, bo)
+		select {
+		case <-config.Context.Done():
+			log("Context closed, exiting stream")
+			con.Close()
+			return
+		case <-time.After(bo):
+		}
 	}
 }

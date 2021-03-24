@@ -3,6 +3,7 @@ module github.com/howardjohn/pilot-load
 go 1.13
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cncf/udpa/go v0.0.0-20210210032658-bff43e8824d0
 	github.com/envoyproxy/go-control-plane v0.9.9-0.20210115003313-31f9241a16e6
 	github.com/felixge/fgprof v0.9.1
