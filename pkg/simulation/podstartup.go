@@ -113,6 +113,7 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 		res := work()
 		select {
 		case <-ctx.Done():
+			return
 		case report <- res:
 		}
 	}
@@ -143,7 +144,7 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 				max(results, func(r result) time.Duration { return r.read }),
 				max(results, func(r result) time.Duration { return r.start }),
 				max(results, func(r result) time.Duration { return r.ready }),
-				avg(results, func(r result) time.Duration { return r.ready - r.start }),
+				max(results, func(r result) time.Duration { return r.ready - r.start }),
 			)
 			wg.Wait()
 			return nil
