@@ -57,6 +57,9 @@ type Config struct {
 	Context context.Context
 
 	GrpcOpts []grpc.DialOption
+
+	// Channel to report events back on
+	Updates chan string
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools

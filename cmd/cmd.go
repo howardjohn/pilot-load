@@ -152,6 +152,7 @@ func init() {
 		impersonateCmd,
 		proberCmd,
 		startupCmd,
+		xdsLatencyCmd,
 	)
 }
 

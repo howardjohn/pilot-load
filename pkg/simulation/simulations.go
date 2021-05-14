@@ -94,6 +94,18 @@ func Adsc(a model.Args) error {
 	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims, Delay: a.AdsConfig.Delay})
 }
 
+func Latency(a model.Args) error {
+	opts := a.Auth.GrpcOptions("default", "default")
+
+	return ExecuteSimulations(a, &XdsLatencySimulation{
+		Namespace: "default",
+		Name:      "adsc",
+		IP:        util.GetIP(),
+		Cluster:   "Kubernetes",
+		GrpcOpts:  opts,
+	})
+}
+
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	go captureTermination(ctx, cancel)

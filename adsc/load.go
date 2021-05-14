@@ -99,6 +99,9 @@ func Connect(pilotAddress string, config *Config) {
 					b.Reset()
 					log("Got Initial Update: %v for %v in %v", config.IP, u, time.Since(t0))
 				}
+				if config.Updates != nil {
+					config.Updates <- u
+				}
 			case <-config.Context.Done():
 				// We are really done now. Shut everything down and stop
 				log("Context closed, exiting stream")
