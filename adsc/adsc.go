@@ -11,18 +11,13 @@ import (
 	"sync"
 	"time"
 
-	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
-	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
-	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-	envoy_extensions_filters_network_http_connection_manager_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
-	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
+
+	"github.com/howardjohn/pilot-load/protoslim"
 
 	"istio.io/pkg/log"
 )
@@ -67,13 +62,13 @@ type ADSC struct {
 	ctx context.Context
 	// Stream is the GRPC connection stream, allowing direct GRPC send operations.
 	// Set after Dial is called.
-	stream discovery.AggregatedDiscoveryService_StreamAggregatedResourcesClient
+	stream protoslim.AggregatedDiscoveryService_StreamAggregatedResourcesClient
 
 	conn *grpc.ClientConn
 
 	// NodeID is the node identity sent to Pilot.
 	nodeID string
-	node   *core.Node
+	node   *protoslim.Node
 
 	done chan error
 
@@ -195,7 +190,7 @@ func (a *ADSC) Run() error {
 		return fmt.Errorf("dial context: %v", err)
 	}
 
-	xds := discovery.NewAggregatedDiscoveryServiceClient(a.conn)
+	xds := protoslim.NewAggregatedDiscoveryServiceClient(a.conn)
 	edsstr, err := xds.StreamAggregatedResources(a.ctx, grpc.MaxCallRecvMsgSize(math.MaxInt32))
 	if err != nil {
 		return fmt.Errorf("stream: %v", err)
@@ -217,33 +212,33 @@ func (a *ADSC) handleRecv() {
 		}
 		scope.Debugf("got message for type %v", msg.TypeUrl)
 
-		listeners := []*listener.Listener{}
-		clusters := []*cluster.Cluster{}
-		routes := []*route.RouteConfiguration{}
-		eds := []*endpoint.ClusterLoadAssignment{}
+		listeners := []*protoslim.Listener{}
+		clusters := []*protoslim.Cluster{}
+		routes := []*protoslim.RouteConfiguration{}
+		eds := []*protoslim.ClusterLoadAssignment{}
 		// TODO re-enable use of names. For now its skipped
 		names := []string{}
 		resp := map[string]proto.Message{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
 			if rsc.TypeUrl == resource.ListenerType {
-				ll := &listener.Listener{}
+				ll := &protoslim.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
 				resp[ll.Name] = ll
 			} else if rsc.TypeUrl == resource.ClusterType {
-				ll := &cluster.Cluster{}
+				ll := &protoslim.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
 				resp[ll.Name] = ll
 			} else if rsc.TypeUrl == resource.EndpointType {
-				ll := &endpoint.ClusterLoadAssignment{}
+				ll := &protoslim.ClusterLoadAssignment{}
 				_ = proto.Unmarshal(valBytes, ll)
 				eds = append(eds, ll)
 				names = append(names, ll.ClusterName)
 				resp[ll.ClusterName] = ll
 			} else if rsc.TypeUrl == resource.RouteType {
-				ll := &route.RouteConfiguration{}
+				ll := &protoslim.RouteConfiguration{}
 				_ = proto.Unmarshal(valBytes, ll)
 				routes = append(routes, ll)
 				names = append(names, ll.Name)
@@ -278,7 +273,7 @@ func (a *ADSC) handleRecv() {
 	}
 }
 
-func getFilterChains(l *listener.Listener) []*listener.FilterChain {
+func getFilterChains(l *protoslim.Listener) []*protoslim.FilterChain {
 	chains := l.FilterChains
 	if l.DefaultFilterChain != nil {
 		chains = append(chains, l.DefaultFilterChain)
@@ -287,14 +282,16 @@ func getFilterChains(l *listener.Listener) []*listener.FilterChain {
 }
 
 // nolint: staticcheck
-func (a *ADSC) handleLDS(ll []*listener.Listener) {
+func (a *ADSC) handleLDS(ll []*protoslim.Listener) {
 	routes := []string{}
 	for _, l := range ll {
 		for _, fc := range getFilterChains(l) {
 			for _, f := range fc.GetFilters() {
 				if f.GetTypedConfig().GetTypeUrl() == "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager" {
-					hcm := &envoy_extensions_filters_network_http_connection_manager_v3.HttpConnectionManager{}
-					_ = f.GetTypedConfig().UnmarshalTo(hcm)
+					hcm := &protoslim.HttpConnectionManager{}
+					tc := f.GetTypedConfig()
+					tc.TypeUrl = "envoy.service.discovery.v3.HttpConnectionManager"
+					_ = tc.UnmarshalTo(hcm)
 					if r := hcm.GetRds().GetRouteConfigName(); r != "" {
 						routes = append(routes, r)
 					}
@@ -359,7 +356,7 @@ type TCPListener struct {
 	// LogFile is the access log address for the listener
 	LogFile string
 
-	// Target is the destination cluster.
+	// Target is the destination protoslim.
 	Target string
 }
 
@@ -377,12 +374,12 @@ type Endpoint struct {
 	Weight int
 }
 
-func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
+func (a *ADSC) handleCDS(ll []*protoslim.Cluster) {
 	cn := []string{}
 	for _, c := range ll {
 		switch v := c.ClusterDiscoveryType.(type) {
-		case *cluster.Cluster_Type:
-			if v.Type != cluster.Cluster_EDS {
+		case *protoslim.Cluster_Type:
+			if v.Type != protoslim.Cluster_EDS {
 				continue
 			}
 		}
@@ -408,7 +405,7 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	defer a.mutex.Unlock()
 	if !a.InitialLoad {
 		// first load - Envoy loads listeners after endpoints
-		_ = a.send(&discovery.DiscoveryRequest{
+		_ = a.send(&protoslim.DiscoveryRequest{
 			Node:    a.node,
 			TypeUrl: resource.ListenerType,
 		}, ReasonInit)
@@ -421,8 +418,8 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	}
 }
 
-func (a *ADSC) makeNode() *core.Node {
-	n := &core.Node{
+func (a *ADSC) makeNode() *protoslim.Node {
+	n := &protoslim.Node{
 		Id: a.nodeID,
 	}
 	js, err := json.Marshal(a.Metadata)
@@ -436,12 +433,13 @@ func (a *ADSC) makeNode() *core.Node {
 		panic("invalid metadata " + err.Error())
 	}
 
-	n.Metadata = meta
+	// TODO
+	//n.Metadata = meta
 
 	return n
 }
 
-func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
+func (a *ADSC) handleEDS(eds []*protoslim.ClusterLoadAssignment) {
 	if dumpScope.DebugEnabled() {
 		for i, e := range eds {
 			b, err := marshal.MarshalToString(e)
@@ -462,8 +460,8 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 	}
 }
 
-func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
-	rds := map[string]*route.RouteConfiguration{}
+func (a *ADSC) handleRDS(configurations []*protoslim.RouteConfiguration) {
+	rds := map[string]*protoslim.RouteConfiguration{}
 
 	for _, r := range configurations {
 		rds[r.Name] = r
@@ -514,7 +512,7 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 	}
 }
 
-func (a *ADSC) send(dr *discovery.DiscoveryRequest, reason string) error {
+func (a *ADSC) send(dr *protoslim.DiscoveryRequest, reason string) error {
 	scope.Debugf("send message for type %v (%v) for %v", dr.TypeUrl, reason, dr.ResourceNames)
 	return a.stream.Send(dr)
 }
@@ -522,7 +520,7 @@ func (a *ADSC) send(dr *discovery.DiscoveryRequest, reason string) error {
 // Watch will start watching resources, starting with CDS. Based on the CDS response
 // it will start watching RDS and CDS.
 func (a *ADSC) Watch() {
-	err := a.send(&discovery.DiscoveryRequest{
+	err := a.send(&protoslim.DiscoveryRequest{
 		Node:    a.node,
 		TypeUrl: resource.ClusterType,
 	}, ReasonInit)
@@ -538,7 +536,7 @@ const (
 )
 
 func (a *ADSC) request(typeUrl string, watch Watch) {
-	_ = a.send(&discovery.DiscoveryRequest{
+	_ = a.send(&protoslim.DiscoveryRequest{
 		ResponseNonce: watch.lastNonce,
 		TypeUrl:       typeUrl,
 		Node:          a.node,
@@ -547,12 +545,12 @@ func (a *ADSC) request(typeUrl string, watch Watch) {
 	}, ReasonRequest)
 }
 
-func (a *ADSC) ack(msg *discovery.DiscoveryResponse, names []string) {
+func (a *ADSC) ack(msg *protoslim.DiscoveryResponse, names []string) {
 	watch := a.watches[msg.TypeUrl]
 	watch.lastNonce = msg.Nonce
 	watch.lastVersion = msg.VersionInfo
 	a.watches[msg.TypeUrl] = watch
-	_ = a.send(&discovery.DiscoveryRequest{
+	_ = a.send(&protoslim.DiscoveryRequest{
 		ResponseNonce: msg.Nonce,
 		TypeUrl:       msg.TypeUrl,
 		Node:          a.node,
