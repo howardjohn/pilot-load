@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"google.golang.org/grpc/credentials"
+	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type PodSpec struct {
@@ -145,7 +145,7 @@ func (p *Pod) getPod() *v1.Pod {
 			Phase:      v1.PodRunning,
 			Conditions: nil,
 			PodIP:      s.IP,
-			PodIPs:     []v1.PodIP{{s.IP}},
+			PodIPs:     []v1.PodIP{{IP: s.IP}},
 		},
 	}
 }

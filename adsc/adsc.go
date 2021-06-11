@@ -21,7 +21,6 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 
@@ -295,7 +294,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 			for _, f := range fc.GetFilters() {
 				if f.GetTypedConfig().GetTypeUrl() == "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager" {
 					hcm := &envoy_extensions_filters_network_http_connection_manager_v3.HttpConnectionManager{}
-					_ = ptypes.UnmarshalAny(f.GetTypedConfig(), hcm)
+					_ = f.GetTypedConfig().UnmarshalTo(hcm)
 					if r := hcm.GetRds().GetRouteConfigName(); r != "" {
 						routes = append(routes, r)
 					}

@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+	"istio.io/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"golang.org/x/sync/errgroup"
-
-	"istio.io/pkg/log"
 )
 
 type Simulation interface {
@@ -241,7 +241,7 @@ func (a AggregateSimulation) CleanupParallel(ctx Context) error {
 		log.Debugf("cleaning simulation %T", s)
 		g.Go(func() error {
 			if err := s.Cleanup(ctx); err != nil {
-				err = util.AddError(err, fmt.Errorf("failed cleaning simulation %T: %v", s, err))
+				return fmt.Errorf("failed cleaning simulation %T: %v", s, err)
 			}
 			return nil
 		})
@@ -250,12 +250,12 @@ func (a AggregateSimulation) CleanupParallel(ctx Context) error {
 }
 
 func (a AggregateSimulation) Cleanup(ctx Context) error {
-	var err error
+	var errs error
 	for _, s := range a.Simulations {
 		log.Debugf("cleaning simulation %T", s)
 		if err := s.Cleanup(ctx); err != nil {
-			err = util.AddError(err, fmt.Errorf("failed cleaning simulation %T: %v", s, err))
+			errs = util.AddError(errs, fmt.Errorf("failed cleaning simulation %T: %v", s, err))
 		}
 	}
-	return err
+	return errs
 }

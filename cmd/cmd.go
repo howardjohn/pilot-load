@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/spf13/cobra"
+	"istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 )
 
 var (
@@ -96,12 +96,7 @@ func GetArgs() (model.Args, error) {
 	if err != nil {
 		return model.Args{}, err
 	}
-	return model.Args{
-		PilotAddress: pilotAddress,
-		Metadata:     xdsMetadata,
-		Client:       cl,
-		Auth:         authOpts,
-	}, nil
+	return args, nil
 }
 
 const CLOUDRUN_ADDR = "CLOUDRUN_ADDR"
@@ -115,15 +110,16 @@ func setDefaultArgs(args model.Args) (model.Args, error) {
 		if err != nil {
 			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: %v", err)
 		}
-		for _, wh := range mwh.Webhooks {
-			if wh.ClientConfig.URL == nil {
-				return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: clientConfig is not a URL")
-			}
-			addr, _ := url.Parse(*wh.ClientConfig.URL)
-			log.Infof("defaulted CLOUDRUNN_ADDR to %v", addr.Host)
-			xdsMetadata[CLOUDRUN_ADDR] = addr.Host
-			break
+		if len(mwh.Webhooks) == 0 {
+			return args, nil
 		}
+		wh := mwh.Webhooks[0]
+		if wh.ClientConfig.URL == nil {
+			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: clientConfig is not a URL")
+		}
+		addr, _ := url.Parse(*wh.ClientConfig.URL)
+		log.Infof("defaulted CLOUDRUNN_ADDR to %v", addr.Host)
+		xdsMetadata[CLOUDRUN_ADDR] = addr.Host
 	}
 	return args, nil
 }

@@ -66,7 +66,7 @@ func Determinism(a model.Args) error {
 }
 
 func Cluster(a model.Args) error {
-	sim := cluster.NewCluster(cluster.ClusterSpec{a.ClusterConfig})
+	sim := cluster.NewCluster(cluster.ClusterSpec{Config: a.ClusterConfig})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}
@@ -111,7 +111,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	go captureTermination(ctx, cancel)
 	defer cancel()
 	go monitoring.StartMonitoring(ctx, 8765)
-	simulationContext := model.Context{ctx, a, a.Client, cancel}
+	simulationContext := model.Context{Context: ctx, Args: a, Client: a.Client, Cancel: cancel}
 	if err := simulation.Run(simulationContext); err != nil {
 		return err
 	}

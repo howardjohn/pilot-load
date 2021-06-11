@@ -3,9 +3,10 @@ package cmd
 import (
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/spf13/cobra"
 )
 
 var adscConfig = model.AdscConfig{

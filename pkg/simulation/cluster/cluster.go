@@ -5,11 +5,11 @@ import (
 	"math/rand"
 	"time"
 
+	"istio.io/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-
-	"istio.io/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -58,9 +58,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 func (c *Cluster) GetRefreshableInstances() []*app.Application {
 	var wls []*app.Application
 	for _, ns := range c.namespaces {
-		for _, w := range ns.deployments {
-			wls = append(wls, w)
-		}
+		wls = append(wls, ns.deployments...)
 	}
 	return wls
 }

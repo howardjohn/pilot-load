@@ -3,11 +3,11 @@ package config
 import (
 	"math/rand"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type SubsetSpec struct {

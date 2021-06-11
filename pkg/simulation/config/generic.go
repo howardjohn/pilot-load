@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type Generic struct {

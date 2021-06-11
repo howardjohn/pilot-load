@@ -6,15 +6,15 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
-	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"google.golang.org/protobuf/testing/protocmp"
+	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/informers/core/v1"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type DeterministicSimulation struct{}

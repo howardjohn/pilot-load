@@ -6,17 +6,10 @@ import (
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
-	"go.uber.org/atomic"
 )
-
-// map of SAN to KeyPair. Use to avoid repetitive CSR creations
-var cachedKeys sync.Map
 
 // map of SAN to jwt token. Used to avoid repetitive calls
 var cachedTokens sync.Map
-
-// Cache the root cert
-var rootCert atomic.String
 
 type KeyPair struct {
 	KeyPEM []byte

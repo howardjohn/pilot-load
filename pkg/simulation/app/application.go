@@ -3,11 +3,11 @@ package app
 import (
 	"fmt"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/pkg/log"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ApplicationSpec struct {
@@ -78,7 +78,7 @@ func NewApplication(s ApplicationSpec) *Application {
 			App:       s.App,
 			Namespace: s.Namespace,
 			Gateways:  s.GatewayConfig.VirtualServices,
-			Subsets:   []config.SubsetSpec{{"a", 100}},
+			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
 		})
 	}
 	return w

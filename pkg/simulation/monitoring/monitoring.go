@@ -3,13 +3,14 @@ package monitoring
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/pprof"
 
 	"github.com/felixge/fgprof"
 )
 
-func StartMonitoring(ctx context.Context, port int) error {
+func StartMonitoring(ctx context.Context, port int) {
 	// TODO add metrics
 	mux := http.NewServeMux()
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -22,7 +23,6 @@ func StartMonitoring(ctx context.Context, port int) error {
 		Handler: mux,
 		Addr:    fmt.Sprintf(":%d", port),
 	}
-	go server.ListenAndServe()
+	go log.Println("monitoring server", server.ListenAndServe())
 	<-ctx.Done()
-	return server.Close()
 }

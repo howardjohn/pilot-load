@@ -8,11 +8,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
 	"istio.io/istio/pkg/bootstrap/platform"
 	"istio.io/istio/pkg/security"
 	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
@@ -20,6 +18,8 @@ import (
 	"istio.io/istio/security/pkg/stsservice/server"
 	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
 	"istio.io/pkg/log"
+
+	"github.com/howardjohn/pilot-load/pkg/kube"
 )
 
 type AuthOptions struct {

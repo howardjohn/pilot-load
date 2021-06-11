@@ -44,7 +44,7 @@ spec:
           mountPath: /var/lib/etcd
       containers:
       - name: etcd
-        image: gcr.io/etcd-development/etcd:v3.4.10
+        image: gcr.io/etcd-development/etcd:v3.5.0-rc.1
         args:
         - etcd
         - --data-dir=/var/lib/etcd
@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
       - name: apiserver
-        image: k8s.gcr.io/kube-apiserver:v1.18.5
+        image: k8s.gcr.io/kube-apiserver:v1.21.1
         command:
         - kube-apiserver
         - --etcd-servers=http://etcd:2379

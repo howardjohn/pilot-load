@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/spf13/cobra"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation"
 )
 
 var xdsLatencyCmd = &cobra.Command{

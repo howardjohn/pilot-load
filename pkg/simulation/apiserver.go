@@ -3,11 +3,11 @@ package simulation
 import (
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ApiServerSimulation struct{}

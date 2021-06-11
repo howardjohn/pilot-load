@@ -3,12 +3,12 @@ package impersonate
 import (
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	"istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type ImpersonateSpec struct {
@@ -62,7 +62,9 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 			}
 			log.Infof("Starting pod %v/%v (%v), replica %d", pod.Name, pod.Namespace, ip, n)
 			go func() {
-				xsim.Run(ctx)
+				if err := xsim.Run(ctx); err != nil {
+					log.Errorf("failed running %v: %v", ip, err)
+				}
 				close(done)
 			}()
 			time.Sleep(i.Spec.Delay)
