@@ -7,7 +7,7 @@ package envoy.service.discovery.v3;
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 
-option go_package="github.com/costinm/wpgate/pkg/xds";
+option go_package="github.com/howardjohn/pilot-load/protoslim";
 
 message Status {
     // The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
