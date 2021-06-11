@@ -108,12 +108,17 @@ func (c *Cluster) Run(ctx model.Context) error {
 		return fmt.Errorf("failed to bootstrap nodes: %v", err)
 	}
 
-	for _, ns := range c.namespaces {
-		log.Infof("starting namespace %v", ns.Spec.Name)
+	total := len(c.namespaces)
+	for i, ns := range c.namespaces {
+		log.Infof("starting namespace %v (%d of %d)", ns.Spec.Name, i, total)
 		if err := (model.AggregateSimulation{Simulations: []model.Simulation{ns}}.Run(ctx)); err != nil {
 			return fmt.Errorf("failed to bootstrap nodes: %v", err)
 		}
-		time.Sleep(time.Duration(c.Spec.Config.GracePeriod))
+		select {
+		case <-time.After(time.Duration(c.Spec.Config.GracePeriod)):
+		case <-ctx.Done():
+			return nil
+		}
 	}
 
 	log.Infof("cluster %q synced, starting cluster scaler", c.Name)

@@ -47,9 +47,48 @@ spec:
           requests:
             cpu: 2000m
             memory: 2Gi
+        env:
+        - name: KUBECONFIG
+          value: /etc/config/kubeconfig/kubeconfig.yaml
+        volumeMounts:
+        - name: kubeconfig
+          mountPath: /etc/config/kubeconfig
+        - name: config
+          mountPath: /etc/config/config
+      volumes:
+      - name: kubeconfig
+        configMap:
+          name: pilot-load-kubeconfig
+          optional: true
+      - name: config
+        configMap:
+          name: pilot-load-config
+          optional: true
   selector:
     matchLabels:
       app: pilot-load
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pilot-load-kubeconfig
+data:
+  kubeconfig.yaml: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: http://apiserver.pilot-load:18090
+      name: load
+    contexts:
+    - context:
+        cluster: load
+        user: fake
+      name: load
+    current-context: load
+    kind: Config
+    preferences: {}
+    users:
+    - name: fake
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
