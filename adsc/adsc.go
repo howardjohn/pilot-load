@@ -59,6 +59,7 @@ type Config struct {
 
 	// Channel to report events back on
 	Updates chan string
+	Delta   bool
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -88,13 +89,21 @@ type ADSC struct {
 	Metadata map[string]interface{}
 
 	// Responses we received last
-	Responses Responses
+	responses Responses
 
 	// Updates includes the type of the last update received from the server.
-	Updates chan string
+	updates chan string
 
 	mutex   sync.Mutex
 	watches map[string]Watch
+}
+
+func (a *ADSC) Updates() chan string {
+	return a.updates
+}
+
+func (a *ADSC) Responses() Responses {
+	return a.responses
 }
 
 type Responses struct {
@@ -113,22 +122,17 @@ type Watch struct {
 // ErrTimeout is returned by Wait if no update is received in the given time.
 var ErrTimeout = errors.New("timeout")
 
+type ADSClient interface {
+	Watch()
+	Updates() chan string
+	Close()
+	Responses() Responses
+}
+
+var _ ADSClient = &ADSC{}
+
 // Dial connects to a ADS server, with optional MTLS authentication if a cert dir is specified.
-func Dial(url string, opts *Config) (*ADSC, error) {
-	adsc := &ADSC{
-		done:    make(chan error),
-		Updates: make(chan string, 100),
-		watches: map[string]Watch{},
-		Responses: Responses{
-			Clusters:  map[string]proto.Message{},
-			Listeners: map[string]proto.Message{},
-			Routes:    map[string]proto.Message{},
-			Endpoints: map[string]proto.Message{},
-		},
-		GrpcOpts: opts.GrpcOpts,
-		url:      url,
-		ctx:      opts.Context,
-	}
+func Dial(url string, opts *Config) (ADSClient, error) {
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
 	}
@@ -141,11 +145,29 @@ func Dial(url string, opts *Config) (*ADSC, error) {
 	if opts.Workload == "" {
 		opts.Workload = "test-1"
 	}
+	if opts.Delta {
+		return DialDelta(url, opts)
+	}
+	adsc := &ADSC{
+		done:    make(chan error),
+		updates: make(chan string, 100),
+		watches: map[string]Watch{},
+		responses: Responses{
+			Clusters:  map[string]proto.Message{},
+			Listeners: map[string]proto.Message{},
+			Routes:    map[string]proto.Message{},
+			Endpoints: map[string]proto.Message{},
+		},
+		GrpcOpts: opts.GrpcOpts,
+		url:      url,
+		ctx:      opts.Context,
+	}
+
 	adsc.Metadata = opts.Meta
 
 	adsc.nodeID = fmt.Sprintf("%s~%s~%s.%s~%s.svc.cluster.local", opts.NodeType, opts.IP,
 		opts.Workload, opts.Namespace, opts.Namespace)
-	adsc.node = adsc.makeNode()
+	adsc.node = makeNode(adsc.nodeID, adsc.Metadata)
 	if dumpScope.DebugEnabled() {
 		n, _ := marshal.MarshalToString(adsc.node)
 		dumpScope.Debugf("constructed node: %v", n)
@@ -212,7 +234,7 @@ func (a *ADSC) handleRecv() {
 			scope.Infof("Connection closed for %v: %v", a.nodeID, err)
 			a.Close()
 			a.WaitClear()
-			a.Updates <- "close"
+			a.updates <- "close"
 			return
 		}
 		scope.Debugf("got message for type %v", msg.TypeUrl)
@@ -254,13 +276,13 @@ func (a *ADSC) handleRecv() {
 		a.mutex.Lock()
 		switch msg.TypeUrl {
 		case resource.ListenerType:
-			a.Responses.Listeners = resp
+			a.responses.Listeners = resp
 		case resource.ClusterType:
-			a.Responses.Clusters = resp
+			a.responses.Clusters = resp
 		case resource.EndpointType:
-			a.Responses.Endpoints = resp
+			a.responses.Endpoints = resp
 		case resource.RouteType:
-			a.Responses.Routes = resp
+			a.responses.Routes = resp
 		}
 		a.ack(msg, names)
 		a.mutex.Unlock()
@@ -321,7 +343,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	a.handleResourceUpdate(resource.RouteType, routes)
 
 	select {
-	case a.Updates <- "lds":
+	case a.updates <- "lds":
 	default:
 	}
 }
@@ -416,16 +438,16 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	}
 
 	select {
-	case a.Updates <- "cds":
+	case a.updates <- "cds":
 	default:
 	}
 }
 
-func (a *ADSC) makeNode() *core.Node {
+func makeNode(id string, metadata interface{}) *core.Node {
 	n := &core.Node{
-		Id: a.nodeID,
+		Id: id,
 	}
-	js, err := json.Marshal(a.Metadata)
+	js, err := json.Marshal(metadata)
 	if err != nil {
 		panic("invalid metadata " + err.Error())
 	}
@@ -457,7 +479,7 @@ func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 	defer a.mutex.Unlock()
 
 	select {
-	case a.Updates <- "eds":
+	case a.updates <- "eds":
 	default:
 	}
 }
@@ -481,7 +503,7 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 	}
 
 	select {
-	case a.Updates <- "rds":
+	case a.updates <- "rds":
 	default:
 	}
 }
@@ -491,7 +513,7 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 func (a *ADSC) WaitClear() {
 	for {
 		select {
-		case <-a.Updates:
+		case <-a.updates:
 		default:
 			return
 		}
@@ -504,7 +526,7 @@ func (a *ADSC) Wait(update string, to time.Duration) (string, error) {
 
 	for {
 		select {
-		case t := <-a.Updates:
+		case t := <-a.updates:
 			if len(update) == 0 || update == t {
 				return t, nil
 			}

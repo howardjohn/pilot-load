@@ -89,6 +89,7 @@ func Adsc(a model.Args) error {
 			// TODO: multicluster
 			Cluster:  "Kubernetes",
 			GrpcOpts: opts,
+			Delta:    a.AdsConfig.Delta,
 		})
 	}
 	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims, Delay: a.AdsConfig.Delay})

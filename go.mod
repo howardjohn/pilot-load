@@ -5,25 +5,25 @@ go 1.16
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cncf/udpa/go v0.0.0-20210322005330-6414d713912e
-	github.com/envoyproxy/go-control-plane v0.9.10-0.20210527202905-e1f5cab41e70
+	github.com/envoyproxy/go-control-plane v0.9.10-0.20210708144103-3a95f2df6351
 	github.com/felixge/fgprof v0.9.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/lthibault/jitterbug v2.0.0+incompatible
-	github.com/spf13/cobra v1.1.3
+	github.com/spf13/cobra v1.2.1
 	go.uber.org/atomic v1.8.0 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	google.golang.org/api v0.48.0
-	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
-	istio.io/api v0.0.0-20210611152147-260a45372f88
-	istio.io/client-go v1.10.1
-	istio.io/istio v0.0.0-20210611153151-0ca479f9159c
-	istio.io/pkg v0.0.0-20210608134700-661d34f3dfde
-	k8s.io/api v0.21.1
-	k8s.io/apimachinery v0.21.1
-	k8s.io/client-go v0.21.1
+	google.golang.org/api v0.52.0
+	google.golang.org/grpc v1.39.1
+	google.golang.org/protobuf v1.27.1
+	istio.io/api v0.0.0-20210806192855-2720268d182b
+	istio.io/client-go v1.10.3
+	istio.io/istio v0.0.0-20210806210018-d86a90873aa1
+	istio.io/pkg v0.0.0-20210806192335-d58436bead18
+	k8s.io/api v0.22.0
+	k8s.io/apimachinery v0.22.0
+	k8s.io/client-go v0.22.0
 )
 
 replace github.com/spf13/viper => github.com/istio/viper v1.3.3-0.20190515210538-2789fed3109c

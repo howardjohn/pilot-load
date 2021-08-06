@@ -3,10 +3,9 @@ package xds
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"google.golang.org/grpc"
 )
 
 type Simulation struct {
@@ -22,6 +21,7 @@ type Simulation struct {
 
 	cancel context.CancelFunc
 	done   chan struct{}
+	Delta  bool
 }
 
 func clone(m map[string]string) map[string]interface{} {
@@ -55,6 +55,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 			IP:        x.IP,
 			Context:   c,
 			GrpcOpts:  x.GrpcOpts,
+			Delta:     x.Delta,
 		})
 		close(x.done)
 	}()

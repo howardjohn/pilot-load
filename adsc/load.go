@@ -26,7 +26,7 @@ func Fetch(pilotAddress string, config *Config) (*Responses, error) {
 	exit := false
 	for !exit {
 		select {
-		case u := <-con.Updates:
+		case u := <-con.Updates():
 			if u == "close" {
 				// Close triggered. This may mean Pilot is just disconnecting, scaling, etc
 				// Try the whole loop again
@@ -44,10 +44,9 @@ func Fetch(pilotAddress string, config *Config) (*Responses, error) {
 			return nil, fmt.Errorf("context closed")
 		}
 	}
-	con.conn.Close()
-	con.mutex.Lock()
-	defer con.mutex.Unlock()
-	return &con.Responses, nil
+	con.Close()
+	resp := con.Responses()
+	return &resp, nil
 }
 
 func Connect(pilotAddress string, config *Config) {
@@ -88,7 +87,7 @@ func Connect(pilotAddress string, config *Config) {
 		exit := false
 		for !exit {
 			select {
-			case u := <-con.Updates:
+			case u := <-con.Updates():
 				if u == "close" {
 					// Close triggered. This may mean Pilot is just disconnecting, scaling, etc
 					// Try the whole loop again
