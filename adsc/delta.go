@@ -3,14 +3,17 @@ package adsc
 import (
 	"fmt"
 	"math"
+	"sync"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
 
+	"istio.io/istio/pilot/pkg/util/sets"
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 )
 
@@ -19,6 +22,9 @@ type deltaClient struct {
 	node           *core.Node
 	conn           *grpc.ClientConn
 	client         discovery.AggregatedDiscoveryService_DeltaAggregatedResourcesClient
+
+	mu        sync.Mutex
+	resources map[string]sets.Set
 }
 
 var _ ADSClient = &deltaClient{}
@@ -42,6 +48,7 @@ func DialDelta(url string, opts *Config) (ADSClient, error) {
 		node:           makeNode(nodeID, opts.Meta),
 		conn:           conn,
 		client:         xdsClient,
+		resources:      map[string]sets.Set{},
 	}
 	go c.handleRecv()
 	return c, nil
@@ -55,14 +62,16 @@ func (d *deltaClient) handleRecv() {
 			d.Close()
 			return
 		}
-		scope.Debugf("got message for type %v", msg.TypeUrl)
+
 		requests := map[string][]string{}
+		resources := sets.NewSet()
 		for _, resp := range msg.Resources {
+			resources = resources.Insert(resp.Name)
 			switch msg.TypeUrl {
 			case v3.ClusterType:
 				o := &cluster.Cluster{}
 				_ = resp.Resource.UnmarshalTo(o)
-				switch v := o.ClusterDiscoveryType.(type) {
+				switch v := o.GetClusterDiscoveryType().(type) {
 				case *cluster.Cluster_Type:
 					if v.Type != cluster.Cluster_EDS {
 						continue
@@ -86,6 +95,19 @@ func (d *deltaClient) handleRecv() {
 			}
 		}
 
+		d.mu.Lock()
+		origLen := len(d.resources[msg.TypeUrl])
+		newAdd := Union(d.resources[msg.TypeUrl], resources)
+		addedLen := len(newAdd) - origLen
+		removedLen := len(msg.RemovedResources)
+		d.resources[msg.TypeUrl] = newAdd.Difference(sets.NewSet(msg.RemovedResources...))
+		d.mu.Unlock()
+		scope.WithLabels("type", msg.TypeUrl, "added", addedLen, "removed", removedLen).Debugf("got message")
+		if dumpScope.DebugEnabled() {
+			s, _ := (&jsonpb.Marshaler{}).MarshalToString(msg)
+			dumpScope.Debug(s)
+		}
+
 		for t, res := range requests {
 			if err := d.send(&discovery.DeltaDiscoveryRequest{
 				TypeUrl:                t,
@@ -102,6 +124,18 @@ func (d *deltaClient) handleRecv() {
 			scope.Errorf("error sending ACK: %v", err)
 		}
 	}
+}
+
+// Istio on is broken
+func Union(s, s2 sets.Set) sets.Set {
+	result := sets.NewSet()
+	for key := range s {
+		result.Insert(key)
+	}
+	for key := range s2 {
+		result.Insert(key)
+	}
+	return result
 }
 
 func (d *deltaClient) Watch() {
