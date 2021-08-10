@@ -9,13 +9,14 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
-	"istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+
+	"istio.io/pkg/log"
 )
 
 var (
@@ -129,6 +130,7 @@ var rootCmd = &cobra.Command{
 	Short:        "open XDS connections to pilot",
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		log.FindScope("dump").SetOutputLevel(log.WarnLevel)
 		return log.Configure(loggingOptions)
 	},
 }
