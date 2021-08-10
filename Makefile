@@ -21,12 +21,12 @@ check-git:
 gen-check: check-git format
 
 .PHONY: format
-format: $(GOBIN)/goimports
+format:
 	@go mod tidy
 	@goimports -l -w -local $(MODULE) .
 
 .PHONY: lint
-lint: $(GOBIN)/golangci-lint
+lint:
 	@golangci-lint run --fix
 
 .PHONY: install

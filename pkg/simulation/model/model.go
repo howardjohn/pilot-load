@@ -139,7 +139,6 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 type AdscConfig struct {
 	Count int
 	Delay time.Duration
-	Delta bool
 }
 
 type Selector string
@@ -180,6 +179,7 @@ type Args struct {
 	StartupConfig     StartupConfig
 	ProberConfig      ProberConfig
 	Metadata          map[string]string
+	DeltaXDS          bool
 }
 
 type Context struct {

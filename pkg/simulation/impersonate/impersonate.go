@@ -3,12 +3,13 @@ package impersonate
 import (
 	"time"
 
-	"istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+
+	"istio.io/pkg/log"
 )
 
 type ImpersonateSpec struct {
@@ -59,6 +60,7 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 				Cluster:   "",
 				PodType:   "",
 				GrpcOpts:  ctx.Args.Auth.GrpcOptions(pod.Spec.ServiceAccountName, pod.Namespace),
+				Delta:     ctx.Args.DeltaXDS,
 			}
 			log.Infof("Starting pod %v/%v (%v), replica %d", pod.Name, pod.Namespace, ip, n)
 			go func() {

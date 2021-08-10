@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"google.golang.org/grpc/credentials"
-	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +18,8 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+
+	"istio.io/pkg/log"
 )
 
 type PodSpec struct {
@@ -88,6 +89,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			// TODO: multicluster
 			Cluster:  "Kubernetes",
 			GrpcOpts: ctx.Args.Auth.GrpcOptions(p.Spec.ServiceAccount, p.Spec.Namespace),
+			Delta:    ctx.Args.DeltaXDS,
 		}
 		return p.xds.Run(ctx)
 	} else {

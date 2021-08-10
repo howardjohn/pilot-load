@@ -23,6 +23,7 @@ var (
 	pilotAddress   = defaultAddress()
 	xdsMetadata    = map[string]string{}
 	auth           = string(security.AuthTypeDefault)
+	delta          = false
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	loggingOptions = defaultLogOptions()
 
@@ -40,6 +41,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
 	rootCmd.PersistentFlags().IntVar(&qps, "qps", qps, "qps for kube client")
 	rootCmd.PersistentFlags().StringToStringVarP(&xdsMetadata, "metadata", "m", xdsMetadata, "xds metadata")
+
+	adscCmd.PersistentFlags().BoolVar(&delta, "delta", delta, "use delta XDS")
 
 	rootCmd.PersistentFlags().StringVar(&authClusterUrl, "clusterURL", authClusterUrl, "cluster URL (for google auth)")
 	rootCmd.PersistentFlags().StringVar(&authTrustDomain, "trustDomain", authTrustDomain, "trust domain (for google auth)")
@@ -89,6 +92,7 @@ func GetArgs() (model.Args, error) {
 	}
 	args := model.Args{
 		PilotAddress: pilotAddress,
+		DeltaXDS:     delta,
 		Metadata:     xdsMetadata,
 		Client:       cl,
 		Auth:         authOpts,
