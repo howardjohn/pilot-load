@@ -33,6 +33,8 @@ The expense of this is dropping coverage:
 
 1. Install Istio in cluster. No special configuration is needed. You may want to ensure no Envoy's are connected, as they will be sent invalid configuration
 
+1. Install `pilot-load` by running `go build`.
+
 1. Run [`./install/deploy.sh`](./install/deploy.sh). This will configure the api-server and kubeconfig to access it. It will also bootstrap the cluster with CRDs and telemetry filters.
 
 1. Restart istiod to pick up the new kubeconfig: `kubectl rollout restart deployment -n istio-system istiod`.
