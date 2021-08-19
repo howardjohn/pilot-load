@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pilot-load-config
+  namespace: pilot-load
 data:
   # Each namespace has 1 25 replica service, 5 5 replica services, and 25 1 replica services. 75 pods each
   # Each service is exposed by a single Gateway, which has 200 instances

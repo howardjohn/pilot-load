@@ -9,9 +9,10 @@ import (
 )
 
 type DestinationRuleSpec struct {
-	App       string
-	Namespace string
-	Subsets   []string
+	App           string
+	Namespace     string
+	Subsets       []string
+	LbPolicyIndex int
 }
 
 type DestinationRule struct {
@@ -32,11 +33,23 @@ func (v *DestinationRule) Cleanup(ctx model.Context) error {
 	return ctx.Client.Delete(v.getDestinationRule())
 }
 
+func (v *DestinationRule) Refresh(ctx model.Context) error {
+	v.Spec.LbPolicyIndex = (v.Spec.LbPolicyIndex + 1) % 3
+	return v.Run(ctx)
+}
+
 func (v *DestinationRule) getDestinationRule() *v1alpha3.DestinationRule {
 	s := v.Spec
 	subsets := []*networkingv1alpha3.Subset{}
 	for _, ss := range s.Subsets {
 		subsets = append(subsets, &networkingv1alpha3.Subset{Name: ss})
+	}
+	var lbPolicy networkingv1alpha3.LoadBalancerSettings_SimpleLB
+	switch s.LbPolicyIndex {
+	case 0:
+		lbPolicy = networkingv1alpha3.LoadBalancerSettings_ROUND_ROBIN
+	case 1:
+		lbPolicy = networkingv1alpha3.LoadBalancerSettings_LEAST_CONN
 	}
 	return &v1alpha3.DestinationRule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -46,6 +59,13 @@ func (v *DestinationRule) getDestinationRule() *v1alpha3.DestinationRule {
 		Spec: networkingv1alpha3.DestinationRule{
 			Host:    s.App,
 			Subsets: subsets,
+			TrafficPolicy: &networkingv1alpha3.TrafficPolicy{
+				LoadBalancer: &networkingv1alpha3.LoadBalancerSettings{
+					LbPolicy: &networkingv1alpha3.LoadBalancerSettings_Simple{
+						Simple: lbPolicy,
+					},
+				},
+			},
 		},
 	}
 }

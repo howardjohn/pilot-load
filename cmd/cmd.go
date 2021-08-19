@@ -42,7 +42,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&qps, "qps", qps, "qps for kube client")
 	rootCmd.PersistentFlags().StringToStringVarP(&xdsMetadata, "metadata", "m", xdsMetadata, "xds metadata")
 
-	adscCmd.PersistentFlags().BoolVar(&delta, "delta", delta, "use delta XDS")
+	rootCmd.PersistentFlags().BoolVar(&delta, "delta", delta, "use delta XDS")
 
 	rootCmd.PersistentFlags().StringVar(&authClusterUrl, "clusterURL", authClusterUrl, "cluster URL (for google auth)")
 	rootCmd.PersistentFlags().StringVar(&authTrustDomain, "trustDomain", authTrustDomain, "trust domain (for google auth)")

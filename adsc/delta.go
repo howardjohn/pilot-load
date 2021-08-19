@@ -38,18 +38,6 @@ type ResourceNode struct {
 	Children map[*ResourceNode]struct{}
 }
 
-var ListenerNode = &ResourceNode{
-	Key:      ResourceKey{TypeUrl: v3.ListenerType},
-	Parents:  map[*ResourceNode]struct{}{},
-	Children: map[*ResourceNode]struct{}{},
-}
-
-var ClusterNode = &ResourceNode{
-	Key:      ResourceKey{TypeUrl: v3.ClusterType},
-	Parents:  map[*ResourceNode]struct{}{},
-	Children: map[*ResourceNode]struct{}{},
-}
-
 type deltaClient struct {
 	initialWatches []string
 	node           *core.Node
@@ -64,6 +52,18 @@ type deltaClient struct {
 var _ ADSClient = &deltaClient{}
 
 func DialDelta(url string, opts *Config) (ADSClient, error) {
+
+	var ListenerNode = &ResourceNode{
+		Key:      ResourceKey{TypeUrl: v3.ListenerType},
+		Parents:  map[*ResourceNode]struct{}{},
+		Children: map[*ResourceNode]struct{}{},
+	}
+
+	var ClusterNode = &ResourceNode{
+		Key:      ResourceKey{TypeUrl: v3.ClusterType},
+		Parents:  map[*ResourceNode]struct{}{},
+		Children: map[*ResourceNode]struct{}{},
+	}
 	nodeID := fmt.Sprintf("%s~%s~%s.%s~%s.svc.cluster.local", opts.NodeType, opts.IP,
 		opts.Workload, opts.Namespace, opts.Namespace)
 
@@ -93,16 +93,19 @@ func DialDelta(url string, opts *Config) (ADSClient, error) {
 }
 
 func (d *deltaClient) handleRecv() {
+	scope := scope.WithLabels("node", d.node.Id)
 	for {
 		msg, err := d.client.Recv()
 		if err != nil {
-			scope.Infof("Connection closed for %v: %v", d.node.Id, err)
+			scope.Infof("Connection closed: %v", err)
 			d.Close()
 			return
 		}
 
 		requests := map[string][]string{}
 		resources := sets.NewSet()
+
+		d.mu.Lock()
 		for _, resp := range msg.Resources {
 			key := ResourceKey{
 				Name:    resp.Name,
@@ -116,9 +119,9 @@ func (d *deltaClient) handleRecv() {
 				}
 				switch msg.TypeUrl {
 				case v3.ListenerType:
-					relate(ListenerNode, d.tree[key])
+					relate(d.tree[ResourceKey{TypeUrl: v3.ListenerType}], d.tree[key])
 				case v3.ClusterType:
-					relate(ClusterNode, d.tree[key])
+					relate(d.tree[ResourceKey{TypeUrl: v3.ClusterType}], d.tree[key])
 				}
 
 			} else if d.tree[key] == nil {
@@ -143,14 +146,13 @@ func (d *deltaClient) handleRecv() {
 				TypeUrl: msg.TypeUrl,
 			}
 			if d.tree[key] == nil {
-				scope.Warnf("Ignoring removing unmatched resource %s", key)
+				scope.Warnf("Ignoring removing unmatched resource %s, %v", key, d.dumpTree())
 				continue
 			}
 			node := d.tree[key]
 			d.deleteNode(node, removals)
 		}
 
-		d.mu.Lock()
 		origLen := len(d.resources[msg.TypeUrl])
 		newAdd := Union(d.resources[msg.TypeUrl], resources)
 		addedLen := len(newAdd) - origLen
@@ -163,7 +165,9 @@ func (d *deltaClient) handleRecv() {
 			dumpScope.Debug(s)
 		}
 		if dumpScope.InfoEnabled() {
+			d.mu.Lock()
 			dumpScope.Info("\n" + d.dumpTree())
+			d.mu.Unlock()
 		}
 
 		// TODO: Envoy does some smart "pausing" to allow the next push to come before we request
@@ -258,7 +262,7 @@ func Union(s, s2 sets.Set) sets.Set {
 }
 
 func (d *deltaClient) Watch() {
-	scope.Infof("sending intial watches")
+	scope.Infof("sending initial watches")
 	first := true
 	for _, res := range d.initialWatches {
 		req := &discovery.DeltaDiscoveryRequest{

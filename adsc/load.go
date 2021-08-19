@@ -72,7 +72,9 @@ func Connect(pilotAddress string, config *Config) {
 			select {
 			case <-config.Context.Done():
 				log("Context closed, exiting stream")
-				con.Close()
+				if con != nil {
+					con.Close()
+				}
 				return
 			case <-time.After(bo):
 				log("Starting retry %v after %v", attempts, bo)

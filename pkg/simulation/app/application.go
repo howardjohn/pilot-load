@@ -89,6 +89,9 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	if w.virtualService != nil {
 		sims = append(sims, w.virtualService)
 	}
+	if w.destRule != nil {
+		sims = append(sims, w.destRule)
+	}
 	return sims
 }
 

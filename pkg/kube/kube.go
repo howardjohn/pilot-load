@@ -99,7 +99,13 @@ func (c *Client) Delete(o runtime.Object) error {
 	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
 	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
 	scope.Debugf("deleting resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-	return cl.Delete(context.TODO(), us.GetName(), metav1.DeleteOptions{GracePeriodSeconds: &deletePeriod})
+	if err := cl.Delete(context.TODO(), us.GetName(), metav1.DeleteOptions{GracePeriodSeconds: &deletePeriod}); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 var scope = log.RegisterScope("kube", "", 0)
