@@ -77,7 +77,7 @@ pilot-load adsc --pilot-address meshconfig.googleapis.com # infers google auth. 
 To just simulate XDS connections, without any api-server interaction, the adsc mode can be used:
 
 ```shell script
-pilot-load adsc --adsc.count=2
+pilot-load adsc --count=2
 ```
 
 This will start up two XDS connections.
@@ -90,7 +90,7 @@ Note: this is independent of the above fake api server and can be run on a real 
 
 This test continuously applies virtual services and sends traffic to see how long it takes for a virtual service to become ready.
 
-Usage: `pilot-load prober --prober.replicas=1000 --prober.delay=1s`.
+Usage: `pilot-load prober --replicas=1000 --delay=1s`.
 
 ## Reproduce
 
