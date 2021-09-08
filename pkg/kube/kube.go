@@ -6,10 +6,7 @@ import (
 	"os"
 	"time"
 
-	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
-	"istio.io/istio/pkg/test/scopes"
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +24,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
+	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
+	"istio.io/istio/pkg/test/scopes"
+	"istio.io/pkg/log"
 )
 
 type Client struct {
@@ -233,6 +233,29 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 	return nil
 }
 
+// Create creates a new object, and returns true if it was newly created.
+// If it already exists, no action is taken and false is returned
+// Status is not written
+func (c *Client) Create(o runtime.Object) (bool, error) {
+	us := toUnstructured(o)
+	if us == nil {
+		return false, fmt.Errorf("bad object %v", o)
+	}
+	gvr, kind := toGvr(o)
+	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
+	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+
+	scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+	if _, err := cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			scope.Debugf("skipped resource, already exists: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			return false, nil
+		}
+		return false, fmt.Errorf("create resource: %v", err)
+	}
+	return true, nil
+}
+
 func (c *Client) FetchRootCert() (string, error) {
 	cm, err := c.Kubernetes.CoreV1().ConfigMaps("istio-system").Get(context.TODO(), "istio-ca-root-cert", metav1.GetOptions{})
 	if err != nil {
@@ -266,4 +289,11 @@ func toUnstructured(o runtime.Object) *unstructured.Unstructured {
 		return nil
 	}
 	return &unstructured.Unstructured{Object: unsObj}
+}
+
+func ignoreAlreadyExists(err error) error {
+	if errors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
 }

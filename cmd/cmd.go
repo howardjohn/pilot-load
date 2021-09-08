@@ -8,13 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"istio.io/pkg/log"
 )
@@ -135,6 +134,7 @@ var rootCmd = &cobra.Command{
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		log.FindScope("dump").SetOutputLevel(log.WarnLevel)
+
 		return log.Configure(loggingOptions)
 	},
 }
@@ -155,6 +155,7 @@ func init() {
 		proberCmd,
 		startupCmd,
 		xdsLatencyCmd,
+		reproduceCmd,
 	)
 }
 

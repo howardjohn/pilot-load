@@ -12,6 +12,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
+	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
@@ -50,6 +51,17 @@ func Impersonate(a model.Args) error {
 		Selector: model.Selector(a.ImpersonateConfig.Selector),
 		Replicas: a.ImpersonateConfig.Replicas,
 		Delay:    a.ImpersonateConfig.Delay,
+	})
+	if err := ExecuteSimulations(a, sim); err != nil {
+		return fmt.Errorf("error executing: %v", err)
+	}
+	return nil
+}
+
+func Reproduce(a model.Args) error {
+	sim := reproduce.NewSimulation(reproduce.ReproduceSpec{
+		Delay:      a.ReproduceConfig.Delay,
+		ConfigFile: a.ReproduceConfig.ConfigFile,
 	})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)

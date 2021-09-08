@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"golang.org/x/sync/errgroup"
 
 	"istio.io/pkg/log"
 )
@@ -155,6 +154,11 @@ type ImpersonateConfig struct {
 	Selector string
 }
 
+type ReproduceConfig struct {
+	ConfigFile string
+	Delay      time.Duration
+}
+
 type StartupConfig struct {
 	Namespace   string
 	Concurrency int
@@ -176,6 +180,7 @@ type Args struct {
 	ClusterConfig     ClusterConfig
 	AdsConfig         AdscConfig
 	ImpersonateConfig ImpersonateConfig
+	ReproduceConfig   ReproduceConfig
 	StartupConfig     StartupConfig
 	ProberConfig      ProberConfig
 	Metadata          map[string]string
