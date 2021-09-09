@@ -8,9 +8,11 @@ import (
 	"net"
 	"strings"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
 	"istio.io/istio/pkg/bootstrap/platform"
 	"istio.io/istio/pkg/security"
 	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
@@ -18,8 +20,6 @@ import (
 	"istio.io/istio/security/pkg/stsservice/server"
 	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
 	"istio.io/pkg/log"
-
-	"github.com/howardjohn/pilot-load/pkg/kube"
 )
 
 type AuthOptions struct {
@@ -126,8 +126,9 @@ func (a *AuthOptions) AutoPopulate() error {
 	if !(a.ClusterURL != "" && a.ProjectNumber != "" && a.TrustDomain != "") {
 		return fmt.Errorf("missing google settings")
 	}
+	// Do not cache - code expects single tenant
 	tmp, err := google.CreateTokenManagerPlugin(nil, a.TrustDomain,
-		a.ProjectNumber, a.ClusterURL, true)
+		a.ProjectNumber, a.ClusterURL, false)
 	if err != nil {
 		return err
 	}
@@ -146,14 +147,14 @@ func (a *AuthOptions) GrpcOptions(serviceAccount, namespace string) []grpc.DialO
 		panic(AuthTypeMTLS + " is not currently implemented")
 	case AuthTypeGoogle:
 		fetch := func() (map[string]string, error) {
-			token, err := GetServiceAccountToken(a.Client, a.TrustDomain, namespace, serviceAccount)
+			t, err := GetServiceAccountToken(a.Client, a.TrustDomain, namespace, serviceAccount)
 			if err != nil {
 				return nil, err
 			}
 			params := security.StsRequestParameters{
 				Scope:            stsclient.Scope,
 				GrantType:        server.TokenExchangeGrantType,
-				SubjectToken:     strings.TrimSpace(token),
+				SubjectToken:     strings.TrimSpace(t),
 				SubjectTokenType: server.SubjectTokenType,
 			}
 			et, err := a.tokenManager.ExchangeToken(params)

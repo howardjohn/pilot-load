@@ -1,17 +1,22 @@
 package reproduce
 
 import (
+	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 
 	clientnetworkingalpha "istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -21,7 +26,6 @@ import (
 	"istio.io/istio/pilot/pkg/util/sets"
 	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/config/schema/gvk"
-	"istio.io/istio/pkg/test/util/yml"
 	"istio.io/pkg/log"
 )
 
@@ -57,6 +61,7 @@ var order = []schema.GroupVersionKind{
 	toK8s(gvk.DestinationRule),
 	toK8s(gvk.Service),
 	toK8s(gvk.Endpoints),
+	toK8s(config.GroupVersionKind{Group: "", Version: "v1", Kind: "ServiceAccount"}),
 	toK8s(gvk.Pod),
 }
 
@@ -71,6 +76,9 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 	for _, g := range order {
 		cfgs := cfgsByKind[g]
 		for _, c := range cfgs {
+			if util.IsDone(ctx) {
+				return nil
+			}
 			co := c.DeepCopyObject().(metav1.Object)
 			ns := co.GetNamespace()
 			name := co.GetName()
@@ -85,7 +93,23 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 				continue
 			}
 			if kind == gvk.Pod.Kind {
-				// Getting 500 in API server. Not sure why
+				pod := co.(*v1.Pod)
+				x := &xds.Simulation{
+					Labels:         co.GetLabels(),
+					Namespace:      co.GetNamespace(),
+					Name:           co.GetName(),
+					ServiceAccount: pod.Spec.ServiceAccountName,
+					IP:             pod.Status.PodIP,
+					PodType:        model.SidecarType,
+					Cluster:        "Kubernetes",
+					GrpcOpts:       ctx.Args.Auth.GrpcOptions(pod.Spec.ServiceAccountName, co.GetNamespace()),
+					Delta:          ctx.Args.DeltaXDS,
+				}
+				i.sims = append(i.sims, x)
+				if err := x.Run(ctx); err != nil {
+					return err
+				}
+				util.ContextSleep(ctx, i.Spec.Delay)
 				continue
 			}
 
@@ -115,6 +139,10 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 				}
 				ep.Subsets = subsets
 			}
+			if sa, ok := co.(*v1.ServiceAccount); ok {
+				sa.SetAnnotations(nil)
+				sa.SetLabels(nil)
+			}
 			s := newCreateSim(co.(runtime.Object))
 			i.sims = append(i.sims, s)
 			if err := s.Run(ctx); err != nil {
@@ -137,17 +165,25 @@ func (i *ReproduceSimulation) Cleanup(ctx model.Context) error {
 }
 
 func parseInputs(inputFile string) (map[schema.GroupVersionKind][]runtime.Object, error) {
-	ybytes, err := ioutil.ReadFile(inputFile)
+	f, err := os.Open(inputFile)
 	if err != nil {
 		return nil, err
 	}
 	codecs := serializer.NewCodecFactory(IstioScheme)
 	deserializer := codecs.UniversalDeserializer()
 
+	reader := yaml.NewYAMLReader(bufio.NewReader(f))
 	resp := map[schema.GroupVersionKind][]runtime.Object{}
-	for _, chunk := range yml.SplitString(string(ybytes)) {
+	for {
+		chunk, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
 		var obj runtime.Object
-		obj, _, err := deserializer.Decode([]byte(chunk), nil, obj)
+		obj, _, err = deserializer.Decode(chunk, nil, obj)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse message: %v", err)
 		}

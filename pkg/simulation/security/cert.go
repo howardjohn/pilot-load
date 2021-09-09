@@ -30,7 +30,7 @@ func GetServiceAccountToken(c *kube.Client, aud, ns, sa string) (string, error) 
 
 	if got, f := cachedTokens.Load(san); f {
 		t := got.(token)
-		if !t.expiration.After(time.Now().Add(-time.Minute)) {
+		if t.expiration.After(time.Now().Add(time.Minute)) {
 			return t.token, nil
 		}
 		// Otherwise, its expired, load a new one

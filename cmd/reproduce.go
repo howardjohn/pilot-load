@@ -19,6 +19,8 @@ func init() {
 var reproduceCmd = &cobra.Command{
 	Use:   "reproduce",
 	Short: "simulate ADS connections from input YAML",
+	Long: "simulate ADS connections from input YAML." +
+		"Expected format: `kubectl get vs,gw,dr,sidecar,svc,endpoints,pod,namespace,sa -oyaml -A | kubectl grep`",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		args, err := GetArgs()
 		if err != nil {

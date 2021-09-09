@@ -3,17 +3,17 @@ package xds
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"google.golang.org/grpc"
 )
 
 type Simulation struct {
-	Labels    map[string]string
-	Namespace string
-	Name      string
-	IP        string
+	Labels         map[string]string
+	Namespace      string
+	ServiceAccount string
+	Name           string
+	IP             string
 	// Defaults to "Kubernetes"
 	Cluster string
 	PodType model.PodType
@@ -46,6 +46,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 	meta["CLUSTER_ID"] = cluster
 	meta["LABELS"] = x.Labels
 	meta["NAMESPACE"] = x.Namespace
+	meta["SERVICE_ACCOUNT"] = x.ServiceAccount
 	meta["SDS"] = "true"
 	go func() {
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
