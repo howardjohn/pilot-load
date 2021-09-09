@@ -3,11 +3,11 @@ package app
 import (
 	"fmt"
 
-	"istio.io/pkg/log"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"k8s.io/apimachinery/pkg/util/rand"
+
+	"istio.io/pkg/log"
 )
 
 type ApplicationSpec struct {
@@ -18,6 +18,7 @@ type ApplicationSpec struct {
 	Instances      int
 	PodType        model.PodType
 	GatewayConfig  model.GatewayConfig
+	RealCluster    bool
 }
 
 type Application struct {
@@ -45,14 +46,16 @@ func NewApplication(s ApplicationSpec) *Application {
 	}
 
 	w.endpoint = NewEndpoint(EndpointSpec{
-		Node:      s.Node,
-		App:       s.App,
-		Namespace: s.Namespace,
-		IPs:       w.getIps(),
+		Node:        s.Node,
+		App:         s.App,
+		Namespace:   s.Namespace,
+		IPs:         w.getIps(),
+		RealCluster: s.RealCluster,
 	})
 	w.service = NewService(ServiceSpec{
-		App:       s.App,
-		Namespace: s.Namespace,
+		App:         s.App,
+		Namespace:   s.Namespace,
+		RealCluster: s.RealCluster,
 	})
 	for i := 0; i < s.GatewayConfig.Replicas; i++ {
 		gw := config.NewGateway(config.GatewaySpec{
@@ -111,6 +114,7 @@ func (w *Application) makePod() *Pod {
 		App:            s.App,
 		Namespace:      s.Namespace,
 		PodType:        s.PodType,
+		RealCluster:    s.RealCluster,
 	})
 }
 

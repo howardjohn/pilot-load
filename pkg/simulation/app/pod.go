@@ -8,16 +8,15 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"google.golang.org/grpc/credentials"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 
 	"istio.io/pkg/log"
 )
@@ -30,6 +29,7 @@ type PodSpec struct {
 	UID            string
 	IP             string
 	PodType        model.PodType
+	RealCluster    bool
 }
 
 type Pod struct {
@@ -70,10 +70,12 @@ var _ credentials.PerRPCCredentials = &GrpcCredentials{}
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
-	if err = ctx.Client.ApplyFast(pod); err != nil {
-		return fmt.Errorf("failed to apply config: %v", err)
+	if !p.Spec.RealCluster {
+		if err = ctx.Client.ApplyFast(pod); err != nil {
+			return fmt.Errorf("failed to apply config: %v", err)
+		}
+		p.created = true
 	}
-	p.created = true
 
 	if p.Spec.PodType != model.ExternalType {
 		if err := sendInjectionRequest(ctx.Args.InjectAddress, pod); err != nil {

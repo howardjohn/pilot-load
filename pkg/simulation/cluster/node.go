@@ -1,16 +1,16 @@
 package cluster
 
 import (
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type NodeSpec struct {
-	Name   string
-	Region string
-	Zone   string
+	Name        string
+	Region      string
+	Zone        string
+	RealCluster bool
 }
 
 type Node struct {
@@ -24,10 +24,16 @@ func NewNode(s NodeSpec) *Node {
 }
 
 func (n *Node) Run(ctx model.Context) (err error) {
+	if n.Spec.RealCluster {
+		return nil
+	}
 	return ctx.Client.Apply(n.getNode())
 }
 
 func (n *Node) Cleanup(ctx model.Context) error {
+	if n.Spec.RealCluster {
+		return nil
+	}
 	return ctx.Client.Delete(n.getNode())
 }
 

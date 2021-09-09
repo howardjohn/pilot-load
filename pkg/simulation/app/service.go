@@ -1,16 +1,16 @@
 package app
 
 import (
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ServiceSpec struct {
-	App       string
-	Namespace string
+	App         string
+	Namespace   string
+	RealCluster bool
 }
 
 type Service struct {
@@ -45,7 +45,7 @@ func (s *Service) getService() *v1.Service {
 			TargetPort: intstr.FromInt(443),
 		},
 	}
-	return &v1.Service{
+	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.App,
 			Namespace: p.Namespace,
@@ -53,10 +53,13 @@ func (s *Service) getService() *v1.Service {
 		Spec: v1.ServiceSpec{
 			// TODO port customization
 			Ports: ports,
-			Selector: map[string]string{
-				"app": p.App,
-			},
-			Type: "ClusterIP",
+			Type:  "ClusterIP",
 		},
 	}
+	if !s.Spec.RealCluster {
+		svc.Spec.Selector = map[string]string{
+			"app": p.App,
+		}
+	}
+	return svc
 }

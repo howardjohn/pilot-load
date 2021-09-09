@@ -109,6 +109,7 @@ type ClusterConfig struct {
 	Namespaces   []NamespaceConfig      `json:"namespaces,omitempty"`
 	Nodes        int                    `json:"nodes,omitempty"`
 	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
+	RealCluster  bool                   `json:"-"`
 }
 
 func (c ClusterConfig) ApplyDefaults() ClusterConfig {

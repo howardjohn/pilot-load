@@ -5,17 +5,21 @@ import (
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	"istio.io/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/spf13/cobra"
+
+	"istio.io/pkg/log"
 )
 
-var configFile = ""
+var (
+	configFile  = ""
+	realCluster = false
+)
 
 func init() {
 	clusterCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
+	clusterCmd.PersistentFlags().BoolVar(&realCluster, "real-cluster", realCluster, "set to true if using as real cluster, where we are not able to create fake pods, etc")
 }
 
 var clusterCmd = &cobra.Command{
@@ -31,6 +35,7 @@ var clusterCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
 		config = config.ApplyDefaults()
+		config.RealCluster = realCluster
 		args.ClusterConfig = config
 		logConfig(args.ClusterConfig)
 		logClusterConfig(args.ClusterConfig)

@@ -3,10 +3,9 @@ package app
 import (
 	"reflect"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type EndpointSpec struct {
@@ -14,7 +13,8 @@ type EndpointSpec struct {
 	App       string
 	Namespace string
 	// Map of pod name to IP
-	IPs map[string]string
+	IPs         map[string]string
+	RealCluster bool
 }
 
 type Endpoint struct {
@@ -57,15 +57,19 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 	}
 	subset := v1.EndpointSubset{}
 	for pod, ip := range s.IPs {
-		subset.Addresses = append(subset.Addresses, v1.EndpointAddress{
+		addr := v1.EndpointAddress{
 			IP:       ip,
 			NodeName: &s.Node,
-			TargetRef: &v1.ObjectReference{
+		}
+		if !e.Spec.RealCluster {
+			// We will make a selector-less service+endpoint if in a real cluster
+			addr.TargetRef = &v1.ObjectReference{
 				Kind:      "Pod",
 				Namespace: s.Namespace,
 				Name:      pod,
-			},
-		})
+			}
+		}
+		subset.Addresses = append(subset.Addresses, addr)
 	}
 	subset.Ports = []v1.EndpointPort{{
 		Name: "http",

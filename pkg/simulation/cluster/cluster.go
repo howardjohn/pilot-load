@@ -5,11 +5,11 @@ import (
 	"math/rand"
 	"time"
 
-	"istio.io/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+
+	"istio.io/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -30,9 +30,10 @@ func NewCluster(s ClusterSpec) *Cluster {
 
 	for r := 0; r < s.Config.Nodes; r++ {
 		cluster.nodes = append(cluster.nodes, NewNode(NodeSpec{
-			Name:   fmt.Sprintf("node-%s", util.GenUID()),
-			Region: "region",
-			Zone:   "zone",
+			Name:        fmt.Sprintf("node-%s", util.GenUID()),
+			Region:      "region",
+			Zone:        "zone",
+			RealCluster: s.Config.RealCluster,
 		}))
 	}
 	for _, ns := range s.Config.Namespaces {
@@ -49,6 +50,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
 				Name:        name,
 				Deployments: deployments,
+				RealCluster: s.Config.RealCluster,
 			}))
 		}
 	}
