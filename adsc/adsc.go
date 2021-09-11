@@ -60,6 +60,8 @@ type Config struct {
 	// Channel to report events back on
 	Updates chan string
 	Delta   bool
+
+	StoreResponses bool
 }
 
 // ADSC implements a basic client for ADS, for use in stress tests and tools
@@ -96,6 +98,7 @@ type ADSC struct {
 
 	mutex   sync.Mutex
 	watches map[string]Watch
+	store   bool
 }
 
 func (a *ADSC) Updates() chan string {
@@ -160,6 +163,7 @@ func Dial(url string, opts *Config) (ADSClient, error) {
 		},
 		GrpcOpts: opts.GrpcOpts,
 		url:      url,
+		store:    opts.StoreResponses,
 		ctx:      opts.Context,
 	}
 
@@ -252,24 +256,32 @@ func (a *ADSC) handleRecv() {
 				ll := &listener.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
-				resp[ll.Name] = ll
+				if a.store {
+					resp[ll.Name] = ll
+				}
 			} else if rsc.TypeUrl == resource.ClusterType {
 				ll := &cluster.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
-				resp[ll.Name] = ll
+				if a.store {
+					resp[ll.Name] = ll
+				}
 			} else if rsc.TypeUrl == resource.EndpointType {
 				ll := &endpoint.ClusterLoadAssignment{}
 				_ = proto.Unmarshal(valBytes, ll)
 				eds = append(eds, ll)
 				names = append(names, ll.ClusterName)
-				resp[ll.ClusterName] = ll
+				if a.store {
+					resp[ll.ClusterName] = ll
+				}
 			} else if rsc.TypeUrl == resource.RouteType {
 				ll := &route.RouteConfiguration{}
 				_ = proto.Unmarshal(valBytes, ll)
 				routes = append(routes, ll)
 				names = append(names, ll.Name)
-				resp[ll.Name] = ll
+				if a.store {
+					resp[ll.Name] = ll
+				}
 			}
 		}
 

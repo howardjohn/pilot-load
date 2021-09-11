@@ -98,6 +98,7 @@ func (d DeterministicSimulation) checkPod(ctx model.Context, pod *v1.Pod, addres
 				Meta:      meta,
 				IP:        ip,
 				Context:   ctx,
+				StoreResponses: true,
 			})
 			if err != nil {
 				log.Errorf(err)

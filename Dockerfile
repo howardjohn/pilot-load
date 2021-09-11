@@ -1,4 +1,4 @@
-FROM golang:1.16.5-alpine AS base
+FROM golang:1.17.1-alpine AS base
 WORKDIR /src
 ENV CGO_ENABLED=0
 COPY go.* .
@@ -9,7 +9,7 @@ FROM base AS build
 RUN --mount=target=. \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /out/pilot-load .
+    go build -o /out/pilot-load -trimpath .
 
 FROM howardjohn/shell
 
