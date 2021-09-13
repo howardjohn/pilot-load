@@ -36,11 +36,12 @@ type AuthOptions struct {
 type AuthType string
 
 var (
-	AuthTypeDefault   AuthType = ""
-	AuthTypePlaintext AuthType = "plaintext"
-	AuthTypeMTLS      AuthType = "mtls"
-	AuthTypeJWT       AuthType = "jwt"
-	AuthTypeGoogle    AuthType = "google"
+	AuthTypeDefault      AuthType = ""
+	AuthTypePlaintext    AuthType = "plaintext"
+	AuthTypeMTLS         AuthType = "mtls"
+	AuthTypeJWT          AuthType = "jwt"
+	AuthTypePlaintextJWT AuthType = "plaintext-jwt"
+	AuthTypeGoogle       AuthType = "google"
 )
 
 func DefaultAuthForAddress(addr string) AuthType {
@@ -57,7 +58,7 @@ func DefaultAuthForAddress(addr string) AuthType {
 }
 
 func AuthTypeOptions() []AuthType {
-	return []AuthType{AuthTypePlaintext, AuthTypeMTLS, AuthTypeJWT, AuthTypeGoogle}
+	return []AuthType{AuthTypePlaintext, AuthTypeMTLS, AuthTypeJWT, AuthTypePlaintextJWT, AuthTypeGoogle}
 }
 
 func parseClusterName(c string) (url, td, number string, rerr error) {
@@ -180,6 +181,17 @@ func (a *AuthOptions) GrpcOptions(serviceAccount, namespace string) []grpc.DialO
 			}, nil
 		}
 		return []grpc.DialOption{insecureTls, grpc.WithPerRPCCredentials(grpcCredentials{fetch})}
+	case AuthTypePlaintextJWT:
+		fetch := func() (map[string]string, error) {
+			token, err := GetServiceAccountToken(a.Client, "istio-ca", namespace, serviceAccount)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]string{
+				"authorization": "Bearer " + token,
+			}, nil
+		}
+		return []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(grpcCredentials{fetch})}
 	default:
 		panic("unknown auth type: " + a.Type)
 	}
@@ -194,5 +206,5 @@ func (g grpcCredentials) GetRequestMetadata(ctx context.Context, uri ...string) 
 }
 
 func (g grpcCredentials) RequireTransportSecurity() bool {
-	return true
+	return false
 }
