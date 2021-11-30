@@ -126,7 +126,8 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	go monitoring.StartMonitoring(ctx, 8765)
 	simulationContext := model.Context{Context: ctx, Args: a, Client: a.Client, Cancel: cancel}
 	if err := simulation.Run(simulationContext); err != nil {
-		return err
+		cleanupErr := simulation.Cleanup(simulationContext)
+		return fmt.Errorf("failed to run: %v; cleanup: %v", err, cleanupErr)
 	}
 	<-ctx.Done()
 	return simulation.Cleanup(simulationContext)
