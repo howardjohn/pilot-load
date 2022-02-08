@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
+	"fmt"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/spf13/cobra"
 )
 
 var startupConfig = model.StartupConfig{
@@ -25,6 +26,9 @@ var startupCmd = &cobra.Command{
 		args, err := GetArgs()
 		if err != nil {
 			return err
+		}
+		if startupConfig.Namespace == "" {
+			return fmt.Errorf("--namespace required")
 		}
 		args.StartupConfig = startupConfig
 		logConfig(args.StartupConfig)

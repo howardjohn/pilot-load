@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"istio.io/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"istio.io/pkg/log"
 )
 
 type PodStartupSimulation struct {
@@ -22,6 +22,38 @@ var grace = int64(0)
 
 func (a *PodStartupSimulation) createPod() *v1.Pod {
 	id := util.GenUID()
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("startup-test-%s", id),
+			Namespace: a.Config.Namespace,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{{
+				Name:    "app",
+				Image:   "alpine:3.12.3",
+				Command: []string{"nc", "-lk", "-p", "12345", "-e", "echo", "hi"},
+				//ReadinessProbe: &v1.Probe{
+				//	ProbeHandler: v1.ProbeHandler{
+				//		TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
+				//	},
+				//	InitialDelaySeconds: 1,
+				//	PeriodSeconds:       20,
+				//	SuccessThreshold:    1,
+				//	FailureThreshold:    2,
+				//},
+				//StartupProbe: &v1.Probe{
+				//	ProbeHandler: v1.ProbeHandler{
+				//		TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
+				//	},
+				//	InitialDelaySeconds: 1,
+				//	PeriodSeconds:       1,
+				//	SuccessThreshold:    1,
+				//	FailureThreshold:    2,
+				//},
+			}},
+			TerminationGracePeriodSeconds: &grace,
+		},
+	}
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("startup-test-%s", id),
@@ -134,24 +166,24 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("Avg:\tget:%v\tstart:%v\tcomplete:%v\tready:%v",
+			log.Infof("Avg:\tget:%v\tstart:%v\tready:%v\tcomplete:%v",
 				avg(results, func(r result) time.Duration { return r.read }),
 				avg(results, func(r result) time.Duration { return r.start }),
-				avg(results, func(r result) time.Duration { return r.ready }),
 				avg(results, func(r result) time.Duration { return r.ready - r.start }),
+				avg(results, func(r result) time.Duration { return r.ready }),
 			)
-			log.Infof("Max:\tget:%v\tstart:%v\tcomplete:%v\tready:%v",
+			log.Infof("Max:\tget:%v\tstart:%v\tready:%v\tcomplete:%v",
 				max(results, func(r result) time.Duration { return r.read }),
 				max(results, func(r result) time.Duration { return r.start }),
-				max(results, func(r result) time.Duration { return r.ready }),
 				max(results, func(r result) time.Duration { return r.ready - r.start }),
+				max(results, func(r result) time.Duration { return r.ready }),
 			)
 			wg.Wait()
 			return nil
 		case report := <-c:
 			results = append(results, report)
-			log.Infof("Report:\tget:%v\tstart:%v\tcomplete:%v\tready:%v\tname:%v",
-				report.read, report.start, report.ready, report.ready-report.start, report.podName)
+			log.Infof("Report:\tget:%v\tstart:%v\tready:%v\tcomplete:%v\tname:%v",
+				report.read, report.start, report.ready-report.start, report.ready, report.podName)
 		}
 	}
 }
