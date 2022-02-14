@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	networkingclient "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	telemetryclient "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
+	securityclient "istio.io/client-go/pkg/apis/security/v1beta1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 
-	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	"istio.io/istio/pkg/test/scopes"
 	"istio.io/pkg/log"
@@ -116,7 +119,8 @@ func init() {
 	}
 }
 
-// TODO make this generic
+// toGvr gets the GVR from an object. Note: GVK is not present in `o`, so cannot be used.
+// Istio collections cannot be used either, as they are spec
 func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 	switch o.(type) {
 	case *v1.Pod:
@@ -133,16 +137,28 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return v1.SchemeGroupVersion.WithResource("secrets"), "Secret"
 	case *v1.Endpoints:
 		return v1.SchemeGroupVersion.WithResource("endpoints"), "Endpoints"
-	case *v1alpha3.VirtualService:
-		return v1alpha3.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
-	case *v1alpha3.Sidecar:
-		return v1alpha3.SchemeGroupVersion.WithResource("sidecars"), "Sidecar"
-	case *v1alpha3.Gateway:
-		return v1alpha3.SchemeGroupVersion.WithResource("gateways"), "Gateway"
-	case *v1alpha3.DestinationRule:
-		return v1alpha3.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
-	case *v1alpha3.ServiceEntry:
-		return v1alpha3.SchemeGroupVersion.WithResource("serviceentries"), "ServiceEntry"
+	case *networkingclient.VirtualService:
+		return networkingclient.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
+	case *networkingclient.Sidecar:
+		return networkingclient.SchemeGroupVersion.WithResource("sidecars"), "Sidecar"
+	case *networkingclient.Gateway:
+		return networkingclient.SchemeGroupVersion.WithResource("gateways"), "Gateway"
+	case *networkingclient.DestinationRule:
+		return networkingclient.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
+	case *networkingclient.ServiceEntry:
+		return networkingclient.SchemeGroupVersion.WithResource("serviceentries"), "ServiceEntry"
+	case *networkingclient.EnvoyFilter:
+		return networkingclient.SchemeGroupVersion.WithResource("envoyfilters"), "EnvoyFilter"
+	case *networkingclient.WorkloadEntry:
+		return networkingclient.SchemeGroupVersion.WithResource("workloadentries"), "WorkloadEntry"
+	case *telemetryclient.Telemetry:
+		return networkingclient.SchemeGroupVersion.WithResource("telemetries"), "Telemetry"
+	case *securityclient.AuthorizationPolicy:
+		return networkingclient.SchemeGroupVersion.WithResource("authorizationpolicies"), "AuthorizationPolicy"
+	case *securityclient.RequestAuthentication:
+		return networkingclient.SchemeGroupVersion.WithResource("requestauthentications"), "RequestAuthentication"
+	case *securityclient.PeerAuthentication:
+		return networkingclient.SchemeGroupVersion.WithResource("peerauthentications"), "PeerAuthentication"
 	default:
 		panic(fmt.Sprintf("unsupported type %T", o))
 	}
@@ -251,6 +267,10 @@ func (c *Client) Create(o runtime.Object) (bool, error) {
 			scope.Debugf("skipped resource, already exists: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 			return false, nil
 		}
+		if errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota") {
+			scope.Warnf("skipped resource, exceeded quota: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			return false, nil
+		}
 		return false, fmt.Errorf("create resource: %v", err)
 	}
 	return true, nil
@@ -296,4 +316,11 @@ func ignoreAlreadyExists(err error) error {
 		return nil
 	}
 	return err
+}
+
+// Object is a union of runtime + meta objects. Essentially every k8s object meets this interface.
+// and certainly all that we care about.
+type Object interface {
+	metav1.Object
+	runtime.Object
 }

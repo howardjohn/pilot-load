@@ -157,6 +157,7 @@ type ImpersonateConfig struct {
 
 type ReproduceConfig struct {
 	ConfigFile string
+	ConfigOnly bool
 	Delay      time.Duration
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	"istio.io/pkg/log"
 )
 
 // Load testing api-server
@@ -62,6 +63,7 @@ func Reproduce(a model.Args) error {
 	sim := reproduce.NewSimulation(reproduce.ReproduceSpec{
 		Delay:      a.ReproduceConfig.Delay,
 		ConfigFile: a.ReproduceConfig.ConfigFile,
+		ConfigOnly: a.ReproduceConfig.ConfigOnly,
 	})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
@@ -126,6 +128,7 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	go monitoring.StartMonitoring(ctx, 8765)
 	simulationContext := model.Context{Context: ctx, Args: a, Client: a.Client, Cancel: cancel}
 	if err := simulation.Run(simulationContext); err != nil {
+		log.Errorf("failed: %v, starting cleanup", err)
 		cleanupErr := simulation.Cleanup(simulationContext)
 		return fmt.Errorf("failed to run: %v; cleanup: %v", err, cleanupErr)
 	}

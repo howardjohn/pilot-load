@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
@@ -32,6 +33,7 @@ import (
 type ReproduceSpec struct {
 	Delay      time.Duration
 	ConfigFile string
+	ConfigOnly bool
 }
 
 type ReproduceSimulation struct {
@@ -65,7 +67,7 @@ var order = []schema.GroupVersionKind{
 	toK8s(gvk.Pod),
 }
 
-var denylistNamespaces = sets.NewSet("kube-system", "kube-public", "istio-system")
+var denylistNamespaces = sets.NewSet("kube-system", "kube-public", "istio-system", "resource-group-system")
 
 func (i *ReproduceSimulation) Run(ctx model.Context) error {
 	cfgsByKind, err := parseInputs(i.Spec.ConfigFile)
@@ -86,13 +88,13 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 			if denylistNamespaces.Contains(ns) {
 				continue
 			}
-			if ns == "default" && name == "kubernetes" {
+			if ns == "default" && name == "kubernetes" && kind == "Service" { // Skip the Kubernetes Service
 				continue
 			}
 			if kind == gvk.Namespace.Kind && denylistNamespaces.Contains(name) {
 				continue
 			}
-			if kind == gvk.Pod.Kind {
+			if kind == gvk.Pod.Kind && !i.Spec.ConfigOnly {
 				pod := co.(*v1.Pod)
 				x := &xds.Simulation{
 					Labels:         co.GetLabels(),
@@ -118,11 +120,14 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 			co.SetCreationTimestamp(metav1.Time{})
 			co.SetFinalizers(nil)
 			if svc, ok := co.(*v1.Service); ok {
+				// Mutate Service
 				spec := svc.Spec
+				// Wipe out Cluster IP, we can get one assigned
 				if spec.ClusterIP != "None" {
 					spec.ClusterIP = ""
 					spec.ClusterIPs = nil
 				}
+				// Same impact, a lot cheaper
 				if spec.Type == v1.ServiceTypeLoadBalancer {
 					spec.Type = v1.ServiceTypeNodePort
 				}
@@ -134,19 +139,22 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 				subsets := ep.Subsets
 				for i := range subsets {
 					for a := range subsets[i].Addresses {
+						// Pod won't exist, so wipe it out
 						subsets[i].Addresses[a].TargetRef = nil
 					}
 				}
 				ep.Subsets = subsets
 			}
 			if sa, ok := co.(*v1.ServiceAccount); ok {
+				// Annotations can configure dependencies like WI
 				sa.SetAnnotations(nil)
 				sa.SetLabels(nil)
 			}
-			s := newCreateSim(co.(runtime.Object))
+			s := newCreateSim(co.(kube.Object))
 			i.sims = append(i.sims, s)
 			if err := s.Run(ctx); err != nil {
-				return err
+				// Ignore errors
+				log.Errorf("failed to create resource: %v", err)
 			}
 			if s.skipCleanup {
 				log.Infof("already exists: %v/%v.%v", kind, name, ns)
@@ -206,13 +214,13 @@ var IstioScheme = func() *runtime.Scheme {
 }()
 
 type createSim struct {
-	Spec        runtime.Object
+	Spec        kube.Object
 	skipCleanup bool
 }
 
 var _ model.Simulation = &createSim{}
 
-func newCreateSim(s runtime.Object) *createSim {
+func newCreateSim(s kube.Object) *createSim {
 	return &createSim{Spec: s}
 }
 
@@ -231,5 +239,7 @@ func (v *createSim) Cleanup(ctx model.Context) error {
 	if v.skipCleanup {
 		return nil
 	}
+
+	log.Infof("cleaning up %v/%v.%v", v.Spec.GetObjectKind().GroupVersionKind().Kind, v.Spec.GetName(), v.Spec.GetNamespace())
 	return ctx.Client.Delete(v.Spec)
 }

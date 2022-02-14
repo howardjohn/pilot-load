@@ -13,6 +13,7 @@ func init() {
 
 func init() {
 	reproduceCmd.PersistentFlags().DurationVar(&reproduceConfig.Delay, "delay", reproduceConfig.Delay, "delay between each connection")
+	reproduceCmd.PersistentFlags().BoolVarP(&reproduceConfig.ConfigOnly, "config-only", "n", reproduceConfig.ConfigOnly, "only apply config file, do not connect to XDS")
 	reproduceCmd.PersistentFlags().StringVarP(&reproduceConfig.ConfigFile, "file", "f", reproduceConfig.ConfigFile, "config file")
 }
 
