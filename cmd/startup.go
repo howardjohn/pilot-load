@@ -17,6 +17,7 @@ func init() {
 	startupCmd.PersistentFlags().BoolVar(&startupConfig.InCluster, "incluster", startupConfig.InCluster, "whether we are running in cluster. If enabled, we will check the readiness probe.")
 	startupCmd.PersistentFlags().IntVar(&startupConfig.Concurrency, "concurrency", startupConfig.Concurrency, "number of pods to start concurrently")
 	startupCmd.PersistentFlags().StringVar(&startupConfig.Namespace, "namespace", startupConfig.Namespace, "namespace to run in")
+	startupCmd.PersistentFlags().DurationVar(&startupConfig.Cooldown, "cooldown", startupConfig.Cooldown, "time to wait after starting each pod (per worker)")
 }
 
 var startupCmd = &cobra.Command{

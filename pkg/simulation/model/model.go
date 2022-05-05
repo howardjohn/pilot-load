@@ -25,7 +25,6 @@ type Simulation interface {
 
 type ScalableSimulation interface {
 	Scale(ctx Context, delta int) error
-
 	ScaleTo(ctx Context, n int) error
 }
 
@@ -165,6 +164,7 @@ type StartupConfig struct {
 	Namespace   string
 	Concurrency int
 	InCluster   bool
+	Cooldown    time.Duration
 }
 
 type ProberConfig struct {

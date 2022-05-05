@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"istio.io/pkg/log"
 )
@@ -32,15 +33,15 @@ func (a *PodStartupSimulation) createPod() *v1.Pod {
 				Name:    "app",
 				Image:   "alpine:3.12.3",
 				Command: []string{"nc", "-lk", "-p", "12345", "-e", "echo", "hi"},
-				//ReadinessProbe: &v1.Probe{
-				//	ProbeHandler: v1.ProbeHandler{
-				//		TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
-				//	},
-				//	InitialDelaySeconds: 1,
-				//	PeriodSeconds:       20,
-				//	SuccessThreshold:    1,
-				//	FailureThreshold:    2,
-				//},
+				ReadinessProbe: &v1.Probe{
+					ProbeHandler: v1.ProbeHandler{
+						TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
+					},
+					InitialDelaySeconds: 1,
+					PeriodSeconds:       1,
+					SuccessThreshold:    1,
+					FailureThreshold:    1,
+				},
 				//StartupProbe: &v1.Probe{
 				//	ProbeHandler: v1.ProbeHandler{
 				//		TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
@@ -71,12 +72,20 @@ func (a *PodStartupSimulation) createPod() *v1.Pod {
 }
 
 type result struct {
-	podName   string
-	read      time.Duration
+	podName string
+	// Apply -> Accessible in API server (typically ~instant)
+	read time.Duration
+	// Apply -> Init container started
 	initStart time.Duration
-	initEnd   time.Duration
-	start     time.Duration
-	ready     time.Duration
+	// Apply -> Init container ended
+	initEnd time.Duration
+	// Apply -> main container started
+	start time.Duration
+	// Apply -> pod ready (from status). There may be large delays in reporting readiness to the pod
+	// status, so statusReady can be a lot lower than ready.
+	statusReady time.Duration
+	// Apply -> pod ready (observed)
+	ready time.Duration
 }
 
 const cleanupDelay = time.Second * 0
@@ -115,11 +124,11 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 				// Try again
 				continue
 			}
-			// TODO fetch init start, init end, container start
 			if res.read == 0 {
 				res.read = time.Since(t0)
 				res.podName = kpod.Name
 			}
+			// TODO: why do we base this on k8s reported time but readiness based on our observed time?
 			start, end := GetInitContainerTimes(kpod, "istio-init")
 			if !start.IsZero() {
 				res.initStart = start.Sub(t0)
@@ -127,9 +136,13 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 			if !end.IsZero() {
 				res.initEnd = end.Sub(t0)
 			}
-			cStart := GetContainerTimes(kpod, "istio-proxy")
+			cStart := GetContainerTimes(kpod, "app")
 			if !cStart.IsZero() {
 				res.start = cStart.Sub(t0)
+			}
+			statusReady := GetPodReadyTime(kpod)
+			if res.statusReady == 0 && !statusReady.IsZero() {
+				res.statusReady = statusReady.Sub(t0)
 			}
 			if IsPodReady(kpod) {
 				res.ready = time.Since(t0)
@@ -148,6 +161,7 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 			return
 		case report <- res:
 		}
+		time.Sleep(a.Config.Cooldown)
 	}
 }
 
@@ -166,15 +180,17 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("Avg:\tget:%v\tstart:%v\tready:%v\tcomplete:%v",
-				avg(results, func(r result) time.Duration { return r.read }),
-				avg(results, func(r result) time.Duration { return r.start }),
+			log.Infof("Avg:\tscheduled:%v\tinit:%v\tready:%v\tfull ready:%v\tcomplete:%v",
+				avg(results, func(r result) time.Duration { return r.initStart }),
+				avg(results, func(r result) time.Duration { return r.start - r.initStart }),
+				avg(results, func(r result) time.Duration { return r.statusReady - r.start }),
 				avg(results, func(r result) time.Duration { return r.ready - r.start }),
 				avg(results, func(r result) time.Duration { return r.ready }),
 			)
-			log.Infof("Max:\tget:%v\tstart:%v\tready:%v\tcomplete:%v",
-				max(results, func(r result) time.Duration { return r.read }),
-				max(results, func(r result) time.Duration { return r.start }),
+			log.Infof("Max:\tscheduled:%v\tinit:%v\tready:%v\tfull ready:%v\tcomplete:%v",
+				max(results, func(r result) time.Duration { return r.initStart }),
+				max(results, func(r result) time.Duration { return r.start - r.initStart }),
+				max(results, func(r result) time.Duration { return r.statusReady - r.start }),
 				max(results, func(r result) time.Duration { return r.ready - r.start }),
 				max(results, func(r result) time.Duration { return r.ready }),
 			)
@@ -182,8 +198,15 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 			return nil
 		case report := <-c:
 			results = append(results, report)
-			log.Infof("Report:\tget:%v\tstart:%v\tready:%v\tcomplete:%v\tname:%v",
-				report.read, report.start, report.ready-report.start, report.ready, report.podName)
+			log.Infof(
+				"Report:\tscheduled:%v \tinit:%v\tready:%v\tfull ready:%v\tcomplete:%v\tname:%v",
+				report.initStart.Truncate(time.Millisecond),
+				(report.start - report.initStart).Truncate(time.Millisecond),
+				report.statusReady.Truncate(time.Millisecond),
+				(report.ready - report.start).Truncate(time.Millisecond),
+				report.ready.Truncate(time.Millisecond),
+				report.podName,
+			)
 		}
 	}
 }
@@ -244,6 +267,17 @@ func GetInitContainerTimes(pod *v1.Pod, container string) (start time.Time, end 
 		}
 	}
 	return
+}
+
+func GetPodReadyTime(pod *v1.Pod) time.Time {
+	c := GetPodReadyCondition(pod.Status)
+	if c == nil {
+		return time.Time{}
+	}
+	if c.Status == v1.ConditionTrue {
+		return c.LastTransitionTime.Time
+	}
+	return time.Time{}
 }
 
 func GetContainerTimes(pod *v1.Pod, container string) (start time.Time) {
