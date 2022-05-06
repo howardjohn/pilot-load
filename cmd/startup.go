@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -11,6 +12,7 @@ import (
 var startupConfig = model.StartupConfig{
 	InCluster:   false,
 	Concurrency: 1,
+	Cooldown:    time.Millisecond * 10,
 }
 
 func init() {

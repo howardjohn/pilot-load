@@ -178,6 +178,7 @@ func (a *PodStartupSimulation) Run(ctx model.Context) error {
 			a.runWorker(ctx, c)
 			wg.Done()
 		}()
+		time.Sleep(a.Config.Cooldown)
 	}
 
 	results := []result{}
