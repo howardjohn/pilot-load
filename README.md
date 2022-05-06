@@ -106,3 +106,40 @@ pilot-load reproduce -f my-config.yaml --delay=50ms
 
 This will deploy all of the configs to the cluster, except Pods. For each pod, an XDS connection simulating that pod will be made.
 Some resources are slightly modified to allow running in a cluster they were not originally in, such as Service selectors.
+
+## Pod startup speed
+
+The `startup` command tests pod startup times
+
+Example usage:
+
+```shell script
+pilot-load startup --namespace default --concurrency 2
+```
+
+This will spin up 2 workers which will continually spawn pods, measure the latency, and then terminate them.
+That is, there will be roughly 2 pods at all times with the command above.
+
+Latency is report as each pod completes, and summary when the process is terminated.
+
+Pods spin up a simple alpine image and serve a readiness probe doing a TCP health check.
+
+Note: if testing Istio/etc, ensure the namespace specified has sidecar injection enabled.
+
+Example:
+```
+2022-05-06T16:51:17.486681Z     info    Report: scheduled:0s    init:12.647s    ready:13.647s   full ready:1.417s       complete:14.065s        name:startup-test-kytobohu
+2022-05-06T16:51:18.507336Z     info    Report: scheduled:0s    init:14.419s    ready:15.419s   full ready:1.436s       complete:15.856s        name:startup-test-ukbwqdfl
+2022-05-06T16:51:18.555901Z     info    Avg:    scheduled:0s    init:7.673032973s       ready:1s        full ready:1.730793412s complete:9.403826385s
+2022-05-06T16:51:18.556263Z     info    Max:    scheduled:0s    init:14.419771526s      ready:1s        full ready:3.515997645s complete:15.856143083s
+```
+
+Metric meanings:
+
+|Metric| Meaning                                                                                                                                                            |
+|------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|scheduled| Time from start until init container starts (TODO: this is always 0 without sideacr)                                                                               |
+|init| Time from `scheduled` until the application container starts                                                                                                       |
+|ready| Time from application container starting until kubelet reports readiness                                                                                           |
+|full ready| Time from application container starting until the Pod spec is fully declared as "Ready". This may be high than `ready` due to latency in kubelet updating the Pod |
+|complete| End to end time to completion|

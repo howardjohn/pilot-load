@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -118,6 +119,9 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 			if err != nil {
 				// We got a real error, exit
 				if !errors.IsNotFound(err) {
+					if strings.Contains(err.Error(), "context canceled") {
+						return
+					}
 					log.Warnf("pod lookup failed: %v", err)
 					return
 				}
