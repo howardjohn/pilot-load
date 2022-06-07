@@ -24,9 +24,9 @@ import (
 	clientnetworkingbeta "istio.io/client-go/pkg/apis/networking/v1beta1"
 	clientsecurity "istio.io/client-go/pkg/apis/security/v1beta1"
 	clienttelemetry "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
-	"istio.io/istio/pilot/pkg/util/sets"
 	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/config/schema/gvk"
+	"istio.io/istio/pkg/util/sets"
 	"istio.io/pkg/log"
 )
 
@@ -67,7 +67,7 @@ var order = []schema.GroupVersionKind{
 	toK8s(gvk.Pod),
 }
 
-var denylistNamespaces = sets.NewSet("kube-system", "kube-public", "istio-system", "resource-group-system")
+var denylistNamespaces = sets.New("kube-system", "kube-public", "istio-system", "resource-group-system")
 
 func (i *ReproduceSimulation) Run(ctx model.Context) error {
 	cfgsByKind, err := parseInputs(i.Spec.ConfigFile)

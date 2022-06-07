@@ -15,8 +15,8 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
 
-	"istio.io/istio/pilot/pkg/util/sets"
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
+	"istio.io/istio/pkg/util/sets"
 )
 
 type ResourceKey struct {
@@ -52,14 +52,13 @@ type deltaClient struct {
 var _ ADSClient = &deltaClient{}
 
 func DialDelta(url string, opts *Config) (ADSClient, error) {
-
-	var ListenerNode = &ResourceNode{
+	ListenerNode := &ResourceNode{
 		Key:      ResourceKey{TypeUrl: v3.ListenerType},
 		Parents:  map[*ResourceNode]struct{}{},
 		Children: map[*ResourceNode]struct{}{},
 	}
 
-	var ClusterNode = &ResourceNode{
+	ClusterNode := &ResourceNode{
 		Key:      ResourceKey{TypeUrl: v3.ClusterType},
 		Parents:  map[*ResourceNode]struct{}{},
 		Children: map[*ResourceNode]struct{}{},
@@ -103,7 +102,7 @@ func (d *deltaClient) handleRecv() {
 		}
 
 		requests := map[string][]string{}
-		resources := sets.NewSet()
+		resources := sets.New()
 
 		d.mu.Lock()
 		for _, resp := range msg.Resources {
@@ -157,7 +156,7 @@ func (d *deltaClient) handleRecv() {
 		newAdd := Union(d.resources[msg.TypeUrl], resources)
 		addedLen := len(newAdd) - origLen
 		removedLen := len(msg.RemovedResources)
-		d.resources[msg.TypeUrl] = newAdd.Difference(sets.NewSet(msg.RemovedResources...))
+		d.resources[msg.TypeUrl] = newAdd.Difference(sets.New(msg.RemovedResources...))
 		d.mu.Unlock()
 		scope.WithLabels("type", msg.TypeUrl, "added", addedLen, "removed", removedLen, "removed refs", len(removals)).Debugf("got message")
 		if dumpScope.DebugEnabled() {
@@ -251,7 +250,7 @@ func relate(parent, child *ResourceNode) {
 
 // Istio on is broken
 func Union(s, s2 sets.Set) sets.Set {
-	result := sets.NewSet()
+	result := sets.New()
 	for key := range s {
 		result.Insert(key)
 	}
