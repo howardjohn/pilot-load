@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pilot-load
+  namespace: pilot-load
   labels:
     app: pilot-load
 spec:
@@ -67,6 +68,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pilot-load-kubeconfig
+  namespace: pilot-load
 data:
   kubeconfig.yaml: |
     apiVersion: v1
