@@ -1,11 +1,17 @@
 package security
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
+	pb "istio.io/api/security/v1alpha1"
 )
 
 // map of SAN to jwt token. Used to avoid repetitive calls
@@ -42,4 +48,26 @@ func GetServiceAccountToken(c *kube.Client, aud, ns, sa string) (string, error) 
 	}
 	cachedTokens.Store(san, token{t, exp})
 	return t, nil
+}
+
+// NewCitadelClient create a CA client for Citadel.
+func newCitadelClient(endpoint string, rootCert []byte) (pb.IstioCertificateServiceClient, error) {
+	certPool := x509.NewCertPool()
+	ok := certPool.AppendCertsFromPEM(rootCert)
+	if !ok {
+		return nil, fmt.Errorf("failed to append certificates")
+	}
+	config := tls.Config{
+		RootCAs:            certPool,
+		InsecureSkipVerify: true,
+	}
+	transportCreds := credentials.NewTLS(&config)
+
+	conn, err := grpc.Dial(endpoint, grpc.WithTransportCredentials(transportCreds))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to endpoint %s", endpoint)
+	}
+
+	client := pb.NewIstioCertificateServiceClient(conn)
+	return client, nil
 }

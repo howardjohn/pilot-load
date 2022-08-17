@@ -7,15 +7,19 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 
+	pb "istio.io/api/security/v1alpha1"
 	"istio.io/istio/pkg/bootstrap/platform"
 	"istio.io/istio/pkg/security"
 	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
+	pkiutil "istio.io/istio/security/pkg/pki/util"
 	"istio.io/istio/security/pkg/stsservice"
 	"istio.io/istio/security/pkg/stsservice/server"
 	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
@@ -135,6 +139,51 @@ func (a *AuthOptions) AutoPopulate() error {
 	}
 	a.tokenManager = tmp
 	return nil
+}
+
+func (a *AuthOptions) Certificate(fetchRoot func() (string, error), addr, serviceAccount, namespace string) (Cert, error) {
+	rootCert, err := fetchRoot()
+	if err != nil {
+		return Cert{}, fmt.Errorf("failed to fetch root cert: %v", err)
+	}
+
+	token, err := GetServiceAccountToken(a.Client, "istio-ca", namespace, serviceAccount)
+	if err != nil {
+		return Cert{}, err
+	}
+
+	san := fmt.Sprintf("spiffe://%s/ns/%s/sa/%s", "cluster.local", namespace, serviceAccount)
+	options := pkiutil.CertOptions{
+		Host:       san,
+		RSAKeySize: 2048,
+	}
+	// Generate the cert/key, send CSR to CA.
+	csrPEM, keyPEM, err := pkiutil.GenCSR(options)
+	if err != nil {
+		return Cert{}, err
+	}
+	client, err := newCitadelClient(addr, []byte(rootCert))
+	if err != nil {
+		return Cert{}, fmt.Errorf("creating citadel client: %v", err)
+	}
+	req := &pb.IstioCertificateRequest{
+		Csr:              string(csrPEM),
+		ValidityDuration: int64((time.Hour * 24 * 7).Seconds()),
+	}
+	rctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("Authorization", "Bearer "+token, "ClusterID", "Kubernetes"))
+	resp, err := client.CreateCertificate(rctx, req)
+	if err != nil {
+		return Cert{}, fmt.Errorf("send CSR: %v", err)
+	}
+	certChain := []byte{}
+	for _, c := range resp.CertChain {
+		certChain = append(certChain, []byte(c)...)
+	}
+	return Cert{certChain, keyPEM, []byte(rootCert)}, nil
+}
+
+type Cert struct {
+	ClientCert, Key, RootCert []byte
 }
 
 func (a *AuthOptions) GrpcOptions(serviceAccount, namespace string) []grpc.DialOption {
