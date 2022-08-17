@@ -20,9 +20,9 @@ import (
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	"istio.io/pkg/log"
 )

@@ -156,6 +156,7 @@ func init() {
 		startupCmd,
 		xdsLatencyCmd,
 		reproduceCmd,
+		dumpCmd,
 	)
 }
 

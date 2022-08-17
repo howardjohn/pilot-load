@@ -10,6 +10,7 @@ import (
 
 type Simulation struct {
 	Labels         map[string]string
+	Metadata       map[string]string
 	Namespace      string
 	ServiceAccount string
 	Name           string
@@ -48,6 +49,9 @@ func (x *Simulation) Run(ctx model.Context) error {
 	meta["NAMESPACE"] = x.Namespace
 	meta["SERVICE_ACCOUNT"] = x.ServiceAccount
 	meta["SDS"] = "true"
+	for k, v := range x.Metadata {
+		meta[k] = v
+	}
 	go func() {
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,

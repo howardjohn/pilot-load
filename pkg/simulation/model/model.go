@@ -135,6 +135,12 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 	return *ret
 }
 
+type DumpConfig struct {
+	Pod       string
+	Namespace string
+	OutputDir string
+}
+
 type AdscConfig struct {
 	Count int
 	Delay time.Duration
@@ -187,6 +193,7 @@ type Args struct {
 	ProberConfig      ProberConfig
 	Metadata          map[string]string
 	DeltaXDS          bool
+	DumpConfig        DumpConfig
 }
 
 type Context struct {

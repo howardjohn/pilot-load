@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
+	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
-	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/informers/core/v1"
 
-	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/pkg/log"
 )
 
 type DeterministicSimulation struct{}
@@ -93,11 +94,11 @@ func (d DeterministicSimulation) checkPod(ctx model.Context, pod *v1.Pod, addres
 		wg.Add(1)
 		go func() {
 			res, err := adsc.Fetch(addr, &adsc.Config{
-				Namespace: pod.Namespace,
-				Workload:  pod.Name,
-				Meta:      meta,
-				IP:        ip,
-				Context:   ctx,
+				Namespace:      pod.Namespace,
+				Workload:       pod.Name,
+				Meta:           meta,
+				IP:             ip,
+				Context:        ctx,
 				StoreResponses: true,
 			})
 			if err != nil {
@@ -155,8 +156,8 @@ func compare(base, comp map[string]proto.Message) string {
 		if diff := cmp.Diff(got, want, protocmp.Transform()); diff != "" {
 			return fmt.Sprintf("proto diff: %v", diff)
 		}
-		gots := marshaler.Text(got)
-		wants := marshaler.Text(want)
+		gots := marshaler.Format(got)
+		wants := marshaler.Format(want)
 		if gots != wants {
 			return fmt.Sprintf("text diff:\n%v\n%v\n", gots, wants)
 		}
@@ -164,7 +165,7 @@ func compare(base, comp map[string]proto.Message) string {
 	return ""
 }
 
-var marshaler = proto.TextMarshaler{ExpandAny: true}
+var marshaler = prototext.MarshalOptions{}
 
 func (d DeterministicSimulation) Cleanup(ctx model.Context) error {
 	return nil
