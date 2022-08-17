@@ -143,3 +143,23 @@ Metric meanings:
 |ready| Time from application container starting until kubelet reports readiness                                                                                           |
 |full ready| Time from application container starting until the Pod spec is fully declared as "Ready". This may be high than `ready` due to latency in kubelet updating the Pod |
 |complete| End to end time to completion|
+
+## Dump
+
+
+The `startup` command impersonates a pod over XDS and dumps the resulting XDS config to files.
+The XDS is modified to point to the local files rather than dynamic XDS configuration.
+
+Example usage:
+
+```shell script
+pilot-load dump --pod my-pod --namespace test -p localhost:15012 --out /tmp/envoy
+```
+
+Port 15012 is required to fetch certificates.
+
+One this is done, envoy can be run locally:
+
+```shell script
+envoy -c /tmp/envoy/config.yaml
+```
