@@ -73,6 +73,7 @@ func (i *DumpSimulation) Run(ctx model.Context) error {
 	meta["LABELS"] = pod.Labels
 	meta["NAMESPACE"] = pod.Namespace
 	meta["SERVICE_ACCOUNT"] = pod.Spec.ServiceAccountName
+	meta["NODE_NAME"] = pod.Spec.NodeName
 	for k, v := range podMeta {
 		meta[k] = v
 	}
@@ -329,6 +330,14 @@ func sanitizeListenerAds(path string, response []*listener.Listener) {
 				}
 			}
 		}
+		// TODO proper ECDS
+		keep := []*listener.ListenerFilter{}
+		for _, f := range c.ListenerFilters {
+			if f.GetConfigDiscovery() == nil {
+				keep = append(keep, f)
+			}
+		}
+		c.ListenerFilters = keep
 	}
 }
 
@@ -409,7 +418,7 @@ func MarshallYaml(w proto.Message) []byte {
 }
 
 func SanitizeName(name string) string {
-	return strings.ReplaceAll(name, "|", "_.")
+	return strings.ReplaceAll(strings.ReplaceAll(name, "|", "_."), "/", "__.")
 }
 
 func TypeName[T proto.Message]() string {
