@@ -45,7 +45,7 @@ type deltaClient struct {
 	client         discovery.AggregatedDiscoveryService_DeltaAggregatedResourcesClient
 
 	mu        sync.Mutex
-	resources map[string]sets.Set
+	resources map[string]sets.String
 	tree      map[ResourceKey]*ResourceNode
 }
 
@@ -81,7 +81,7 @@ func DialDelta(url string, opts *Config) (ADSClient, error) {
 		node:           makeNode(nodeID, opts.Meta),
 		conn:           conn,
 		client:         xdsClient,
-		resources:      map[string]sets.Set{},
+		resources:      map[string]sets.String{},
 		tree: map[ResourceKey]*ResourceNode{
 			ListenerNode.Key: ListenerNode,
 			ClusterNode.Key:  ClusterNode,
@@ -102,7 +102,7 @@ func (d *deltaClient) handleRecv() {
 		}
 
 		requests := map[string][]string{}
-		resources := sets.New()
+		resources := sets.New[string]()
 
 		d.mu.Lock()
 		for _, resp := range msg.Resources {
@@ -153,7 +153,7 @@ func (d *deltaClient) handleRecv() {
 		}
 
 		origLen := len(d.resources[msg.TypeUrl])
-		newAdd := Union(d.resources[msg.TypeUrl], resources)
+		newAdd := d.resources[msg.TypeUrl].Union(resources)
 		addedLen := len(newAdd) - origLen
 		removedLen := len(msg.RemovedResources)
 		d.resources[msg.TypeUrl] = newAdd.Difference(sets.New(msg.RemovedResources...))
@@ -248,17 +248,6 @@ func relate(parent, child *ResourceNode) {
 	child.Parents[parent] = struct{}{}
 }
 
-// Istio on is broken
-func Union(s, s2 sets.Set) sets.Set {
-	result := sets.New()
-	for key := range s {
-		result.Insert(key)
-	}
-	for key := range s2 {
-		result.Insert(key)
-	}
-	return result
-}
 
 func (d *deltaClient) Watch() {
 	scope.Infof("sending initial watches")
