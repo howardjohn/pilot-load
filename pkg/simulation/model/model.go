@@ -68,8 +68,14 @@ type ClusterJitterConfig struct {
 
 type PodType string
 
+func (p PodType) HasProxy() bool {
+	return p == SidecarType || p == GatewayType
+}
+
 const (
 	SidecarType PodType = "sidecar"
+
+	AmbientType PodType = "ambient"
 
 	GatewayType PodType = "router"
 

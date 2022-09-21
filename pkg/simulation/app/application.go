@@ -19,6 +19,7 @@ type ApplicationSpec struct {
 	PodType        model.PodType
 	GatewayConfig  model.GatewayConfig
 	RealCluster    bool
+	Labels         map[string]string
 }
 
 type Application struct {
@@ -69,7 +70,7 @@ func NewApplication(s ApplicationSpec) *Application {
 			Name:      gw.Name(),
 		}))
 	}
-	if s.PodType != model.ExternalType {
+	if s.PodType.HasProxy() {
 		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
 			App:       s.App,
 			Namespace: s.Namespace,

@@ -77,7 +77,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 		p.created = true
 	}
 
-	if p.Spec.PodType != model.ExternalType {
+	if p.Spec.PodType.HasProxy() {
 		if err := sendInjectionRequest(ctx.Args.InjectAddress, pod); err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func (p *Pod) Cleanup(ctx model.Context) error {
 			return err
 		}
 	}
-	if p.Spec.PodType != model.ExternalType {
+	if p.Spec.PodType.HasProxy() {
 		return p.xds.Cleanup(ctx)
 	}
 	return nil
@@ -124,7 +124,10 @@ func (p *Pod) getPod() *v1.Pod {
 	if p.Spec.PodType == model.SidecarType {
 		labels["security.istio.io/tlsMode"] = "istio"
 	}
-	return &v1.Pod{
+	if p.Spec.PodType == model.AmbientType {
+		labels["ambient-type"] = "workload"
+	}
+	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.Name(),
 			Namespace: s.Namespace,
@@ -146,12 +149,23 @@ func (p *Pod) getPod() *v1.Pod {
 			NodeName: s.Node,
 		},
 		Status: v1.PodStatus{
-			Phase:      v1.PodRunning,
-			Conditions: nil,
-			PodIP:      s.IP,
-			PodIPs:     []v1.PodIP{{IP: s.IP}},
+			Phase: v1.PodRunning,
+			Conditions: []v1.PodCondition{
+				{
+					Type:               v1.PodReady,
+					Status:             v1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+				},
+			},
+			PodIP:  s.IP,
+			PodIPs: []v1.PodIP{{IP: s.IP}},
 		},
 	}
+	if p.Spec.PodType == model.AmbientType {
+		pod.Spec.InitContainers = nil
+		pod.Spec.Containers = pod.Spec.Containers[0:1]
+	}
+	return pod
 }
 
 var client = http.Client{

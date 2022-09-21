@@ -1,0 +1,17 @@
+nodeMetadata: {}
+jitter:
+  workloads: "10s"
+  config: "0s"
+nodes: 10
+namespaces:
+- name: standard
+  replicas: 1
+  applications:
+  - name: big
+    replicas: 1
+    instances: 1000
+    podType: ambient
+  - name: small # TODO: SA per app
+    instances: 1
+    replicas: 1000
+    podType: ambient

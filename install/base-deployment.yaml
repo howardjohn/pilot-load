@@ -8,64 +8,6 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: etcd
-  namespace: pilot-load
-spec:
-  selector:
-    app: etcd
-  ports:
-  - port: 2379
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: etcd
-  namespace: pilot-load
-  labels:
-    app: etcd
-spec:
-  selector:
-    matchLabels:
-      app: etcd
-  template:
-    metadata:
-      name: etcd
-      annotations:
-        sidecar.istio.io/inject: "false"
-      labels:
-        app: etcd
-    spec:
-      initContainers:
-      - name: volume-mount-hack
-        image: busybox
-        command: ["sh", "-c", "chmod 0700 /var/lib/etcd"]
-        volumeMounts:
-        - name: etcd-data
-          mountPath: /var/lib/etcd
-      containers:
-      - name: etcd
-        image: gcr.io/etcd-development/etcd:v3.5.0-rc.1
-        args:
-        - etcd
-        - --data-dir=/var/lib/etcd
-        - --listen-client-urls=http://0.0.0.0:2379
-        - --advertise-client-urls=http://0.0.0.0:2379
-        - --unsafe-no-fsync
-        resources:
-          requests:
-            memory: 4096Mi
-            cpu: 2000m
-        volumeMounts:
-          - mountPath: /var/lib/etcd
-            name: etcd-data
-      volumes:
-      - emptyDir:
-          medium: Memory
-        name: etcd-data
----
-apiVersion: v1
-kind: Service
-metadata:
   name: apiserver
   namespace: pilot-load
 spec:
@@ -90,17 +32,40 @@ spec:
     metadata:
       name: apiserver
       labels:
+        sidecar.istio.io/inject: "false"
         app: apiserver
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "18090"
     spec:
+      initContainers:
+      - name: volume-mount-hack
+        image: busybox
+        command: ["sh", "-c", "chmod 0700 /var/lib/etcd"]
+        volumeMounts:
+        - name: etcd-data
+          mountPath: /var/lib/etcd
       containers:
+      - name: etcd
+        image: gcr.io/etcd-development/etcd:v3.5.0
+        args:
+        - etcd
+        - --data-dir=/var/lib/etcd
+        - --listen-client-urls=http://0.0.0.0:2379
+        - --advertise-client-urls=http://0.0.0.0:2379
+        - --unsafe-no-fsync
+        resources:
+          requests:
+            memory: 4096Mi
+            cpu: 2000m
+        volumeMounts:
+        - mountPath: /var/lib/etcd
+          name: etcd-data
       - name: apiserver
         image: k8s.gcr.io/kube-apiserver:v1.19.11
         command:
         - kube-apiserver
-        - --etcd-servers=http://etcd:2379
+        - --etcd-servers=http://localhost:2379
         - --disable-admission-plugins="ServiceAccount"
         - --port
         - "18090"
@@ -125,15 +90,9 @@ spec:
       - secret:
           secretName: kubernetes-sa-key
         name: pki
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: istio-kubeconfig
-  namespace: istio-system
-type: Opaque
-data:
-  config: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIHNlcnZlcjogaHR0cDovL2FwaXNlcnZlci5waWxvdC1sb2FkOjE4MDkwCiAgbmFtZTogbG9hZApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogbG9hZAogICAgdXNlcjogZmFrZQogIG5hbWU6IGxvYWQKY3VycmVudC1jb250ZXh0OiBsb2FkCmtpbmQ6IENvbmZpZwpwcmVmZXJlbmNlczoge30KdXNlcnM6Ci0gbmFtZTogZmFrZQo=
+      - emptyDir:
+          medium: Memory
+        name: etcd-data
 ---
 # This is public - since its meant for testing only
 apiVersion: v1
