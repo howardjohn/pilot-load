@@ -10,13 +10,15 @@ import (
 )
 
 var adscConfig = model.AdscConfig{
-	Delay: time.Millisecond * 10,
-	Count: 1,
+	Delay:     time.Millisecond * 10,
+	Count:     1,
+	Namespace: "default",
 }
 
 func init() {
 	adscCmd.PersistentFlags().DurationVar(&adscConfig.Delay, "delay", adscConfig.Delay, "delay between each connection")
 	adscCmd.PersistentFlags().IntVar(&adscConfig.Count, "count", adscConfig.Count, "number of adsc connections to make")
+	adscCmd.PersistentFlags().StringVar(&adscConfig.Namespace, "namespace", adscConfig.Namespace, "namespace of simulation")
 }
 
 var adscCmd = &cobra.Command{
