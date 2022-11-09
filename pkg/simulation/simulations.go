@@ -111,13 +111,14 @@ func Adsc(a model.Args) error {
 
 	for i := 0; i < count; i++ {
 		sims = append(sims, &xds.Simulation{
-			Namespace: "default",
+			Namespace: a.AdsConfig.Namespace,
 			Name:      "adsc",
 			IP:        util.GetIP(),
 			// TODO: multicluster
 			Cluster:  "Kubernetes",
 			GrpcOpts: opts,
 			Delta:    a.DeltaXDS,
+			Labels:   a.Metadata,
 		})
 	}
 	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims, Delay: a.AdsConfig.Delay})

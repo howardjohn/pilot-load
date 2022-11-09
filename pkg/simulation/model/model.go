@@ -148,8 +148,9 @@ type DumpConfig struct {
 }
 
 type AdscConfig struct {
-	Count int
-	Delay time.Duration
+	Count     int
+	Delay     time.Duration
+	Namespace string
 }
 
 type Selector string
