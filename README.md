@@ -93,19 +93,42 @@ This test continuously applies virtual services and sends traffic to see how lon
 Usage: `pilot-load prober --replicas=1000 --delay=1s`.
 
 ## Reproduce
+The `reproduce` command allows replaying a cluster's configuration. Install `kubectl grep`
+[plugin](https://github.com/howardjohn/kubectl-grep)  before running below command.
 
-The `reproduce` command allows replaying a cluster's configuration.
+First, capture their current cluster config: 
 
-First, capture their current cluster config: `kubectl get vs,gw,dr,sidecar,svc,endpoints,pod,namespace -oyaml -A | kubectl grep`
+`kubectl get authorizationpolicies,destinationrules,envoyfilters,gateways,peerauthentications,requestauthentications,serviceentries,sidecars,telemetries,virtualservices,configmaps,svc,endpoints,pod,namespace -oyaml -A | kubectl grep > my-config.yaml`
 
 Then:
+
+1. Locally
 
 ```shell script
 pilot-load reproduce -f my-config.yaml --delay=50ms
 ```
 
-This will deploy all of the configs to the cluster, except Pods. For each pod, an XDS connection simulating that pod will be made.
+This will deploy all the configs to the cluster, except Pods. For each pod, an XDS connection simulating that pod will be made.
 Some resources are slightly modified to allow running in a cluster they were not originally in, such as Service selectors.
+
+2. In cluster
+Creation of config map with reproduce configs might fail as reproduce configs will be big. For this we can deploy a container with pilot-load
+binary in it and use kubectl cp to copy reproduce config from local machine to container.
+   1. Apply deployment
+   ```shell script
+      # Apply the actual deployment
+      kubectl apply -f install/load-deployment-reproduce.yaml
+   ```
+   2. copy reproduce config from local machine to load testing container
+   ```shell script
+       kubectl cp -n pilot-load my-config.yaml <pod name>:/etc/config/my-config.yaml -c pilot-load
+   ```
+   3. Run reproduce by accessing bash of container
+   ```shell script
+        kubectl exec -n pilot-load -it <pod name> -c pilot-load -- bash
+        # In the bash
+        pilot-load reproduce --pilot-address=istiod.istio-system:15010 --file /etc/config/my-config.yaml --delay=50ms --qps=5000
+   ```
 
 ## Pod startup speed
 
@@ -147,7 +170,7 @@ Metric meanings:
 ## Dump
 
 
-The `startup` command impersonates a pod over XDS and dumps the resulting XDS config to files.
+The `dump` command impersonates a pod over XDS and dumps the resulting XDS config to files.
 The XDS is modified to point to the local files rather than dynamic XDS configuration.
 
 Example usage:

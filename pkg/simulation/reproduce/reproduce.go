@@ -11,6 +11,8 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	"istio.io/istio/pkg/config/schema/collections"
+	"istio.io/istio/pkg/config/schema/resource"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +38,11 @@ type ReproduceSpec struct {
 	ConfigOnly bool
 }
 
+type ApiDetails struct {
+	gvk        schema.GroupVersionKind
+	isIstioApi bool
+}
+
 type ReproduceSimulation struct {
 	Spec ReproduceSpec
 	sims []model.Simulation
@@ -55,16 +62,23 @@ func toK8s(g config.GroupVersionKind) schema.GroupVersionKind {
 	}
 }
 
-var order = []schema.GroupVersionKind{
-	toK8s(gvk.Namespace),
-	toK8s(gvk.Sidecar),
-	toK8s(gvk.VirtualService),
-	toK8s(gvk.Gateway),
-	toK8s(gvk.DestinationRule),
-	toK8s(gvk.Service),
-	toK8s(gvk.Endpoints),
-	toK8s(config.GroupVersionKind{Group: "", Version: "v1", Kind: "ServiceAccount"}),
-	toK8s(gvk.Pod),
+var order = []ApiDetails{
+	{toK8s(gvk.Namespace), false},
+	{toK8s(gvk.EnvoyFilter), true},
+	{toK8s(gvk.Telemetry), true},
+	{toK8s(gvk.ServiceEntry), true},
+	{toK8s(gvk.PeerAuthentication), true},
+	{toK8s(gvk.Sidecar), true},
+	{toK8s(gvk.VirtualService), true},
+	{toK8s(gvk.Gateway), true},
+	{toK8s(gvk.DestinationRule), true},
+	{toK8s(gvk.AuthorizationPolicy), true},
+	{toK8s(gvk.RequestAuthentication), true},
+	{toK8s(gvk.ConfigMap), false},
+	{toK8s(gvk.Service), false},
+	{toK8s(gvk.Endpoints), false},
+	{toK8s(config.GroupVersionKind{Group: "", Version: "v1", Kind: "ServiceAccount"}), false},
+	{toK8s(gvk.Pod), false},
 }
 
 var denylistNamespaces = sets.New("kube-system", "kube-public", "istio-system", "resource-group-system")
@@ -76,8 +90,8 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 	}
 	total := 0
 	for _, g := range order {
-		cfgs := cfgsByKind[g]
-		for _, c := range cfgs {
+		cfg := cfgsByKind[g.gvk]
+		for _, c := range cfg {
 			if util.IsDone(ctx) {
 				return nil
 			}
@@ -85,15 +99,10 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 			ns := co.GetNamespace()
 			name := co.GetName()
 			kind := c.GetObjectKind().GroupVersionKind().Kind
-			if denylistNamespaces.Contains(ns) {
+			if shouldSkipResource(ns, name, kind, g.isIstioApi) {
 				continue
 			}
-			if ns == "default" && name == "kubernetes" && kind == "Service" { // Skip the Kubernetes Service
-				continue
-			}
-			if kind == gvk.Namespace.Kind && denylistNamespaces.Contains(name) {
-				continue
-			}
+
 			if kind == gvk.Pod.Kind && !i.Spec.ConfigOnly {
 				pod := co.(*v1.Pod)
 				x := &xds.Simulation{
@@ -195,8 +204,16 @@ func parseInputs(inputFile string) (map[schema.GroupVersionKind][]runtime.Object
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse message: %v", err)
 		}
-		g := obj.GetObjectKind().GroupVersionKind()
-		resp[g] = append(resp[g], obj)
+		gvk := obj.GetObjectKind().GroupVersionKind()
+
+		//Convert v1beta1 apiversions to v1alpha3 for Istio networking APIs
+		s, exists := collections.PilotGatewayAPI.FindByGroupVersionAliasesKind(resource.FromKubernetesGVK(&gvk))
+		if exists {
+			obj.GetObjectKind().SetGroupVersionKind(toKubernetesGVK(s.Resource().GroupVersionKind()))
+			gvk = obj.GetObjectKind().GroupVersionKind()
+		}
+
+		resp[gvk] = append(resp[gvk], obj)
 	}
 
 	return resp, nil
@@ -242,4 +259,25 @@ func (v *createSim) Cleanup(ctx model.Context) error {
 
 	log.Infof("cleaning up %v/%v.%v", v.Spec.GetObjectKind().GroupVersionKind().Kind, v.Spec.GetName(), v.Spec.GetNamespace())
 	return ctx.Client.Delete(v.Spec)
+}
+
+func shouldSkipResource(ns string, name string, kind string, isIstioApi bool) bool {
+	if denylistNamespaces.Contains(ns) && isIstioApi == false { // Allow Istio APIs to created, valid usecase is root namespace
+		return true
+	}
+	if ns == "default" && name == "kubernetes" && kind == "Service" { // Skip the Kubernetes Service
+		return true
+	}
+	if kind == gvk.Namespace.Kind && denylistNamespaces.Contains(name) {
+		return true
+	}
+	return false
+}
+
+func toKubernetesGVK(in config.GroupVersionKind) schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   in.Group,
+		Version: in.Version,
+		Kind:    in.Kind,
+	}
 }

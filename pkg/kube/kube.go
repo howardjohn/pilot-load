@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	networkingclient "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	telemetryclient "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
+	networkingclientv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	networkingclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	securityclient "istio.io/client-go/pkg/apis/security/v1beta1"
+	telemetryclient "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -137,28 +138,30 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return v1.SchemeGroupVersion.WithResource("secrets"), "Secret"
 	case *v1.Endpoints:
 		return v1.SchemeGroupVersion.WithResource("endpoints"), "Endpoints"
-	case *networkingclient.VirtualService:
-		return networkingclient.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
-	case *networkingclient.Sidecar:
-		return networkingclient.SchemeGroupVersion.WithResource("sidecars"), "Sidecar"
-	case *networkingclient.Gateway:
-		return networkingclient.SchemeGroupVersion.WithResource("gateways"), "Gateway"
-	case *networkingclient.DestinationRule:
-		return networkingclient.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
-	case *networkingclient.ServiceEntry:
-		return networkingclient.SchemeGroupVersion.WithResource("serviceentries"), "ServiceEntry"
-	case *networkingclient.EnvoyFilter:
-		return networkingclient.SchemeGroupVersion.WithResource("envoyfilters"), "EnvoyFilter"
-	case *networkingclient.WorkloadEntry:
-		return networkingclient.SchemeGroupVersion.WithResource("workloadentries"), "WorkloadEntry"
+	case *v1.ConfigMap:
+		return v1.SchemeGroupVersion.WithResource("configmaps"), "ConfigMap"
+	case *networkingclientv1alpha3.VirtualService, *networkingclientv1beta1.VirtualService:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
+	case *networkingclientv1alpha3.Sidecar, *networkingclientv1beta1.Sidecar:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("sidecars"), "Sidecar"
+	case *networkingclientv1alpha3.Gateway, *networkingclientv1beta1.Gateway:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("gateways"), "Gateway"
+	case *networkingclientv1alpha3.DestinationRule, *networkingclientv1beta1.DestinationRule:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
+	case *networkingclientv1alpha3.ServiceEntry, *networkingclientv1beta1.ServiceEntry:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("serviceentries"), "ServiceEntry"
+	case *networkingclientv1alpha3.EnvoyFilter:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("envoyfilters"), "EnvoyFilter"
+	case *networkingclientv1alpha3.WorkloadEntry, *networkingclientv1beta1.WorkloadEntry:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("workloadentries"), "WorkloadEntry"
 	case *telemetryclient.Telemetry:
-		return networkingclient.SchemeGroupVersion.WithResource("telemetries"), "Telemetry"
+		return telemetryclient.SchemeGroupVersion.WithResource("telemetries"), "Telemetry"
 	case *securityclient.AuthorizationPolicy:
-		return networkingclient.SchemeGroupVersion.WithResource("authorizationpolicies"), "AuthorizationPolicy"
+		return securityclient.SchemeGroupVersion.WithResource("authorizationpolicies"), "AuthorizationPolicy"
 	case *securityclient.RequestAuthentication:
-		return networkingclient.SchemeGroupVersion.WithResource("requestauthentications"), "RequestAuthentication"
+		return securityclient.SchemeGroupVersion.WithResource("requestauthentications"), "RequestAuthentication"
 	case *securityclient.PeerAuthentication:
-		return networkingclient.SchemeGroupVersion.WithResource("peerauthentications"), "PeerAuthentication"
+		return securityclient.SchemeGroupVersion.WithResource("peerauthentications"), "PeerAuthentication"
 	default:
 		panic(fmt.Sprintf("unsupported type %T", o))
 	}

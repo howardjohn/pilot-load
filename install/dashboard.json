@@ -1298,7 +1298,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(etcd_object_counts{resource=~\"pods|namespaces|services|gateways.networking.istio.io|virtualservices.networking.istio.io\"}) by (resource)\n",
+          "expr": "sum(etcd_object_counts{resource=~\"pods|namespaces|services|gateways.networking.istio.io|virtualservices.networking.istio.io|destinationrules.networking.istio.io|sidecars.networking.istio.io|serviceentries.networking.istio.io|envoyfilters.networking.istio.io|telemetries.telemetry.istio.io|authorizationpolicies.security.istio.io|requestauthentications.security.istio.io|peerauthentications.security.istio.io\"}) by (resource)\n",
           "interval": "",
           "legendFormat": "{{resource}}",
           "refId": "A"
