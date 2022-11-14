@@ -55,13 +55,13 @@ spec:
               topologyKey: kubernetes.io/hostname
       # May take a while to shut down
       terminationGracePeriodSeconds: 2000
-      imagePullSecrets:
-      - name: gcr-io
       containers:
       - name: pilot-load
         image: gcr.io/howardjohn-istio/pilot-load
         imagePullPolicy: Always
-        command: [ "/bin/sh", "-ec", "while :; do echo '.'; sleep 5 ; done" ]
+        command:
+        - sleep
+        - infinity
         env:
         - name: KUBECONFIG
           value: /etc/config/kubeconfig/kubeconfig.yaml

@@ -48,7 +48,7 @@ fi
 
 export KUBECONFIG=${WD}/local-kubeconfig.yaml
 kubectl create namespace istio-system || true
-kubectl apply -f $GOPATH/istio/manifests/charts/base/crds/
+kubectl apply -f $GOPATH/src/istio.io/istio/manifests/charts/base/crds/
 kubectl apply -f $WD/preconfigured.yaml
 
 echo To start test: go run main.go
