@@ -33,13 +33,21 @@ The expense of this is dropping coverage:
 
 1. Install Istio in cluster. No special configuration is needed. You may want to ensure no Envoy's are connected, as they will be sent invalid configuration
 
-1. Install `pilot-load` by running `go install`.
+2. Install `pilot-load` by running `go install`.
 
-1. Run [`./install/deploy.sh`](./install/deploy.sh). This will configure the api-server and kubeconfig to access it. It will also bootstrap the cluster with CRDs and telemetry filters.
+3. Run [`./install/deploy.sh`](./install/deploy.sh). This will configure the api-server to access it. It will also bootstrap the cluster with CRDs and telemetry filters.
 
-1. Restart istiod to pick up the new kubeconfig: `kubectl rollout restart deployment -n istio-system istiod`.
+4. [Optional] For running pilot-load tool locally please enable port forwarding and set fake API server KUBECONFIG.  
+```shell script
+kubectl port-forward -n pilot-load svc/apiserver 18090 &
+# Connect to Istiod, if its not running locally as well
+kubectl port-forward -n istio-system svc/istiod 15010 &
+export KUBECONFIG=install/local-kubeconfig.yaml
+```
 
-1. Deploy the load test
+Below functionalities can be run via pilot-load tool.
+## Cluster
+7. Deploy the load test
 
     1. In cluster:
 
@@ -53,15 +61,9 @@ The expense of this is dropping coverage:
     1. Locally:
 
       ```shell script
-      # Connect to the remote kubeconfig
-      kubectl port-forward -n pilot-load svc/apiserver 18090
-      export KUBECONFIG=install/local-kubeconfig.yaml
-      # Connect to Istiod, if its not running locally as well
-      kubectl port-forward -n istio-system svc/istiod 15010
-      # Apply the actual deployment
       pilot-load cluster --config example-config.yaml
       ```
-1. Optional: Import the [load testing dashboard](./install/dashboard.json) in Grafana.
+8. Optional: Import the [load testing dashboard](./install/dashboard.json) in Grafana.
 
 ## Discovery Address
 
