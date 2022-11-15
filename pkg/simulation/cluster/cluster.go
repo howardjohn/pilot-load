@@ -112,7 +112,7 @@ func (c *Cluster) Run(ctx model.Context) error {
 
 	total := len(c.namespaces)
 	for i, ns := range c.namespaces {
-		log.Infof("starting namespace %v (%d of %d)", ns.Spec.Name, i, total)
+		log.Infof("starting namespace %v (%d of %d)", ns.Spec.Name, i+1, total)
 		if err := (model.AggregateSimulation{Simulations: []model.Simulation{ns}}.Run(ctx)); err != nil {
 			return fmt.Errorf("failed to bootstrap nodes: %v", err)
 		}

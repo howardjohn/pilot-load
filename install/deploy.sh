@@ -14,7 +14,7 @@ kubectl port-forward -n pilot-load svc/apiserver 18090 &
 
 sleep 1
 
-if [[ "${MULTICLUSTER:-}" != "true" ]]; then
+if [[ "${MULTICLUSTER:-}" == "true" ]]; then
   cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Secret

@@ -1,7 +1,7 @@
-FROM golang:1.17.1-alpine AS base
+FROM golang:1.19.3-alpine AS base
 WORKDIR /src
 ENV CGO_ENABLED=0
-COPY go.* .
+COPY go.* ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
