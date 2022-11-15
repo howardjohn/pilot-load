@@ -74,6 +74,8 @@ var order = []ApiDetails{
 	{toK8s(gvk.DestinationRule), true},
 	{toK8s(gvk.AuthorizationPolicy), true},
 	{toK8s(gvk.RequestAuthentication), true},
+	{toK8s(gvk.WorkloadEntry), true},
+	{toK8s(gvk.WorkloadGroup), true},
 	{toK8s(gvk.ConfigMap), false},
 	{toK8s(gvk.Service), false},
 	{toK8s(gvk.Endpoints), false},

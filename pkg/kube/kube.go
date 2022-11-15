@@ -154,6 +154,8 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("envoyfilters"), "EnvoyFilter"
 	case *networkingclientv1alpha3.WorkloadEntry, *networkingclientv1beta1.WorkloadEntry:
 		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("workloadentries"), "WorkloadEntry"
+	case *networkingclientv1alpha3.WorkloadGroup, *networkingclientv1beta1.WorkloadGroup:
+		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("workloadgroups"), "WorkloadGroup"
 	case *telemetryclient.Telemetry:
 		return telemetryclient.SchemeGroupVersion.WithResource("telemetries"), "Telemetry"
 	case *securityclient.AuthorizationPolicy:

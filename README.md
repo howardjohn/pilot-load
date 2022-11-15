@@ -100,7 +100,7 @@ The `reproduce` command allows replaying a cluster's configuration. Install `kub
 
 First, capture their current cluster config: 
 
-`kubectl get authorizationpolicies,destinationrules,envoyfilters,gateways,peerauthentications,requestauthentications,serviceentries,sidecars,telemetries,virtualservices,configmaps,svc,endpoints,pod,namespace -oyaml -A | kubectl grep > my-config.yaml`
+`kubectl get authorizationpolicies,destinationrules,envoyfilters,gateways,peerauthentications,requestauthentications,serviceentries,sidecars,telemetries,virtualservices,workloadgroups,workloadentries,configmaps,svc,endpoints,pod,namespace -oyaml -A | kubectl grep > my-config.yaml`
 
 Then:
 
