@@ -15,6 +15,7 @@ import (
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	quicv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/quic/v3"
 	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
@@ -59,8 +60,12 @@ func (i *DumpSimulation) Run(ctx model.Context) error {
 	i.done = append(i.done, done)
 	ip := pod.Status.PodIP
 
+	proxyType := "sidecar"
 	podMeta := map[string]string{}
 	for _, c := range pod.Spec.Containers {
+		if c.Name == "istio-proxy" && len(c.Args) > 2 && c.Args[1] == "router"{
+			proxyType = "router"
+		}
 		for _, e := range c.Env {
 			if strings.HasPrefix(e.Name, "ISTIO_META_") && e.Value != "" {
 				podMeta[strings.TrimPrefix(e.Name, "ISTIO_META_")] = e.Value
@@ -82,7 +87,7 @@ func (i *DumpSimulation) Run(ctx model.Context) error {
 		Namespace:      pod.Namespace,
 		Workload:       pod.Name,
 		Meta:           meta,
-		NodeType:       "sidecar", // TODO: support ingress?
+		NodeType:       proxyType,
 		IP:             ip,
 		Context:        ctx,
 		GrpcOpts:       ctx.Args.Auth.GrpcOptions(pod.Spec.ServiceAccountName, pod.Namespace),
@@ -115,6 +120,9 @@ func (i *DumpSimulation) write(resp *adsc.Responses, cert security.Cert) error {
 	}
 	for name, ep := range resp.Endpoints {
 		writeResponse(endpointsResponse([]*endpoint.ClusterLoadAssignment{ep.(*endpoint.ClusterLoadAssignment)}), i.Spec.OutputDir, fmt.Sprintf("eds/%s.yaml", SanitizeName(name)))
+	}
+	for name, s := range resp.Secrets {
+		writeResponse(secretXdsResponse(i.Spec.OutputDir, []*tls.Secret{s.(*tls.Secret)}), i.Spec.OutputDir, fmt.Sprintf("sds/%s.yaml", SanitizeName(name)))
 	}
 
 	writeBytes(bootstrap(i.Spec.OutputDir), i.Spec.OutputDir, "config.yaml")
@@ -169,6 +177,22 @@ func clusterResponse(path string, response []*cluster.Cluster) *discovery.Discov
 	}
 
 	sanitizeClusterAds(path, response)
+
+	for _, c := range response {
+		cc, _ := anypb.New(c)
+		out.Resources = append(out.Resources, cc)
+	}
+
+	return out
+}
+
+func secretXdsResponse(path string, response []*tls.Secret) *discovery.DiscoveryResponse {
+	out := &discovery.DiscoveryResponse{
+		TypeUrl:     v3.SecretType,
+		VersionInfo: "0",
+	}
+
+	sanitizeSecretAds(path, response)
 
 	for _, c := range response {
 		cc, _ := anypb.New(c)
@@ -273,6 +297,9 @@ func sanitizeClusterAds(path string, response []*cluster.Cluster) {
 	}
 }
 
+func sanitizeSecretAds(path string, response []*tls.Secret) {
+}
+
 func rewriteTransportSocket(path string, s *core.TransportSocket) {
 	if s == nil {
 		return
@@ -286,6 +313,20 @@ func rewriteTransportSocket(path string, s *core.TransportSocket) {
 			v.SdsConfig = toPath(filepath.Join(path, "sds", SanitizeName(v.Name)+".yaml"))
 		}
 		if v := tl.CommonTlsContext.GetCombinedValidationContext().GetValidationContextSdsSecretConfig(); v != nil {
+			v.SdsConfig = toPath(filepath.Join(path, "sds", SanitizeName(v.Name)+".yaml"))
+		}
+		s.ConfigType = &core.TransportSocket_TypedConfig{TypedConfig: protoconv.MessageToAny(tl)}
+		return
+	}
+	if s.GetTypedConfig().TypeUrl == TypeName[*quicv3.QuicDownstreamTransport]() {
+		tl := SilentlyUnmarshalAny[quicv3.QuicDownstreamTransport](s.GetTypedConfig())
+		for _, sds := range tl.DownstreamTlsContext.CommonTlsContext.TlsCertificateSdsSecretConfigs {
+			sds.SdsConfig = toPath(filepath.Join(path, "sds", SanitizeName(sds.Name)+".yaml"))
+		}
+		if v := tl.DownstreamTlsContext.CommonTlsContext.GetValidationContextSdsSecretConfig(); v != nil {
+			v.SdsConfig = toPath(filepath.Join(path, "sds", SanitizeName(v.Name)+".yaml"))
+		}
+		if v := tl.DownstreamTlsContext.CommonTlsContext.GetCombinedValidationContext().GetValidationContextSdsSecretConfig(); v != nil {
 			v.SdsConfig = toPath(filepath.Join(path, "sds", SanitizeName(v.Name)+".yaml"))
 		}
 		s.ConfigType = &core.TransportSocket_TypedConfig{TypedConfig: protoconv.MessageToAny(tl)}

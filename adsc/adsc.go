@@ -11,18 +11,20 @@ import (
 	"sync"
 	"time"
 
+	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-	envoy_extensions_filters_network_http_connection_manager_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"istio.io/istio/pkg/util/sets"
 
 	"istio.io/pkg/log"
 )
@@ -114,6 +116,7 @@ type Responses struct {
 	Listeners map[string]proto.Message
 	Routes    map[string]proto.Message
 	Endpoints map[string]proto.Message
+	Secrets map[string]proto.Message
 }
 
 type Watch struct {
@@ -160,6 +163,7 @@ func Dial(url string, opts *Config) (ADSClient, error) {
 			Listeners: map[string]proto.Message{},
 			Routes:    map[string]proto.Message{},
 			Endpoints: map[string]proto.Message{},
+			Secrets: map[string]proto.Message{},
 		},
 		GrpcOpts: opts.GrpcOpts,
 		url:      url,
@@ -247,6 +251,7 @@ func (a *ADSC) handleRecv() {
 		clusters := []*cluster.Cluster{}
 		routes := []*route.RouteConfiguration{}
 		eds := []*endpoint.ClusterLoadAssignment{}
+		secrets := []*tls.Secret{}
 		// TODO re-enable use of names. For now its skipped
 		names := []string{}
 		resp := map[string]proto.Message{}
@@ -282,6 +287,14 @@ func (a *ADSC) handleRecv() {
 				if a.store {
 					resp[ll.Name] = ll
 				}
+			} else if rsc.TypeUrl == resource.SecretType {
+				ll := &tls.Secret{}
+				_ = proto.Unmarshal(valBytes, ll)
+				secrets = append(secrets, ll)
+				names = append(names, ll.Name)
+				if a.store {
+					resp[ll.Name] = ll
+				}
 			}
 		}
 
@@ -295,6 +308,8 @@ func (a *ADSC) handleRecv() {
 			a.responses.Endpoints = resp
 		case resource.RouteType:
 			a.responses.Routes = resp
+		case resource.SecretType:
+			a.responses.Secrets = resp
 		}
 		a.ack(msg, names)
 		a.mutex.Unlock()
@@ -308,6 +323,8 @@ func (a *ADSC) handleRecv() {
 			a.handleEDS(eds)
 		case resource.RouteType:
 			a.handleRDS(routes)
+		case resource.SecretType:
+			a.handleSDS(secrets)
 		}
 	}
 }
@@ -323,19 +340,36 @@ func getFilterChains(l *listener.Listener) []*listener.FilterChain {
 // nolint: staticcheck
 func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	routes := []string{}
+	sockets := []*core.TransportSocket{}
+	secrets := sets.New[string]()
 	for _, l := range ll {
 		for _, fc := range getFilterChains(l) {
 			for _, f := range fc.GetFilters() {
 				if f.GetTypedConfig().GetTypeUrl() == "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager" {
-					hcm := &envoy_extensions_filters_network_http_connection_manager_v3.HttpConnectionManager{}
+					hcm := &hcm.HttpConnectionManager{}
 					_ = f.GetTypedConfig().UnmarshalTo(hcm)
 					if r := hcm.GetRds().GetRouteConfigName(); r != "" {
 						routes = append(routes, r)
 					}
 				}
 			}
+			if fc.GetTransportSocket() != nil {
+				sockets = append(sockets, fc.GetTransportSocket())
+			}
+		}
+		if ts := l.GetDefaultFilterChain().GetTransportSocket(); ts != nil {
+			sockets = append(sockets, ts)
 		}
 	}
+	for _, s := range sockets {
+		dtl := &tls.DownstreamTlsContext{}
+		_ = s.GetTypedConfig().UnmarshalTo(dtl)
+		secrets.Insert(dtl.GetCommonTlsContext().GetCombinedValidationContext().GetValidationContextSdsSecretConfig().GetName())
+		for _, s := range dtl.GetCommonTlsContext().GetTlsCertificateSdsSecretConfigs() {
+			secrets.Insert(s.GetName())
+		}
+	}
+	secrets.Delete("")
 	sort.Strings(routes)
 
 	if dumpScope.DebugEnabled() {
@@ -352,6 +386,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
+	a.handleResourceUpdate(resource.SecretType, secrets.SortedList())
 	a.handleResourceUpdate(resource.RouteType, routes)
 
 	select {
@@ -516,6 +551,30 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 
 	select {
 	case a.updates <- "rds":
+	default:
+	}
+}
+
+func (a *ADSC) handleSDS(configurations []*tls.Secret) {
+	sds := map[string]*tls.Secret{}
+
+	for _, r := range configurations {
+		sds[r.Name] = r
+	}
+
+	if dumpScope.DebugEnabled() {
+		for i, r := range configurations {
+			b, err := marshal.MarshalToString(r)
+			if err != nil {
+				dumpScope.Errorf("Error in SDS: %v", err)
+			}
+
+			dumpScope.Debugf("sds %d: %v", i, b)
+		}
+	}
+
+	select {
+	case a.updates <- "sds":
 	default:
 	}
 }
