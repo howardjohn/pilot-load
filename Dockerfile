@@ -1,4 +1,4 @@
-FROM golang:1.19.3-alpine AS base
+FROM golang:1.20-alpine AS base
 WORKDIR /src
 ENV CGO_ENABLED=0
 COPY go.* ./

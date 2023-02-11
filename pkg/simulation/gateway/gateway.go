@@ -235,7 +235,7 @@ func createServiceEntry(index int) *v1alpha3.ServiceEntry {
 		Spec: networkingv1alpha3.ServiceEntry{
 			Hosts:      []string{fmt.Sprintf("se-%d.example.com", index)},
 			Resolution: networkingv1alpha3.ServiceEntry_STATIC,
-			Ports: []*networkingv1alpha3.Port{{
+			Ports: []*networkingv1alpha3.ServicePort{{
 				Number:   80,
 				Protocol: "HTTP",
 				Name:     "http",

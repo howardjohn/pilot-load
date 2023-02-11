@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/golang/protobuf/jsonpb"
@@ -116,7 +116,7 @@ type Responses struct {
 	Listeners map[string]proto.Message
 	Routes    map[string]proto.Message
 	Endpoints map[string]proto.Message
-	Secrets map[string]proto.Message
+	Secrets   map[string]proto.Message
 }
 
 type Watch struct {
@@ -163,7 +163,7 @@ func Dial(url string, opts *Config) (ADSClient, error) {
 			Listeners: map[string]proto.Message{},
 			Routes:    map[string]proto.Message{},
 			Endpoints: map[string]proto.Message{},
-			Secrets: map[string]proto.Message{},
+			Secrets:   map[string]proto.Message{},
 		},
 		GrpcOpts: opts.GrpcOpts,
 		url:      url,
@@ -386,7 +386,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	a.handleResourceUpdate(resource.SecretType, secrets.SortedList())
+	a.handleResourceUpdate(resource.SecretType, sets.SortedList(secrets))
 	a.handleResourceUpdate(resource.RouteType, routes)
 
 	select {
