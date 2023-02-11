@@ -23,7 +23,7 @@ gen-check: check-git format
 .PHONY: format
 format:
 	@go mod tidy
-	@gofumpt -w {}
+	@gofumpt -w .
 	@goimports -local $(MODULE) -w .
 	@gci write --section=standard,default,Prefix\($MODULE\) .
 

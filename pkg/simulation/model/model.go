@@ -104,6 +104,14 @@ type NamespaceConfig struct {
 	Applications []ApplicationConfig `json:"applications,omitempty"`
 }
 
+type ClusterType string
+
+var (
+	Fake     ClusterType = "Fake"
+	FakeNode ClusterType = "FakeNode"
+	Real     ClusterType = "Real"
+)
+
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
 type ClusterConfig struct {
@@ -113,7 +121,7 @@ type ClusterConfig struct {
 	Namespaces   []NamespaceConfig      `json:"namespaces,omitempty"`
 	Nodes        int                    `json:"nodes,omitempty"`
 	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
-	RealCluster  bool                   `json:"-"`
+	ClusterType  ClusterType            `json:"-"`
 }
 
 func (c ClusterConfig) ApplyDefaults() ClusterConfig {

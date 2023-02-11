@@ -15,7 +15,9 @@ import (
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	"istio.io/istio/pkg/test/scopes"
 	"istio.io/pkg/log"
+	appsv1 "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,17 +165,48 @@ func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
 		return securityclient.SchemeGroupVersion.WithResource("requestauthentications"), "RequestAuthentication"
 	case *securityclient.PeerAuthentication:
 		return securityclient.SchemeGroupVersion.WithResource("peerauthentications"), "PeerAuthentication"
+	case *coordinationv1.Lease:
+		return coordinationv1.SchemeGroupVersion.WithResource("leases"), "Lease"
+	case *appsv1.Deployment:
+		return appsv1.SchemeGroupVersion.WithResource("deployments"), "Deployment"
 	default:
 		panic(fmt.Sprintf("unsupported type %T", o))
 	}
 }
 
-func (c *Client) Apply(o runtime.Object) error {
+func (c *Client) ApplyRes(o runtime.Object) (metav1.Object, error) {
 	return c.internalApply(o, false)
 }
 
+func (c *Client) Apply(o runtime.Object) error {
+	_, err := c.internalApply(o, false)
+	return err
+}
+
 func (c *Client) ApplyFast(o runtime.Object) error {
-	return c.internalApply(o, true)
+	_, err := c.internalApply(o, true)
+	return err
+}
+
+func (c *Client) ApplyStatus(o runtime.Object) error {
+	us := toUnstructured(o)
+	us.SetManagedFields(nil)
+	us.SetUID("")
+	us.SetResourceVersion("")
+	if us == nil {
+		return fmt.Errorf("bad object %v", o)
+	}
+	gvr, kind := toGvr(o)
+	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
+	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+	scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
+	if _, err := cl.ApplyStatus(context.TODO(), us.GetName(), us, metav1.ApplyOptions{
+		Force:        true,
+		FieldManager: "pilot-load",
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func hasStatus(us *unstructured.Unstructured) bool {
@@ -188,10 +221,10 @@ func hasStatus(us *unstructured.Unstructured) bool {
 	return true
 }
 
-func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
+func (c *Client) internalApply(o runtime.Object, skipGet bool) (metav1.Object, error) {
 	us := toUnstructured(o)
 	if us == nil {
-		return fmt.Errorf("bad object %v", o)
+		return nil, fmt.Errorf("bad object %v", o)
 	}
 	gvr, kind := toGvr(o)
 	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
@@ -199,13 +232,16 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
 
 	if skipGet {
+		var res metav1.Object
 		err := retry.RetryOnConflict(backoff, func() error {
 			scope.Debugf("fast creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			if _, err := cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
+			var err error
+			res, err = cl.Create(context.TODO(), us, metav1.CreateOptions{})
+			if err != nil {
 				return err
 			}
 			if hasStatus(us) {
-				scope.Debugf("fast updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
+				scope.Debugf("fast updating resource status: %s/%s.%s %+v", us.GetKind(), us.GetName(), us.GetNamespace(), us)
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}
@@ -213,16 +249,19 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 			return nil
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+			return nil, fmt.Errorf("failed to create %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
 		}
-		return nil
+		return res, nil
 	}
+
+	var res metav1.Object
 	err := retry.RetryOnConflict(backoff, func() error {
-		cur, err := cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
+		var err error
+		res, err = cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
 		switch {
 		case errors.IsNotFound(err):
 			scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			if _, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
+			if res, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
 				return err
 			}
 			if hasStatus(us) {
@@ -234,12 +273,12 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 			return nil
 		case err == nil:
 			scope.Debugf("patching resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			us.SetResourceVersion(cur.GetResourceVersion())
+			us.SetResourceVersion(res.GetResourceVersion())
 			bytes, err := us.MarshalJSON()
 			if err != nil {
 				return fmt.Errorf("json error for %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
 			}
-			_, err = cl.Patch(context.TODO(), us.GetName(), types.ApplyPatchType, bytes, metav1.PatchOptions{
+			res, err = cl.Patch(context.TODO(), us.GetName(), types.ApplyPatchType, bytes, metav1.PatchOptions{
 				FieldManager: "pilot-load",
 				Force:        util.BoolPointer(true),
 			})
@@ -248,9 +287,9 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) error {
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to apply %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+		return nil, fmt.Errorf("failed to apply %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
 	}
-	return nil
+	return res, nil
 }
 
 // Create creates a new object, and returns true if it was newly created.

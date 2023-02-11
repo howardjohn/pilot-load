@@ -13,12 +13,12 @@ import (
 
 var (
 	configFile  = ""
-	realCluster = false
+	clusterType = "fake"
 )
 
 func init() {
 	clusterCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
-	clusterCmd.PersistentFlags().BoolVar(&realCluster, "real-cluster", realCluster, "set to true if using as real cluster, where we are not able to create fake pods, etc")
+	clusterCmd.PersistentFlags().StringVar(&clusterType, "cluster-type", clusterType, "cluster type. Can be one of real, fake, or fake-node,")
 }
 
 var clusterCmd = &cobra.Command{
@@ -34,7 +34,16 @@ var clusterCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
 		config = config.ApplyDefaults()
-		config.RealCluster = realCluster
+		switch clusterType {
+		case "fake":
+			config.ClusterType = model.Fake
+		case "fake-node":
+			config.ClusterType = model.FakeNode
+		case "real":
+			config.ClusterType = model.Real
+		default:
+			return fmt.Errorf("unknown cluster type %q", clusterType)
+		}
 		args.ClusterConfig = config
 		logConfig(args.ClusterConfig)
 		logClusterConfig(args.ClusterConfig)

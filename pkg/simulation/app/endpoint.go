@@ -14,7 +14,7 @@ type EndpointSpec struct {
 	Namespace string
 	// Map of pod name to IP
 	IPs         map[string]string
-	RealCluster bool
+	ClusterType model.ClusterType
 }
 
 type Endpoint struct {
@@ -61,7 +61,7 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 			IP:       ip,
 			NodeName: &s.Node,
 		}
-		if !e.Spec.RealCluster {
+		if e.Spec.ClusterType != model.Real {
 			// We will make a selector-less service+endpoint if in a real cluster
 			addr.TargetRef = &v1.ObjectReference{
 				Kind:      "Pod",
