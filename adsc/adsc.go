@@ -24,8 +24,8 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
-	"istio.io/istio/pkg/util/sets"
 
+	"istio.io/istio/pkg/util/sets"
 	"istio.io/pkg/log"
 )
 
@@ -370,6 +370,8 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 		}
 	}
 	secrets.Delete("")
+	secrets.Delete("ROOTCA")
+	secrets.Delete("default")
 	sort.Strings(routes)
 
 	if dumpScope.DebugEnabled() {
@@ -386,7 +388,9 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	a.handleResourceUpdate(resource.SecretType, sets.SortedList(secrets))
+	if len(secrets) > 0 {
+		a.handleResourceUpdate(resource.SecretType, sets.SortedList(secrets))
+	}
 	a.handleResourceUpdate(resource.RouteType, routes)
 
 	select {
