@@ -207,7 +207,7 @@ func parseInputs(inputFile string) (map[schema.GroupVersionKind][]runtime.Object
 		}
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
-		//Convert v1beta1 apiversions to v1alpha3 for Istio networking APIs
+		// Convert v1beta1 apiversions to v1alpha3 for Istio networking APIs
 		s, exists := collections.PilotGatewayAPI.FindByGroupVersionAliasesKind(resource.FromKubernetesGVK(&gvk))
 		if exists {
 			obj.GetObjectKind().SetGroupVersionKind(toKubernetesGVK(s.Resource().GroupVersionKind()))

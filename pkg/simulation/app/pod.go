@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"google.golang.org/grpc/credentials"
+	"istio.io/istio/pkg/ptr"
 	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -28,7 +30,7 @@ type PodSpec struct {
 	UID            string
 	IP             string
 	PodType        model.PodType
-	RealCluster    bool
+	ClusterType    model.ClusterType
 }
 
 type Pod struct {
@@ -69,7 +71,7 @@ var _ credentials.PerRPCCredentials = &GrpcCredentials{}
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
-	if !p.Spec.RealCluster {
+	if p.Spec.ClusterType != model.Real {
 		if err = ctx.Client.ApplyFast(pod); err != nil {
 			return fmt.Errorf("failed to apply config: %v", err)
 		}
@@ -117,6 +119,86 @@ func (p *Pod) Name() string {
 
 func (p *Pod) getPod() *v1.Pod {
 	s := p.Spec
+	if p.Spec.ClusterType == model.FakeNode {
+
+		labels := map[string]string{
+			"app":                     s.App,
+			"sidecar.istio.io/inject": "false",
+		}
+		cs := []v1.ContainerStatus{
+			{
+				Name: "app",
+				State: v1.ContainerState{
+					Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
+				},
+				Ready: true,
+				Image: "fake",
+			},
+		}
+		if p.Spec.PodType == model.SidecarType {
+			labels["sidecar.istio.io/inject"] = "true"
+			cs = append(cs, v1.ContainerStatus{
+				Name: "istio-proxy",
+				State: v1.ContainerState{
+					Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
+				},
+				Ready: true,
+				Image: "fake",
+			})
+		}
+		return &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      p.Name(),
+				Namespace: s.Namespace,
+				Labels:    labels,
+			},
+			Spec: v1.PodSpec{
+				TerminationGracePeriodSeconds: ptr.Of(int64(0)),
+				ServiceAccountName:            s.ServiceAccount,
+				Containers: []v1.Container{{
+					Name:  "app",
+					Image: "fake",
+				}},
+				NodeSelector: map[string]string{
+					"pilot-load.istio.io/node": "fake",
+				},
+				Tolerations: []v1.Toleration{{
+					Key:      "pilot-load.istio.io/node",
+					Operator: v1.TolerationOpExists,
+					Effect:   v1.TaintEffectNoSchedule,
+				}},
+			},
+			Status: v1.PodStatus{
+				Phase: v1.PodRunning,
+				Conditions: []v1.PodCondition{
+					{
+						Type:               v1.PodReady,
+						Status:             v1.ConditionTrue,
+						LastTransitionTime: metav1.Now(),
+					},
+					{
+						Type:               v1.PodScheduled,
+						Status:             v1.ConditionTrue,
+						LastTransitionTime: metav1.Now(),
+					},
+					{
+						Type:               v1.ContainersReady,
+						Status:             v1.ConditionTrue,
+						LastTransitionTime: metav1.Now(),
+					},
+					{
+						Type:               v1.PodInitialized,
+						Status:             v1.ConditionTrue,
+						LastTransitionTime: metav1.Now(),
+					},
+				},
+				ContainerStatuses: cs,
+				PodIP:             s.IP,
+				PodIPs:            []v1.PodIP{{IP: s.IP}},
+			},
+		}
+	}
+
 	labels := map[string]string{
 		"app": s.App,
 	}
@@ -133,7 +215,8 @@ func (p *Pod) getPod() *v1.Pod {
 			Labels:    labels,
 		},
 		Spec: v1.PodSpec{
-			ServiceAccountName: s.ServiceAccount,
+			TerminationGracePeriodSeconds: ptr.Of(int64(0)),
+			ServiceAccountName:            s.ServiceAccount,
 			InitContainers: []v1.Container{{
 				Name:  "istio-init",
 				Image: "istio/proxyv2",

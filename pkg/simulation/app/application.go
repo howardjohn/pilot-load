@@ -17,14 +17,15 @@ type ApplicationSpec struct {
 	Instances      int
 	PodType        model.PodType
 	GatewayConfig  model.GatewayConfig
-	RealCluster    bool
 	Labels         map[string]string
+	ClusterType    model.ClusterType
 }
 
 type Application struct {
 	Spec           *ApplicationSpec
 	endpoint       *Endpoint
 	pods           []*Pod
+	deployment     *Deployment
 	service        *Service
 	virtualService *config.VirtualService
 	gateways       []*config.Gateway
@@ -41,21 +42,33 @@ var (
 func NewApplication(s ApplicationSpec) *Application {
 	w := &Application{Spec: &s}
 
+	// Currently we never use Deployment since its pretty slow
+	//	w.deployment = NewDeployment(DeploymentSpec{
+	//		ServiceAccount: s.ServiceAccount,
+	//		Replicas:       s.Instances,
+	//		Node:           s.Node,
+	//		App:            s.App,
+	//		Namespace:      s.Namespace,
+	//		PodType:        s.PodType,
+	//		ClusterType:    s.ClusterType,
+	//	})
 	for i := 0; i < s.Instances; i++ {
 		w.pods = append(w.pods, w.makePod())
 	}
 
-	w.endpoint = NewEndpoint(EndpointSpec{
-		Node:        s.Node,
-		App:         s.App,
-		Namespace:   s.Namespace,
-		IPs:         w.getIps(),
-		RealCluster: s.RealCluster,
-	})
+	if s.ClusterType != model.FakeNode {
+		w.endpoint = NewEndpoint(EndpointSpec{
+			Node:        s.Node,
+			App:         s.App,
+			Namespace:   s.Namespace,
+			IPs:         w.getIps(),
+			ClusterType: s.ClusterType,
+		})
+	}
 	w.service = NewService(ServiceSpec{
 		App:         s.App,
 		Namespace:   s.Namespace,
-		RealCluster: s.RealCluster,
+		ClusterType: s.ClusterType,
 	})
 	for i := 0; i < s.GatewayConfig.Replicas; i++ {
 		gw := config.NewGateway(config.GatewaySpec{
@@ -114,7 +127,7 @@ func (w *Application) makePod() *Pod {
 		App:            s.App,
 		Namespace:      s.Namespace,
 		PodType:        s.PodType,
-		RealCluster:    s.RealCluster,
+		ClusterType:    s.ClusterType,
 	})
 }
 
@@ -135,7 +148,12 @@ func (w *Application) getSims() []model.Simulation {
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}
-	sims = append(sims, w.endpoint)
+	if w.endpoint != nil {
+		sims = append(sims, w.endpoint)
+	}
+	if w.deployment != nil {
+		sims = append(sims, w.deployment)
+	}
 	return sims
 }
 
@@ -148,6 +166,7 @@ func (w *Application) Cleanup(ctx model.Context) error {
 }
 
 func (w *Application) Refresh(ctx model.Context) error {
+	// TODO: implement for Deployment
 	if len(w.pods) == 0 {
 		return nil
 	}
@@ -165,8 +184,10 @@ func (w *Application) Refresh(ctx model.Context) error {
 		return err
 	}
 
-	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
-		return fmt.Errorf("endpoints: %v", err)
+	if w.endpoint != nil {
+		if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
+			return fmt.Errorf("endpoints: %v", err)
+		}
 	}
 
 	if err := removed.Cleanup(ctx); err != nil {

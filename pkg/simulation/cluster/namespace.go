@@ -12,7 +12,7 @@ import (
 type NamespaceSpec struct {
 	Name        string
 	Deployments []model.ApplicationConfig
-	RealCluster bool
+	ClusterType model.ClusterType
 }
 
 type Namespace struct {
@@ -40,13 +40,13 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	ns.sidecar = config.NewSidecar(config.SidecarSpec{Namespace: s.Name})
 	for _, d := range s.Deployments {
 		for r := 0; r < d.Replicas; r++ {
-			ns.deployments = append(ns.deployments, ns.createDeployment(d, s.RealCluster))
+			ns.deployments = append(ns.deployments, ns.createDeployment(d, s.ClusterType))
 		}
 	}
 	return ns
 }
 
-func (n *Namespace) createDeployment(args model.ApplicationConfig, realCluster bool) *app.Application {
+func (n *Namespace) createDeployment(args model.ApplicationConfig, ct model.ClusterType) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), util.GenUID()),
 		Node:      args.GetNode(),
@@ -56,14 +56,8 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig, realCluster b
 		Instances:      args.Instances,
 		PodType:        args.PodType,
 		GatewayConfig:  args.Gateways,
-		RealCluster:    realCluster,
+		ClusterType:    ct,
 	})
-}
-
-func (n *Namespace) InsertDeployment(ctx model.Context, args model.ApplicationConfig) error {
-	wl := n.createDeployment(args, false)
-	n.deployments = append(n.deployments, wl)
-	return wl.Run(ctx)
 }
 
 func (n *Namespace) getSims() []model.Simulation {

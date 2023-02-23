@@ -8,7 +8,12 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/pkg/log"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/informers"
 )
 
 type ClusterSpec struct {
@@ -32,7 +37,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 			Name:        fmt.Sprintf("node-%s", util.GenUID()),
 			Region:      "region",
 			Zone:        "zone",
-			RealCluster: s.Config.RealCluster,
+			ClusterType: s.Config.ClusterType,
 		}))
 	}
 	for _, ns := range s.Config.Namespaces {
@@ -49,7 +54,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
 				Name:        name,
 				Deployments: deployments,
-				RealCluster: s.Config.RealCluster,
+				ClusterType: s.Config.ClusterType,
 			}))
 		}
 	}
@@ -101,6 +106,10 @@ func (c *Cluster) getSims() []model.Simulation {
 }
 
 func (c *Cluster) Run(ctx model.Context) error {
+	if c.Spec.Config.ClusterType == model.FakeNode {
+		// Only need for deployments. Currently we never use this.
+		// go c.watchPods(ctx)
+	}
 	nodes := []model.Simulation{}
 	for _, ns := range c.nodes {
 		nodes = append(nodes, ns)
@@ -128,4 +137,68 @@ func (c *Cluster) Run(ctx model.Context) error {
 
 func (c *Cluster) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{Simulations: model.ReverseSimulations(c.getSims())}.CleanupParallel(ctx)
+}
+
+func (c *Cluster) watchPods(ctx model.Context) {
+	inf := informers.NewSharedInformerFactoryWithOptions(ctx.Client.Kubernetes, 0)
+	podInformer := inf.Core().V1().Pods().Informer()
+	podLister := inf.Core().V1().Pods().Lister()
+	inf.Start(ctx.Done())
+	inf.WaitForCacheSync(ctx.Done())
+	q := controllers.NewQueue("pods",
+		controllers.WithReconciler(func(key types.NamespacedName) error {
+			p, _ := podLister.Pods(key.Namespace).Get(key.Name)
+			if p == nil {
+				return nil
+			}
+			if p.Spec.NodeSelector["pilot-load.istio.io/node"] != "fake" {
+				// not our pod
+				return nil
+			}
+			if p.DeletionTimestamp != nil {
+				if err := ctx.Client.Delete(p); err != nil {
+					return fmt.Errorf("delete: %v", err)
+				}
+				return nil
+			}
+			if p.Status.Phase == v1.PodRunning {
+				// no action needed
+				return nil
+			}
+			p.Status.Phase = v1.PodRunning
+			p.Status.Conditions = nil
+			p.Status.Conditions = append(p.Status.Conditions, v1.PodCondition{
+				Type:               v1.PodReady,
+				Status:             v1.ConditionTrue,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			})
+			p.Status.Conditions = append(p.Status.Conditions, v1.PodCondition{
+				Type:               v1.ContainersReady,
+				Status:             v1.ConditionTrue,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			})
+			p.Status.PodIP = util.GetIP()
+			p.Status.ContainerStatuses = make([]v1.ContainerStatus, len(p.Spec.Containers))
+			for i, c := range p.Spec.Containers {
+				p.Status.ContainerStatuses[i] = v1.ContainerStatus{
+					Name: c.Name,
+					State: v1.ContainerState{
+						Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
+					},
+					Ready:        true,
+					RestartCount: 0,
+					Image:        c.Image,
+					ImageID:      "",
+					ContainerID:  "",
+					Started:      nil,
+				}
+			}
+			if err := ctx.Client.ApplyStatus(p); err != nil {
+				return fmt.Errorf("apply status: %v", err)
+			}
+			return nil
+		}),
+		controllers.WithMaxAttempts(5))
+	podInformer.AddEventHandler(controllers.ObjectHandler(q.AddObject))
+	q.Run(ctx.Done())
 }

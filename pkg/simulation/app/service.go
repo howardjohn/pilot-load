@@ -10,7 +10,7 @@ import (
 type ServiceSpec struct {
 	App         string
 	Namespace   string
-	RealCluster bool
+	ClusterType model.ClusterType
 }
 
 type Service struct {
@@ -56,7 +56,7 @@ func (s *Service) getService() *v1.Service {
 			Type:  "ClusterIP",
 		},
 	}
-	if !s.Spec.RealCluster {
+	if s.Spec.ClusterType != model.Real {
 		svc.Spec.Selector = map[string]string{
 			"app": p.App,
 		}
