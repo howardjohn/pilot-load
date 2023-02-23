@@ -23,11 +23,13 @@ gen-check: check-git format
 .PHONY: format
 format:
 	@go mod tidy
-	@goimports -l -w -local $(MODULE) .
+	@gofumpt -w {}
+	@goimports -local $(MODULE) -w .
+	@gci write --section=standard,default,Prefix\($MODULE\) .
 
 .PHONY: lint
 lint:
-	@golangci-lint run --fix
+	@golangci-lint run --fix -v
 
 .PHONY: install
 install:

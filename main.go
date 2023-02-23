@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/howardjohn/pilot-load/cmd"
-
 	"istio.io/pkg/log"
 )
 

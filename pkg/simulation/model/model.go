@@ -11,7 +11,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"golang.org/x/sync/errgroup"
-
 	"istio.io/pkg/log"
 )
 

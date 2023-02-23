@@ -16,7 +16,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
-
 	"istio.io/pkg/log"
 )
 

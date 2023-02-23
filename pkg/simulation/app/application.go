@@ -5,9 +5,8 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"istio.io/pkg/log"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 type ApplicationSpec struct {

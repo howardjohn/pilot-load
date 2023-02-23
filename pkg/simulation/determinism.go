@@ -10,12 +10,11 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/informers/core/v1"
-
-	"istio.io/pkg/log"
 )
 
 type DeterministicSimulation struct{}

@@ -25,12 +25,11 @@ import (
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"istio.io/istio/pilot/pkg/util/protoconv"
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 	"istio.io/istio/pkg/util/protomarshal"
 	"istio.io/pkg/log"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type DumpSpec struct {
@@ -63,7 +62,7 @@ func (i *DumpSimulation) Run(ctx model.Context) error {
 	proxyType := "sidecar"
 	podMeta := map[string]string{}
 	for _, c := range pod.Spec.Containers {
-		if c.Name == "istio-proxy" && len(c.Args) > 2 && c.Args[1] == "router"{
+		if c.Name == "istio-proxy" && len(c.Args) > 2 && c.Args[1] == "router" {
 			proxyType = "router"
 		}
 		for _, e := range c.Env {

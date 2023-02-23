@@ -8,7 +8,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-
 	"istio.io/pkg/log"
 )
 

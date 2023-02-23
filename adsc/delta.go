@@ -14,7 +14,6 @@ import (
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
-
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 	"istio.io/istio/pkg/util/sets"
 )
@@ -247,7 +246,6 @@ func relate(parent, child *ResourceNode) {
 	parent.Children[child] = struct{}{}
 	child.Parents[parent] = struct{}{}
 }
-
 
 func (d *deltaClient) Watch() {
 	scope.Infof("sending initial watches")

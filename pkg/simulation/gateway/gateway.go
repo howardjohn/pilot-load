@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ilog "istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 var scope = ilog.RegisterScope("probe", "", 0)

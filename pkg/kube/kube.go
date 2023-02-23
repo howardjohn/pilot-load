@@ -12,6 +12,9 @@ import (
 	networkingclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	securityclient "istio.io/client-go/pkg/apis/security/v1beta1"
 	telemetryclient "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
+	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
+	"istio.io/istio/pkg/test/scopes"
+	"istio.io/pkg/log"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,10 +31,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
-
-	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
-	"istio.io/istio/pkg/test/scopes"
-	"istio.io/pkg/log"
 )
 
 type Client struct {

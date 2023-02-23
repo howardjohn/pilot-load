@@ -11,8 +11,16 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	clientnetworkingalpha "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	clientnetworkingbeta "istio.io/client-go/pkg/apis/networking/v1beta1"
+	clientsecurity "istio.io/client-go/pkg/apis/security/v1beta1"
+	clienttelemetry "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
+	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/config/schema/collections"
+	"istio.io/istio/pkg/config/schema/gvk"
 	"istio.io/istio/pkg/config/schema/resource"
+	"istio.io/istio/pkg/util/sets"
+	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,15 +29,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
-
-	clientnetworkingalpha "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	clientnetworkingbeta "istio.io/client-go/pkg/apis/networking/v1beta1"
-	clientsecurity "istio.io/client-go/pkg/apis/security/v1beta1"
-	clienttelemetry "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
-	"istio.io/istio/pkg/config"
-	"istio.io/istio/pkg/config/schema/gvk"
-	"istio.io/istio/pkg/util/sets"
-	"istio.io/pkg/log"
 )
 
 type ReproduceSpec struct {

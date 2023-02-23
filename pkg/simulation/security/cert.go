@@ -10,7 +10,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
 	pb "istio.io/api/security/v1alpha1"
 )
 
