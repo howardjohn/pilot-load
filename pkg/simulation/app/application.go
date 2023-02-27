@@ -18,7 +18,6 @@ type ApplicationSpec struct {
 	AppType        model.AppType
 	GatewayConfig  model.GatewayConfig
 	Istio          model.IstioApplicationConfig
-	RealCluster    bool
 	Labels         map[string]string
 	ClusterType    model.ClusterType
 }

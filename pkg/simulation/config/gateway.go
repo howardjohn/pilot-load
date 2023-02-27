@@ -15,7 +15,6 @@ type GatewaySpec struct {
 	UID       string
 	Namespace string
 	Name      string
-	parent    model.IstioAPIParent
 }
 
 type Gateway struct {

@@ -13,14 +13,14 @@ data:
       default: true # create all applicable istio resources for root namespace
     gracePeriod: 10s
     jitter:
-      workloads: "10s"
+      workloads: "1s"
       config: "15s"
     namespaces:
     - name: mesh
       istio:
         # create all applicable istio resources for each replica of 'mesh' namespace
         default: true
-      replicas: 4
+      replicas: 64
       applications:
       - name: big
         replicas: 1
@@ -41,7 +41,7 @@ data:
             gateways: [main]
         instances: 5
       - name: small
-        replicas: 5
+        replicas: 25
         istio:
           # create all applicable istio resources for each replica of 'small' application
           default: true
