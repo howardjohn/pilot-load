@@ -6,13 +6,19 @@ metadata:
 data:
   config.yaml: |
     nodeMetadata: {}
+    istio:
+      default: true
     jitter:
       workloads: "0s"
       config: "0s"
     namespaces:
     - name: mesh
       replicas: 1
+      istio:
+        default: true
       applications:
       - name: default
         replicas: 1
+        istio:
+          default: true
         instances: 1

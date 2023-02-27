@@ -113,7 +113,7 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 					Name:           co.GetName(),
 					ServiceAccount: pod.Spec.ServiceAccountName,
 					IP:             pod.Status.PodIP,
-					PodType:        model.SidecarType,
+					AppType:        model.SidecarType,
 					Cluster:        "Kubernetes",
 					GrpcOpts:       ctx.Args.Auth.GrpcOptions(pod.Spec.ServiceAccountName, co.GetNamespace()),
 					Delta:          ctx.Args.DeltaXDS,

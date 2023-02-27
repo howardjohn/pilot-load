@@ -12,6 +12,7 @@ import (
 type NamespaceSpec struct {
 	Name        string
 	Deployments []model.ApplicationConfig
+	Istio       model.IstioNSConfig
 	RealCluster bool
 }
 
@@ -19,6 +20,7 @@ type Namespace struct {
 	Spec        *NamespaceSpec
 	ns          *KubernetesNamespace
 	sa          map[string]*app.ServiceAccount
+	envoyFilter *config.EnvoyFilter
 	sidecar     *config.Sidecar
 	deployments []*app.Application
 }
@@ -37,7 +39,21 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 			Name:      "default",
 		}),
 	}
-	ns.sidecar = config.NewSidecar(config.SidecarSpec{Namespace: s.Name})
+
+	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.EnvoyFilter != nil {
+		ns.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
+			Namespace: ns.Spec.Name,
+			Parent:    model.Namespace,
+		})
+	}
+
+	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.Sidecar != nil {
+		ns.sidecar = config.NewSidecar(config.SidecarSpec{
+			Namespace: ns.Spec.Name,
+			Parent:    model.Namespace,
+		})
+	}
+
 	for _, d := range s.Deployments {
 		for r := 0; r < d.Replicas; r++ {
 			ns.deployments = append(ns.deployments, ns.createDeployment(d, s.RealCluster))
@@ -54,9 +70,10 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig, realCluster b
 		// TODO implement different service accounts
 		ServiceAccount: "default",
 		Instances:      args.Instances,
-		PodType:        args.PodType,
+		AppType:        args.AppType,
 		GatewayConfig:  args.Gateways,
 		RealCluster:    realCluster,
+		Istio:          args.Istio,
 	})
 }
 
@@ -67,7 +84,13 @@ func (n *Namespace) InsertDeployment(ctx model.Context, args model.ApplicationCo
 }
 
 func (n *Namespace) getSims() []model.Simulation {
-	sims := []model.Simulation{n.ns, n.sidecar}
+	sims := []model.Simulation{n.ns}
+	if n.sidecar != nil {
+		sims = append(sims, n.sidecar)
+	}
+	if n.envoyFilter != nil {
+		sims = append(sims, n.envoyFilter)
+	}
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}

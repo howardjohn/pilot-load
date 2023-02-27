@@ -28,7 +28,7 @@ type PodSpec struct {
 	Namespace      string
 	UID            string
 	IP             string
-	PodType        model.PodType
+	AppType        model.AppType
 	RealCluster    bool
 }
 
@@ -77,7 +77,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 		p.created = true
 	}
 
-	if p.Spec.PodType.HasProxy() {
+	if p.Spec.AppType.HasProxy() {
 		if err := sendInjectionRequest(ctx.Args.InjectAddress, pod); err != nil {
 			return err
 		}
@@ -87,7 +87,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 			Namespace: pod.Namespace,
 			Name:      pod.Name,
 			IP:        p.Spec.IP,
-			PodType:   p.Spec.PodType,
+			AppType:   p.Spec.AppType,
 			// TODO: multicluster
 			Cluster:  "Kubernetes",
 			GrpcOpts: ctx.Args.Auth.GrpcOptions(p.Spec.ServiceAccount, p.Spec.Namespace),
@@ -106,7 +106,7 @@ func (p *Pod) Cleanup(ctx model.Context) error {
 			return err
 		}
 	}
-	if p.Spec.PodType.HasProxy() {
+	if p.Spec.AppType.HasProxy() {
 		return p.xds.Cleanup(ctx)
 	}
 	return nil
@@ -121,10 +121,10 @@ func (p *Pod) getPod() *v1.Pod {
 	labels := map[string]string{
 		"app": s.App,
 	}
-	if p.Spec.PodType == model.SidecarType {
+	if p.Spec.AppType == model.SidecarType {
 		labels["security.istio.io/tlsMode"] = "istio"
 	}
-	if p.Spec.PodType == model.AmbientType {
+	if p.Spec.AppType == model.AmbientType {
 		labels["ambient-type"] = "workload"
 	}
 	pod := &v1.Pod{
@@ -161,7 +161,7 @@ func (p *Pod) getPod() *v1.Pod {
 			PodIPs: []v1.PodIP{{IP: s.IP}},
 		},
 	}
-	if p.Spec.PodType == model.AmbientType {
+	if p.Spec.AppType == model.AmbientType {
 		pod.Spec.InitContainers = nil
 		pod.Spec.Containers = pod.Spec.Containers[0:1]
 	}

@@ -39,16 +39,16 @@ data:
   config: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIHNlcnZlcjogaHR0cDovL2FwaXNlcnZlci5waWxvdC1sb2FkOjE4MDkwCiAgbmFtZTogbG9hZApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogbG9hZAogICAgdXNlcjogZmFrZQogIG5hbWU6IGxvYWQKY3VycmVudC1jb250ZXh0OiBsb2FkCmtpbmQ6IENvbmZpZwpwcmVmZXJlbmNlczoge30KdXNlcnM6Ci0gbmFtZTogZmFrZQo=
 EOF
 fi
-kubectl rollout restart deployment -n istio-system istiod || true
+kubectl rollout restart deployment -n istio-system istiod-asm-1154-4 || true
 
 if [[ "${SINGLE:-}" != "false" ]]; then
-  kubectl delete hpa istiod -n istio-system || true
-  kubectl scale deployment/istiod --replicas=1 -n istio-system || true
+  kubectl delete hpa istiod-asm-1154-4 -n istio-system || true
+  kubectl scale deployment/istiod-asm-1154-4 --replicas=2 -n istio-system || true
 fi
 
 export KUBECONFIG=${WD}/local-kubeconfig.yaml
 kubectl create namespace istio-system || true
-kubectl apply -f $GOPATH/src/istio.io/istio/manifests/charts/base/crds/
+kubectl apply -f /usr/local/google/home/hemendrat/workspace/istio/manifests/charts/base/crds/
 kubectl apply -f $WD/preconfigured.yaml
 
 echo To start test: go run main.go
