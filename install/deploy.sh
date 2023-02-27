@@ -43,7 +43,7 @@ kubectl rollout restart deployment -n istio-system istiod || true
 
 if [[ "${SINGLE:-}" != "false" ]]; then
   kubectl delete hpa istiod -n istio-system || true
-  kubectl scale deployment/istiod --replicas=2 -n istio-system || true
+  kubectl scale deployment/istiod --replicas=1 -n istio-system || true
 fi
 
 export KUBECONFIG=${WD}/local-kubeconfig.yaml
