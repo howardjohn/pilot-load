@@ -56,7 +56,7 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 				Name:      pod.Name,
 				IP:        ip,
 				Cluster:   "",
-				PodType:   "",
+				AppType:   "",
 				GrpcOpts:  ctx.Args.Auth.GrpcOptions(pod.Spec.ServiceAccountName, pod.Namespace),
 				Delta:     ctx.Args.DeltaXDS,
 			}

@@ -14,7 +14,7 @@ type DeploymentSpec struct {
 	Node           string
 	App            string
 	Namespace      string
-	PodType        model.PodType
+	AppType        model.AppType
 	ClusterType    model.ClusterType
 }
 

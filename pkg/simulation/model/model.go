@@ -65,43 +65,55 @@ type ClusterJitterConfig struct {
 	Secrets   Duration `json:"secrets,omitempty"`
 }
 
-type PodType string
+type AppType string
 
-func (p PodType) HasProxy() bool {
+type IstioAPIParent string
+
+func (p AppType) HasProxy() bool {
 	return p == SidecarType || p == GatewayType
 }
 
 const (
-	SidecarType PodType = "sidecar"
+	SidecarType AppType = "sidecar"
 
-	AmbientType PodType = "ambient"
+	AmbientType AppType = "ambient"
 
-	GatewayType PodType = "router"
+	GatewayType AppType = "router"
 
-	ExternalType PodType = "external"
+	ExternalType AppType = "external"
+
+	VMType AppType = "vm"
+)
+
+const (
+	RootNamespace IstioAPIParent = "rootNamespace"
+
+	Namespace IstioAPIParent = "namespace"
+
+	Application IstioAPIParent = "application"
 )
 
 type ApplicationConfig struct {
-	Name      string        `json:"name,omitempty"`
-	PodType   PodType       `json:"podType,omitempty"`
-	Replicas  int           `json:"replicas,omitempty"`
-	Instances int           `json:"instances,omitempty"`
-	Gateways  GatewayConfig `json:"gateways,omitempty"`
-	GetNode   func() string `json:"-"`
-}
-
-type GatewayConfig struct {
-	// Defaults to app name. Setting allows a stable identifier
-	Name     string `json:"name,omitempty"`
-	Replicas int    `json:"replicas,omitempty"`
-	// Which gateways virtual services will use
-	VirtualServices []string `json:"virtualServices,omitempty"`
+	Name      string                 `json:"name,omitempty"`
+	AppType   AppType                `json:"appType,omitempty"`
+	Replicas  int                    `json:"replicas,omitempty"`
+	Instances int                    `json:"instances,omitempty"`
+	Gateways  GatewayConfig          `json:"gateways,omitempty"`
+	Istio     IstioApplicationConfig `json:"istio,omitempty"`
+	GetNode   func() string          `json:"-"`
 }
 
 type NamespaceConfig struct {
 	Name         string              `json:"name,omitempty"`
 	Replicas     int                 `json:"replicas,omitempty"`
 	Applications []ApplicationConfig `json:"applications,omitempty"`
+	Istio        IstioNSConfig       `json:"istio,omitempty"`
+}
+
+type GatewayConfig struct {
+	// Defaults to parent name. Setting allows a stable identifier
+	Name     string `json:"name,omitempty"`
+	Replicas int    `json:"replicas,omitempty"`
 }
 
 type ClusterType string
@@ -122,6 +134,7 @@ type ClusterConfig struct {
 	Nodes        int                    `json:"nodes,omitempty"`
 	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
 	ClusterType  ClusterType            `json:"-"`
+	Istio        IstioRootNSConfig      `json:"istio,omitempty"`
 }
 
 func (c ClusterConfig) ApplyDefaults() ClusterConfig {
@@ -138,8 +151,11 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 			if dp.Replicas == 0 {
 				dp.Replicas = 1
 			}
-			if dp.PodType == "" {
-				dp.PodType = SidecarType
+			if len(dp.Gateways.Name) > 0 && dp.Gateways.Replicas == 0 {
+				dp.Gateways.Replicas = 1
+			}
+			if dp.AppType == "" {
+				dp.AppType = SidecarType
 			}
 			ns.Applications[d] = dp
 		}

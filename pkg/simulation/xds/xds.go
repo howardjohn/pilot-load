@@ -17,7 +17,7 @@ type Simulation struct {
 	IP             string
 	// Defaults to "Kubernetes"
 	Cluster string
-	PodType model.PodType
+	AppType model.AppType
 
 	GrpcOpts []grpc.DialOption
 
@@ -57,7 +57,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 			Namespace: x.Namespace,
 			Workload:  x.Name + "-" + x.IP,
 			Meta:      meta,
-			NodeType:  string(x.PodType),
+			NodeType:  string(x.AppType),
 			IP:        x.IP,
 			Context:   c,
 			GrpcOpts:  x.GrpcOpts,

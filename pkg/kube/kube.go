@@ -230,6 +230,7 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) (metav1.Object, e
 	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
 	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
 	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+	scope.Infof(" creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
 
 	if skipGet {
 		var res metav1.Object

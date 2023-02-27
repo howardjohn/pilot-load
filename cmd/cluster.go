@@ -83,3 +83,29 @@ func logClusterConfig(config model.ClusterConfig) {
 	}
 	log.Infof("Initial configuration: %d namespaces, %d applications, and %d pods", namespaces, applications, pods)
 }
+
+func RunClusterMode() error {
+	args, err := GetArgs()
+	if err != nil {
+		return err
+	}
+	config, err := readConfigFile("/usr/local/google/home/hemendrat/workspace/pilot-load-hemendrat/pilot-load/example-config.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %v", err)
+	}
+	config = config.ApplyDefaults()
+	switch clusterType {
+	case "fake":
+		config.ClusterType = model.Fake
+	case "fake-node":
+		config.ClusterType = model.FakeNode
+	case "real":
+		config.ClusterType = model.Real
+	default:
+		return fmt.Errorf("unknown cluster type %q", clusterType)
+	}
+	args.ClusterConfig = config
+	logConfig(args.ClusterConfig)
+	logClusterConfig(args.ClusterConfig)
+	return simulation.Cluster(args)
+}
