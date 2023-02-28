@@ -13,7 +13,7 @@ type EnvoyFilterSpec struct {
 	App            string
 	Namespace      string
 	connectTimeout int
-	Parent         model.IstioAPIParent
+	APIScope       model.APIScope
 }
 
 type EnvoyFilter struct {
@@ -49,12 +49,12 @@ func (v *EnvoyFilter) getEnvoyFilter() *v1alpha3.EnvoyFilter {
 	operation := networkingv1alpha3.EnvoyFilter_Patch_INSERT_AFTER
 
 	// Apply different configurations at different levels
-	if s.Parent == model.Namespace {
+	if s.APIScope == model.Namespace {
 		applyTo = networkingv1alpha3.EnvoyFilter_HTTP_FILTER
 		context = networkingv1alpha3.EnvoyFilter_SIDECAR_INBOUND
 		operation = networkingv1alpha3.EnvoyFilter_Patch_INSERT_BEFORE
 
-	} else if s.Parent == model.Application {
+	} else if s.APIScope == model.Application {
 		name = s.App
 		applyTo = networkingv1alpha3.EnvoyFilter_LISTENER
 		context = networkingv1alpha3.EnvoyFilter_ANY

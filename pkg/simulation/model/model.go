@@ -67,7 +67,7 @@ type ClusterJitterConfig struct {
 
 type AppType string
 
-type IstioAPIParent string
+type APIScope string
 
 func (p AppType) HasProxy() bool {
 	return p == SidecarType || p == GatewayType
@@ -86,16 +86,16 @@ const (
 )
 
 const (
-	RootNamespace IstioAPIParent = "rootNamespace"
+	Global APIScope = "global"
 
-	Namespace IstioAPIParent = "namespace"
+	Namespace APIScope = "namespace"
 
-	Application IstioAPIParent = "application"
+	Application APIScope = "application"
 )
 
 type ApplicationConfig struct {
 	Name      string                 `json:"name,omitempty"`
-	AppType   AppType                `json:"appType,omitempty"`
+	Type      AppType                `json:"type,omitempty"`
 	Replicas  int                    `json:"replicas,omitempty"`
 	Instances int                    `json:"instances,omitempty"`
 	Gateways  GatewayConfig          `json:"gateways,omitempty"`
@@ -154,8 +154,8 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 			if len(dp.Gateways.Name) > 0 && dp.Gateways.Replicas == 0 {
 				dp.Gateways.Replicas = 1
 			}
-			if dp.AppType == "" {
-				dp.AppType = SidecarType
+			if dp.Type == "" {
+				dp.Type = SidecarType
 			}
 			ns.Applications[d] = dp
 		}

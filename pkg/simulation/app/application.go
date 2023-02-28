@@ -15,7 +15,7 @@ type ApplicationSpec struct {
 	Namespace      string
 	ServiceAccount string
 	Instances      int
-	AppType        model.AppType
+	Type           model.AppType
 	GatewayConfig  model.GatewayConfig
 	Istio          model.IstioApplicationConfig
 	Labels         map[string]string
@@ -49,7 +49,7 @@ func NewApplication(s ApplicationSpec) *Application {
 	w := &Application{Spec: &s}
 
 	// Apply common CRDs to all app types
-	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.VirtualService != nil {
+	if s.Istio.Default == true || s.Istio.VirtualService != nil {
 		var gateways []string
 		if s.Istio.VirtualService != nil && len(s.Istio.VirtualService.Gateways) != 0 {
 			gateways = s.Istio.VirtualService.Gateways
@@ -61,7 +61,7 @@ func NewApplication(s ApplicationSpec) *Application {
 			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
 		})
 	}
-	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.DestinationRule != nil {
+	if s.Istio.Default == true || s.Istio.DestinationRule != nil {
 		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
@@ -70,21 +70,21 @@ func NewApplication(s ApplicationSpec) *Application {
 	}
 
 	// Apply CRDs for External app type and return
-	if s.AppType == model.ExternalType {
+	if s.Type == model.ExternalType {
 		w.serviceEntry = config.NewServiceEntry(config.ServiceEntrySpec{
 			App:       s.App,
 			Namespace: s.Namespace,
-			AppType:   s.AppType,
+			AppType:   s.Type,
 		})
 		return w
 	}
 
 	// Apply CRDs for VM app type and return
-	if s.AppType == model.VMType {
+	if s.Type == model.VMType {
 		w.serviceEntry = config.NewServiceEntry(config.ServiceEntrySpec{
 			App:       s.App,
 			Namespace: s.Namespace,
-			AppType:   s.AppType,
+			AppType:   s.Type,
 		})
 
 		w.workloadGroup = config.NewWorkloadGroup(config.WorkloadGroupSpec{
@@ -100,18 +100,18 @@ func NewApplication(s ApplicationSpec) *Application {
 	}
 
 	//Apply CRDs for sidecar and GW app type
-	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.EnvoyFilter != nil {
+	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
 		w.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
-			Parent:    model.Application,
+			APIScope:  model.Application,
 		})
 	}
-	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.Sidecar != nil {
+	if s.Istio.Default == true || s.Istio.Sidecar != nil {
 		w.sidecar = config.NewSidecar(config.SidecarSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
-			Parent:    model.Application,
+			APIScope:  model.Application,
 		})
 	}
 
@@ -122,7 +122,7 @@ func NewApplication(s ApplicationSpec) *Application {
 	//		Node:           s.Node,
 	//		App:            s.App,
 	//		Namespace:      s.Namespace,
-	//		PodType:        s.PodType,
+	//		type:           s.type,
 	//		ClusterType:    s.ClusterType,
 	//	})
 	for i := 0; i < s.Instances; i++ {
@@ -144,7 +144,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		ClusterType: s.ClusterType,
 	})
 
-	if s.AppType == model.GatewayType {
+	if s.Type == model.GatewayType {
 		for i := 0; i < s.GatewayConfig.Replicas; i++ {
 			gw := config.NewGateway(config.GatewaySpec{
 				Name:      s.GatewayConfig.Name,
@@ -176,14 +176,8 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	if w.sidecar != nil {
 		sims = append(sims, w.sidecar)
 	}
-	if w.serviceEntry != nil {
-		sims = append(sims, w.serviceEntry)
-	}
 	if w.workloadEntry != nil {
 		sims = append(sims, w.workloadEntry)
-	}
-	if w.workloadGroup != nil {
-		sims = append(sims, w.workloadGroup)
 	}
 
 	return sims
@@ -204,7 +198,7 @@ func (w *Application) makePod() *Pod {
 		Node:           s.Node,
 		App:            s.App,
 		Namespace:      s.Namespace,
-		AppType:        s.AppType,
+		AppType:        s.Type,
 		ClusterType:    s.ClusterType,
 	})
 }

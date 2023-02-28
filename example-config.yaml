@@ -32,7 +32,7 @@ namespaces:
   - name: ingress
     replicas: 1
     instances: 1
-    appType: router
+    type: router
     gateways: # create istio gateway for 'ingress' application
       name: main
       enabled: true

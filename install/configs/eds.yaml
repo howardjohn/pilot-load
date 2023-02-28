@@ -14,7 +14,7 @@ data:
     - name: mesh
       replicas: 1
       istio:
-          default: true
+        default: true
       applications:
       - name: big
         replicas: 10

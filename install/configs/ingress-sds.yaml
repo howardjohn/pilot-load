@@ -19,7 +19,7 @@ data:
         instances: 0
         istio:
           default: true
-        appType: router
+        type: router
         gateways:
           name: main
           replicas: 100

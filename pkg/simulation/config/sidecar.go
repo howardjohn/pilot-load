@@ -11,7 +11,7 @@ type SidecarSpec struct {
 	App       string
 	Namespace string
 	ModeIndex int
-	Parent    model.IstioAPIParent
+	APIScope  model.APIScope
 }
 
 type Sidecar struct {
@@ -42,36 +42,21 @@ func (v *Sidecar) getSidecar() *v1alpha3.Sidecar {
 	spec := networkingv1alpha3.Sidecar{}
 	name := s.Namespace
 
-	var mode networkingv1alpha3.OutboundTrafficPolicy_Mode
-	switch s.ModeIndex {
-	case 0:
-		mode = networkingv1alpha3.OutboundTrafficPolicy_REGISTRY_ONLY
-	case 1:
-		mode = networkingv1alpha3.OutboundTrafficPolicy_ALLOW_ANY
-	}
 	spec.OutboundTrafficPolicy = &networkingv1alpha3.OutboundTrafficPolicy{
-		Mode: mode,
+		Mode: networkingv1alpha3.OutboundTrafficPolicy_Mode(s.ModeIndex),
 	}
 
-	// Apply different configurations at different levels
-	if s.Parent == model.Application {
+	if s.APIScope == model.Application {
 		name = s.App
 		spec.WorkloadSelector = &networkingv1alpha3.WorkloadSelector{
 			Labels: map[string]string{
 				"app": v.Spec.App,
 			},
 		}
-		spec.Egress = []*networkingv1alpha3.IstioEgressListener{{
-			Hosts: []string{"./*"},
-		}}
-	} else {
-		spec.Ingress = []*networkingv1alpha3.IstioIngressListener{{
-			Port: &networkingv1alpha3.Port{
-				Number:   9080,
-				Protocol: "HTTP",
-			},
-		}}
 	}
+	spec.Egress = []*networkingv1alpha3.IstioEgressListener{{
+		Hosts: []string{"./*"},
+	}}
 
 	return &v1alpha3.Sidecar{
 		ObjectMeta: metav1.ObjectMeta{

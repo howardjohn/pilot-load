@@ -20,21 +20,21 @@ data:
       - name: big
         replicas: 1
         instances: 25
-        appType: external
+        type: external
         istio:
           virtualService:
             gateways: [gateway/main]
       - name: medium
         replicas: 5
         instances: 5
-        appType: external
+        type: external
         istio:
           virtualService:
             gateways: [gateway/main]
       - name: small
         replicas: 25
         instances: 1
-        appType: external
+        type: external
         istio:
           virtualService:
             gateways: [gateway/main]
@@ -44,7 +44,7 @@ data:
       - name: ingress
         replicas: 1
         instances: 200
-        appType: router
+        type: router
         gateways:
           name: main
           enabled: true

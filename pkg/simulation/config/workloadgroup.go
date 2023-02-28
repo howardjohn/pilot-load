@@ -1,8 +1,6 @@
 package config
 
 import (
-	"math/rand"
-
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +11,6 @@ import (
 type WorkloadGroupSpec struct {
 	App       string
 	Namespace string
-	Weight    int
 }
 
 type WorkloadGroup struct {
@@ -24,11 +21,6 @@ var _ model.Simulation = &WorkloadGroup{}
 
 func NewWorkloadGroup(s WorkloadGroupSpec) *WorkloadGroup {
 	return &WorkloadGroup{Spec: &s}
-}
-
-func (v *WorkloadGroup) Refresh(ctx model.Context) error {
-	v.Spec.Weight = rand.Intn(100)
-	return v.Run(ctx)
 }
 
 func (v *WorkloadGroup) Run(ctx model.Context) (err error) {
@@ -53,8 +45,9 @@ func (v *WorkloadGroup) getWorkloadGroup() *v1alpha3.WorkloadGroup {
 				},
 			},
 			Template: &networkingv1alpha3.WorkloadEntry{
-				Address: "8.8.8.8",
-				Weight:  uint32(s.Weight),
+				Ports: map[string]uint32{
+					"http": 8080,
+				},
 				Labels: map[string]string{
 					"app": s.App,
 				},

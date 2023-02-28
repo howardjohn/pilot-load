@@ -9,10 +9,9 @@ import (
 )
 
 type ServiceEntrySpec struct {
-	App               string
-	AppType           model.AppType
-	Namespace         string
-	SEResolutionIndex int
+	App       string
+	AppType   model.AppType
+	Namespace string
 }
 
 type ServiceEntry struct {
@@ -23,11 +22,6 @@ var _ model.Simulation = &ServiceEntry{}
 
 func NewServiceEntry(s ServiceEntrySpec) *ServiceEntry {
 	return &ServiceEntry{Spec: &s}
-}
-
-func (v *ServiceEntry) Refresh(ctx model.Context) error {
-	v.Spec.SEResolutionIndex = (v.Spec.SEResolutionIndex + 1) % 3
-	return v.Run(ctx)
 }
 
 func (v *ServiceEntry) Run(ctx model.Context) (err error) {
@@ -41,19 +35,7 @@ func (v *ServiceEntry) Cleanup(ctx model.Context) error {
 func (v *ServiceEntry) getServiceEntry() *v1alpha3.ServiceEntry {
 
 	s := v.Spec
-	spec := networkingv1alpha3.ServiceEntry{}
-
-	var seResolution networkingv1alpha3.ServiceEntry_Resolution
-	switch s.SEResolutionIndex {
-	case 0:
-		seResolution = networkingv1alpha3.ServiceEntry_STATIC
-	case 1:
-		seResolution = networkingv1alpha3.ServiceEntry_DNS
-	case 2:
-		seResolution = networkingv1alpha3.ServiceEntry_DNS_ROUND_ROBIN
-	}
-
-	spec = networkingv1alpha3.ServiceEntry{
+	spec := networkingv1alpha3.ServiceEntry{
 		Hosts:    []string{s.App},
 		Location: networkingv1alpha3.ServiceEntry_MESH_INTERNAL,
 		Ports: []*networkingv1alpha3.ServicePort{
@@ -64,7 +46,7 @@ func (v *ServiceEntry) getServiceEntry() *v1alpha3.ServiceEntry {
 				TargetPort: 8080,
 			},
 		},
-		Resolution: seResolution,
+		Resolution: networkingv1alpha3.ServiceEntry_DNS,
 	}
 
 	if s.AppType == model.ExternalType {

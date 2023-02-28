@@ -58,7 +58,7 @@ data:
           # create all applicable istio resources for each replica of 'gateway' application
           default: true
         instances: 20
-        appType: router
+        type: router
         gateways: # create istio gateway for 'ingress' application
           name: main
           enabled: true

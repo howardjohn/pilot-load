@@ -3,6 +3,7 @@ package config
 import (
 	"math/rand"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +48,7 @@ func (v *WorkloadEntry) getWorkloadEntry() *v1alpha3.WorkloadEntry {
 			Namespace: s.Namespace,
 		},
 		Spec: networkingv1alpha3.WorkloadEntry{
-			Address: "8.8.8.8",
+			Address: util.GetIP(),
 			Weight:  uint32(s.Weight),
 			Labels: map[string]string{
 				"app": s.App,

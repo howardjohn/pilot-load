@@ -1,19 +1,19 @@
 package model
 
 type IstioRootNSConfig struct {
-	Default     *bool              `json:"default,omitempty"`
+	Default     bool               `json:"default,omitempty"`
 	EnvoyFilter *EnvoyFilterConfig `json:"envoyFilter,omitempty"`
 	Sidecar     *SidecarConfig     `json:"sidecar,omitempty"`
 }
 
 type IstioNSConfig struct {
-	Default     *bool              `json:"default,omitempty"`
+	Default     bool               `json:"default,omitempty"`
 	EnvoyFilter *EnvoyFilterConfig `json:"envoyFilter,omitempty"`
 	Sidecar     *SidecarConfig     `json:"sidecar,omitempty"`
 }
 
 type IstioApplicationConfig struct {
-	Default         *bool                  `json:"default,omitempty"`
+	Default         bool                   `json:"default,omitempty"`
 	DestinationRule *DestinationRuleConfig `json:"destinationRule,omitempty"`
 	EnvoyFilter     *EnvoyFilterConfig     `json:"envoyFilter,omitempty"`
 	Sidecar         *SidecarConfig         `json:"sidecar,omitempty"`

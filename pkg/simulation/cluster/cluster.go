@@ -44,16 +44,16 @@ func NewCluster(s ClusterSpec) *Cluster {
 		}))
 	}
 
-	if (s.Config.Istio.Default != nil && *s.Config.Istio.Default == true) || s.Config.Istio.EnvoyFilter != nil {
+	if s.Config.Istio.Default == true || s.Config.Istio.EnvoyFilter != nil {
 		cluster.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			Namespace: "istio-system",
-			Parent:    model.RootNamespace,
+			APIScope:  model.Global,
 		})
 	}
-	if (s.Config.Istio.Default != nil && *s.Config.Istio.Default == true) || s.Config.Istio.Sidecar != nil {
+	if s.Config.Istio.Default == true || s.Config.Istio.Sidecar != nil {
 		cluster.sidecar = config.NewSidecar(config.SidecarSpec{
 			Namespace: "istio-system",
-			Parent:    model.RootNamespace,
+			APIScope:  model.Global,
 		})
 	}
 

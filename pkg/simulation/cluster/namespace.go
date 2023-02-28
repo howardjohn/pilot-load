@@ -40,17 +40,17 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}),
 	}
 
-	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.EnvoyFilter != nil {
+	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
 		ns.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			Namespace: ns.Spec.Name,
-			Parent:    model.Namespace,
+			APIScope:  model.Namespace,
 		})
 	}
 
-	if (s.Istio.Default != nil && *s.Istio.Default == true) || s.Istio.Sidecar != nil {
+	if s.Istio.Default == true || s.Istio.Sidecar != nil {
 		ns.sidecar = config.NewSidecar(config.SidecarSpec{
 			Namespace: ns.Spec.Name,
-			Parent:    model.Namespace,
+			APIScope:  model.Namespace,
 		})
 	}
 
@@ -70,7 +70,7 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig, ct model.Clus
 		// TODO implement different service accounts
 		ServiceAccount: "default",
 		Instances:      args.Instances,
-		AppType:        args.AppType,
+		Type:           args.Type,
 		GatewayConfig:  args.Gateways,
 		ClusterType:    ct,
 		Istio:          args.Istio,
