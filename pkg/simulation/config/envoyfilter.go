@@ -1,6 +1,8 @@
 package config
 
 import (
+	"math/rand"
+
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -27,7 +29,7 @@ func NewEnvoyFilter(s EnvoyFilterSpec) *EnvoyFilter {
 }
 
 func (v *EnvoyFilter) Refresh(ctx model.Context) error {
-	v.Spec.randomSampling = (v.Spec.randomSampling + 1) % 10
+	v.Spec.randomSampling = rand.Intn(100) + 1
 	return v.Run(ctx)
 }
 
