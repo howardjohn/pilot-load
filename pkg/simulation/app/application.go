@@ -204,8 +204,11 @@ func (w *Application) makePod() *Pod {
 }
 
 func (w *Application) getSims() []model.Simulation {
-	sims := []model.Simulation{w.service}
+	sims := []model.Simulation{}
 
+	if w.service != nil {
+		sims = append(sims, w.service)
+	}
 	if w.sidecar != nil {
 		sims = append(sims, w.sidecar)
 	}

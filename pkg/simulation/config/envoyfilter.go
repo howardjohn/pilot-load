@@ -12,7 +12,7 @@ import (
 type EnvoyFilterSpec struct {
 	App            string
 	Namespace      string
-	connectTimeout int
+	randomSampling int
 	APIScope       model.APIScope
 }
 
@@ -27,7 +27,7 @@ func NewEnvoyFilter(s EnvoyFilterSpec) *EnvoyFilter {
 }
 
 func (v *EnvoyFilter) Refresh(ctx model.Context) error {
-	v.Spec.connectTimeout = (v.Spec.connectTimeout + 1) % 10
+	v.Spec.randomSampling = (v.Spec.randomSampling + 1) % 10
 	return v.Run(ctx)
 }
 
@@ -44,22 +44,8 @@ func (v *EnvoyFilter) getEnvoyFilter() *v1alpha3.EnvoyFilter {
 	spec := networkingv1alpha3.EnvoyFilter{}
 
 	name := s.Namespace
-	applyTo := networkingv1alpha3.EnvoyFilter_NETWORK_FILTER
-	context := networkingv1alpha3.EnvoyFilter_SIDECAR_OUTBOUND
-	operation := networkingv1alpha3.EnvoyFilter_Patch_INSERT_AFTER
-
-	// Apply different configurations at different levels
-	if s.APIScope == model.Namespace {
-		applyTo = networkingv1alpha3.EnvoyFilter_HTTP_FILTER
-		context = networkingv1alpha3.EnvoyFilter_SIDECAR_INBOUND
-		operation = networkingv1alpha3.EnvoyFilter_Patch_INSERT_BEFORE
-
-	} else if s.APIScope == model.Application {
+	if s.APIScope == model.Application {
 		name = s.App
-		applyTo = networkingv1alpha3.EnvoyFilter_LISTENER
-		context = networkingv1alpha3.EnvoyFilter_ANY
-		operation = networkingv1alpha3.EnvoyFilter_Patch_INSERT_FIRST
-
 		spec.WorkloadSelector = &networkingv1alpha3.WorkloadSelector{
 			Labels: map[string]string{
 				"app": s.App,
@@ -69,18 +55,47 @@ func (v *EnvoyFilter) getEnvoyFilter() *v1alpha3.EnvoyFilter {
 
 	configPatches := []*networkingv1alpha3.EnvoyFilter_EnvoyConfigObjectPatch{}
 	configPatch := networkingv1alpha3.EnvoyFilter_EnvoyConfigObjectPatch{
-		ApplyTo: applyTo,
+		ApplyTo: networkingv1alpha3.EnvoyFilter_NETWORK_FILTER,
 
 		Match: &networkingv1alpha3.EnvoyFilter_EnvoyConfigObjectMatch{
-			Context: context,
+			Context: networkingv1alpha3.EnvoyFilter_ANY,
+			ObjectTypes: &networkingv1alpha3.EnvoyFilter_EnvoyConfigObjectMatch_Listener{
+				Listener: &networkingv1alpha3.EnvoyFilter_ListenerMatch{
+					FilterChain: &networkingv1alpha3.EnvoyFilter_ListenerMatch_FilterChainMatch{
+						Filter: &networkingv1alpha3.EnvoyFilter_ListenerMatch_FilterMatch{
+							Name: "envoy.http_connection_manager",
+						},
+					},
+				},
+			},
 		},
 
 		Patch: &networkingv1alpha3.EnvoyFilter_Patch{
-			Operation: operation,
+			Operation: networkingv1alpha3.EnvoyFilter_Patch_MERGE,
 			Value: &structpb.Struct{
 				Fields: map[string]*structpb.Value{
-					"name":            &structpb.Value{Kind: &structpb.Value_StringValue{"patch"}},
-					"connect_timeout": &structpb.Value{Kind: &structpb.Value_NumberValue{float64(s.connectTimeout)}},
+					"typed_config": {Kind: &structpb.Value_StructValue{
+						StructValue: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"@type": {Kind: &structpb.Value_StringValue{StringValue: "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager"}},
+								"tracing": {Kind: &structpb.Value_StructValue{
+									StructValue: &structpb.Struct{
+										Fields: map[string]*structpb.Value{
+											"random_sampling": {Kind: &structpb.Value_StructValue{
+												StructValue: &structpb.Struct{
+													Fields: map[string]*structpb.Value{
+														"value": {Kind: &structpb.Value_NumberValue{NumberValue: float64(s.randomSampling)}},
+													},
+												},
+											},
+											},
+										},
+									},
+								},
+								},
+							},
+						},
+					}},
 				},
 			},
 		},
