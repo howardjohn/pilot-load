@@ -8,7 +8,10 @@ import (
 )
 
 type SidecarSpec struct {
+	App       string
 	Namespace string
+	ModeIndex int
+	APIScope  model.APIScope
 }
 
 type Sidecar struct {
@@ -21,6 +24,11 @@ func NewSidecar(s SidecarSpec) *Sidecar {
 	return &Sidecar{Spec: &s}
 }
 
+func (v *Sidecar) Refresh(ctx model.Context) error {
+	v.Spec.ModeIndex = (v.Spec.ModeIndex + 1) % 2
+	return v.Run(ctx)
+}
+
 func (v *Sidecar) Run(ctx model.Context) (err error) {
 	return ctx.Client.Apply(v.getSidecar())
 }
@@ -31,15 +39,30 @@ func (v *Sidecar) Cleanup(ctx model.Context) error {
 
 func (v *Sidecar) getSidecar() *v1alpha3.Sidecar {
 	s := v.Spec
+	spec := networkingv1alpha3.Sidecar{}
+	name := s.Namespace
+
+	spec.OutboundTrafficPolicy = &networkingv1alpha3.OutboundTrafficPolicy{
+		Mode: networkingv1alpha3.OutboundTrafficPolicy_Mode(s.ModeIndex),
+	}
+
+	if s.APIScope == model.Application {
+		name = s.App
+		spec.WorkloadSelector = &networkingv1alpha3.WorkloadSelector{
+			Labels: map[string]string{
+				"app": v.Spec.App,
+			},
+		}
+	}
+	spec.Egress = []*networkingv1alpha3.IstioEgressListener{{
+		Hosts: []string{"./*"},
+	}}
+
 	return &v1alpha3.Sidecar{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "scope-namespace",
+			Name:      name,
 			Namespace: s.Namespace,
 		},
-		Spec: networkingv1alpha3.Sidecar{
-			Egress: []*networkingv1alpha3.IstioEgressListener{{
-				Hosts: []string{"./*"},
-			}},
-		},
+		Spec: spec,
 	}
 }

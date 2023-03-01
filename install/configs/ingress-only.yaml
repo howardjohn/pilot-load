@@ -20,28 +20,31 @@ data:
       - name: big
         replicas: 1
         instances: 25
-        podType: external
-        gateways:
-          virtualServices: [gateway/main]
+        type: external
+        istio:
+          virtualService:
+            gateways: [gateway/main]
       - name: medium
         replicas: 5
         instances: 5
-        podType: external
-        gateways:
-          virtualServices: [gateway/main]
+        type: external
+        istio:
+          virtualService:
+            gateways: [gateway/main]
       - name: small
         replicas: 25
         instances: 1
-        podType: external
-        gateways:
-          virtualServices: [gateway/main]
+        type: external
+        istio:
+          virtualService:
+            gateways: [gateway/main]
     - name: gateway
       replicas: 1
       applications:
       - name: ingress
         replicas: 1
         instances: 200
-        podType: router
+        type: router
         gateways:
           name: main
           enabled: true

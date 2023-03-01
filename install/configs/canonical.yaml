@@ -9,36 +9,56 @@ data:
   # Overall this gives 64*75+200=5000 pods
   config.yaml: |
     nodeMetadata: {}
+    istio:
+      default: true # create all applicable istio resources for root namespace
     gracePeriod: 10s
     jitter:
       workloads: "1s"
       config: "15s"
     namespaces:
     - name: mesh
+      istio:
+        # create all applicable istio resources for each replica of 'mesh' namespace
+        default: true
       replicas: 64
       applications:
       - name: big
         replicas: 1
+        istio:
+          # create all applicable istio resources for each replica of 'big' application
+          default: true
+          # create virtualService istio resource for each replica of 'big' application with referencing 'main' gateway
+          virtualService:
+            gateways: [main]
         instances: 25
-        gateways:
-          virtualServices: [main]
       - name: medium
         replicas: 5
+        istio:
+          # create all applicable istio resources for each replica of 'medium' application
+          default: true
+          # create virtualService istio resource for each replica of 'medium' application with referencing 'main' gateway
+          virtualService:
+            gateways: [main]
         instances: 5
-        gateways:
-          virtualServices: [main]
       - name: small
         replicas: 25
+        istio:
+          # create all applicable istio resources for each replica of 'small' application
+          default: true
+          # create virtualService istio resource for each replica of 'small' application with referencing 'main' gateway
+          virtualService:
+            gateways: [main]
         instances: 1
-        gateways:
-          virtualServices: [main]
     - name: gateway
       replicas: 1
       applications:
       - name: ingress
         replicas: 1
+        istio:
+          # create all applicable istio resources for each replica of 'gateway' application
+          default: true
         instances: 20
-        podType: router
-        gateways:
+        type: router
+        gateways: # create istio gateway for 'ingress' application
           name: main
           enabled: true

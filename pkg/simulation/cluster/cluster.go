@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"istio.io/istio/pkg/kube/controllers"
@@ -21,10 +22,12 @@ type ClusterSpec struct {
 }
 
 type Cluster struct {
-	Name       string
-	Spec       *ClusterSpec
-	namespaces []*Namespace
-	nodes      []*Node
+	Name        string
+	Spec        *ClusterSpec
+	namespaces  []*Namespace
+	envoyFilter *config.EnvoyFilter
+	sidecar     *config.Sidecar
+	nodes       []*Node
 }
 
 var _ model.Simulation = &Cluster{}
@@ -40,6 +43,20 @@ func NewCluster(s ClusterSpec) *Cluster {
 			ClusterType: s.Config.ClusterType,
 		}))
 	}
+
+	if s.Config.Istio.Default == true || s.Config.Istio.EnvoyFilter != nil {
+		cluster.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
+			Namespace: "istio-system",
+			APIScope:  model.Global,
+		})
+	}
+	if s.Config.Istio.Default == true || s.Config.Istio.Sidecar != nil {
+		cluster.sidecar = config.NewSidecar(config.SidecarSpec{
+			Namespace: "istio-system",
+			APIScope:  model.Global,
+		})
+	}
+
 	for _, ns := range s.Config.Namespaces {
 		for r := 0; r < ns.Replicas; r++ {
 			deployments := ns.Applications
@@ -55,6 +72,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 				Name:        name,
 				Deployments: deployments,
 				ClusterType: s.Config.ClusterType,
+				Istio:       ns.Istio,
 			}))
 		}
 	}
@@ -99,6 +117,9 @@ func (c *Cluster) getSims() []model.Simulation {
 	for _, ns := range c.nodes {
 		sims = append(sims, ns)
 	}
+
+	sims = append(sims, c.getIstioResources()...)
+
 	for _, ns := range c.namespaces {
 		sims = append(sims, ns)
 	}
@@ -118,11 +139,16 @@ func (c *Cluster) Run(ctx model.Context) error {
 		return fmt.Errorf("failed to bootstrap nodes: %v", err)
 	}
 
+	istioResources := c.getIstioResources()
+	if err := (model.AggregateSimulation{Simulations: istioResources}.Run(ctx)); err != nil {
+		return fmt.Errorf("failed to bootstrap istio resources: %v", err)
+	}
+
 	total := len(c.namespaces)
 	for i, ns := range c.namespaces {
 		log.Infof("starting namespace %v (%d of %d)", ns.Spec.Name, i+1, total)
 		if err := (model.AggregateSimulation{Simulations: []model.Simulation{ns}}.Run(ctx)); err != nil {
-			return fmt.Errorf("failed to bootstrap nodes: %v", err)
+			return fmt.Errorf("failed to bootstrap namespace: %v", err)
 		}
 		select {
 		case <-time.After(time.Duration(c.Spec.Config.GracePeriod)):
@@ -201,4 +227,16 @@ func (c *Cluster) watchPods(ctx model.Context) {
 		controllers.WithMaxAttempts(5))
 	podInformer.AddEventHandler(controllers.ObjectHandler(q.AddObject))
 	q.Run(ctx.Done())
+}
+func (c *Cluster) getIstioResources() []model.Simulation {
+	sims := []model.Simulation{}
+
+	if c.sidecar != nil {
+		sims = append(sims, c.sidecar)
+	}
+	if c.envoyFilter != nil {
+		sims = append(sims, c.envoyFilter)
+	}
+
+	return sims
 }

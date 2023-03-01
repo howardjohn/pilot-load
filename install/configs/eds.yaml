@@ -13,10 +13,16 @@ data:
     namespaces:
     - name: mesh
       replicas: 1
+      istio:
+        default: true
       applications:
       - name: big
         replicas: 10
+        istio:
+          default: true
         instances: 100
       - name: huge
+        istio:
+          default: true
         replicas: 1
         instances: 1000

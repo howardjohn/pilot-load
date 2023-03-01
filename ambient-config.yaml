@@ -8,10 +8,14 @@ namespaces:
   replicas: 1
   applications:
   - name: big
+    istio:
+      default: true
     replicas: 1
     instances: 1000
-    podType: ambient
+    type: ambient
   - name: small # TODO: SA per app
     instances: 1
+    istio:
+      default: true
     replicas: 1000
-    podType: ambient
+    type: ambient

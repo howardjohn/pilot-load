@@ -15,8 +15,9 @@ type ApplicationSpec struct {
 	Namespace      string
 	ServiceAccount string
 	Instances      int
-	PodType        model.PodType
+	Type           model.AppType
 	GatewayConfig  model.GatewayConfig
+	Istio          model.IstioApplicationConfig
 	Labels         map[string]string
 	ClusterType    model.ClusterType
 }
@@ -31,6 +32,11 @@ type Application struct {
 	gateways       []*config.Gateway
 	secrets        []*config.Secret
 	destRule       *config.DestinationRule
+	workloadEntry  *config.WorkloadEntry
+	workloadGroup  *config.WorkloadGroup
+	serviceEntry   *config.ServiceEntry
+	envoyFilter    *config.EnvoyFilter
+	sidecar        *config.Sidecar
 }
 
 var (
@@ -42,6 +48,73 @@ var (
 func NewApplication(s ApplicationSpec) *Application {
 	w := &Application{Spec: &s}
 
+	// Apply common CRDs to all app types
+	if s.Istio.Default == true || s.Istio.VirtualService != nil {
+		var gateways []string
+		if s.Istio.VirtualService != nil && len(s.Istio.VirtualService.Gateways) != 0 {
+			gateways = s.Istio.VirtualService.Gateways
+		}
+		w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			Gateways:  gateways,
+			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
+		})
+	}
+	if s.Istio.Default == true || s.Istio.DestinationRule != nil {
+		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			Subsets:   []string{"a"},
+		})
+	}
+
+	// Apply CRDs for External app type and return
+	if s.Type == model.ExternalType {
+		w.serviceEntry = config.NewServiceEntry(config.ServiceEntrySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			AppType:   s.Type,
+		})
+		return w
+	}
+
+	// Apply CRDs for VM app type and return
+	if s.Type == model.VMType {
+		w.serviceEntry = config.NewServiceEntry(config.ServiceEntrySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			AppType:   s.Type,
+		})
+
+		w.workloadGroup = config.NewWorkloadGroup(config.WorkloadGroupSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+		})
+
+		w.workloadEntry = config.NewWorkloadEntry(config.WorkloadEntrySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+		})
+		return w
+	}
+
+	//Apply CRDs for sidecar and GW app type
+	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
+		w.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			APIScope:  model.Application,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.Sidecar != nil {
+		w.sidecar = config.NewSidecar(config.SidecarSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			APIScope:  model.Application,
+		})
+	}
+
 	// Currently we never use Deployment since its pretty slow
 	//	w.deployment = NewDeployment(DeploymentSpec{
 	//		ServiceAccount: s.ServiceAccount,
@@ -49,7 +122,7 @@ func NewApplication(s ApplicationSpec) *Application {
 	//		Node:           s.Node,
 	//		App:            s.App,
 	//		Namespace:      s.Namespace,
-	//		PodType:        s.PodType,
+	//		type:           s.type,
 	//		ClusterType:    s.ClusterType,
 	//	})
 	for i := 0; i < s.Instances; i++ {
@@ -70,33 +143,22 @@ func NewApplication(s ApplicationSpec) *Application {
 		Namespace:   s.Namespace,
 		ClusterType: s.ClusterType,
 	})
-	for i := 0; i < s.GatewayConfig.Replicas; i++ {
-		gw := config.NewGateway(config.GatewaySpec{
-			Name:      s.GatewayConfig.Name,
-			App:       s.App,
-			Namespace: s.Namespace,
-		})
-		w.gateways = append(w.gateways, gw)
-		w.secrets = append(w.secrets, config.NewSecret(config.SecretSpec{
-			Namespace: s.Namespace,
-			Name:      gw.Name(),
-		}))
+
+	if s.Type == model.GatewayType {
+		for i := 0; i < s.GatewayConfig.Replicas; i++ {
+			gw := config.NewGateway(config.GatewaySpec{
+				Name:      s.GatewayConfig.Name,
+				App:       s.App,
+				Namespace: s.Namespace,
+			})
+			w.gateways = append(w.gateways, gw)
+			w.secrets = append(w.secrets, config.NewSecret(config.SecretSpec{
+				Namespace: s.Namespace,
+				Name:      gw.Name(),
+			}))
+		}
 	}
-	if s.PodType.HasProxy() {
-		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			Subsets:   []string{"a"},
-		})
-	}
-	if s.PodType == model.SidecarType || s.GatewayConfig.VirtualServices != nil {
-		w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			Gateways:  s.GatewayConfig.VirtualServices,
-			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
-		})
-	}
+
 	return w
 }
 
@@ -108,6 +170,16 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	if w.destRule != nil {
 		sims = append(sims, w.destRule)
 	}
+	if w.envoyFilter != nil {
+		sims = append(sims, w.envoyFilter)
+	}
+	if w.sidecar != nil {
+		sims = append(sims, w.sidecar)
+	}
+	if w.workloadEntry != nil {
+		sims = append(sims, w.workloadEntry)
+	}
+
 	return sims
 }
 
@@ -126,13 +198,33 @@ func (w *Application) makePod() *Pod {
 		Node:           s.Node,
 		App:            s.App,
 		Namespace:      s.Namespace,
-		PodType:        s.PodType,
+		AppType:        s.Type,
 		ClusterType:    s.ClusterType,
 	})
 }
 
 func (w *Application) getSims() []model.Simulation {
-	sims := []model.Simulation{w.service}
+	sims := []model.Simulation{}
+
+	if w.service != nil {
+		sims = append(sims, w.service)
+	}
+	if w.sidecar != nil {
+		sims = append(sims, w.sidecar)
+	}
+	if w.envoyFilter != nil {
+		sims = append(sims, w.envoyFilter)
+	}
+	if w.serviceEntry != nil {
+		sims = append(sims, w.serviceEntry)
+	}
+	if w.workloadEntry != nil {
+		sims = append(sims, w.workloadEntry)
+	}
+	if w.workloadGroup != nil {
+		sims = append(sims, w.workloadGroup)
+	}
+
 	if w.virtualService != nil {
 		sims = append(sims, w.virtualService)
 	}

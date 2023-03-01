@@ -11,11 +11,15 @@ data:
     namespaces:
     - name: gateway
       replicas: 1
+      istio:
+        default: true
       applications:
       - name: ingress
         replicas: 1
         instances: 0
-        podType: router
+        istio:
+          default: true
+        type: router
         gateways:
           name: main
           replicas: 100
