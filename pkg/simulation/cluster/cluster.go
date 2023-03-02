@@ -22,12 +22,16 @@ type ClusterSpec struct {
 }
 
 type Cluster struct {
-	Name        string
-	Spec        *ClusterSpec
-	namespaces  []*Namespace
-	envoyFilter *config.EnvoyFilter
-	sidecar     *config.Sidecar
-	nodes       []*Node
+	Name                  string
+	Spec                  *ClusterSpec
+	namespaces            []*Namespace
+	envoyFilter           *config.EnvoyFilter
+	sidecar               *config.Sidecar
+	telemetry             *config.Telemetry
+	peerAuthentication    *config.PeerAuthentication
+	requestAuthentication *config.RequestAuthentication
+	authorizationPolicy   *config.AuthorizationPolicy
+	nodes                 []*Node
 }
 
 var _ model.Simulation = &Cluster{}
@@ -52,6 +56,30 @@ func NewCluster(s ClusterSpec) *Cluster {
 	}
 	if s.Config.Istio.Default == true || s.Config.Istio.Sidecar != nil {
 		cluster.sidecar = config.NewSidecar(config.SidecarSpec{
+			Namespace: "istio-system",
+			APIScope:  model.Global,
+		})
+	}
+	if s.Config.Istio.Default == true || s.Config.Istio.Telemetry != nil {
+		cluster.telemetry = config.NewTelemetry(config.TelemetrySpec{
+			Namespace: "istio-system",
+			APIScope:  model.Global,
+		})
+	}
+	if s.Config.Istio.Default == true || s.Config.Istio.RequestAuthentication != nil {
+		cluster.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
+			Namespace: "istio-system",
+			APIScope:  model.Global,
+		})
+	}
+	if s.Config.Istio.Default == true || s.Config.Istio.PeerAuthentication != nil {
+		cluster.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
+			Namespace: "istio-system",
+			APIScope:  model.Global,
+		})
+	}
+	if s.Config.Istio.Default == true || s.Config.Istio.AuthorizationPolicy != nil {
+		cluster.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,
 		})
@@ -236,6 +264,18 @@ func (c *Cluster) getIstioResources() []model.Simulation {
 	}
 	if c.envoyFilter != nil {
 		sims = append(sims, c.envoyFilter)
+	}
+	if c.telemetry != nil {
+		sims = append(sims, c.telemetry)
+	}
+	if c.authorizationPolicy != nil {
+		sims = append(sims, c.authorizationPolicy)
+	}
+	if c.peerAuthentication != nil {
+		sims = append(sims, c.peerAuthentication)
+	}
+	if c.requestAuthentication != nil {
+		sims = append(sims, c.requestAuthentication)
 	}
 
 	return sims

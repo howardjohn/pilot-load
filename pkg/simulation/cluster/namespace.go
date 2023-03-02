@@ -17,12 +17,16 @@ type NamespaceSpec struct {
 }
 
 type Namespace struct {
-	Spec        *NamespaceSpec
-	ns          *KubernetesNamespace
-	sa          map[string]*app.ServiceAccount
-	envoyFilter *config.EnvoyFilter
-	sidecar     *config.Sidecar
-	deployments []*app.Application
+	Spec                  *NamespaceSpec
+	ns                    *KubernetesNamespace
+	sa                    map[string]*app.ServiceAccount
+	envoyFilter           *config.EnvoyFilter
+	sidecar               *config.Sidecar
+	telemetry             *config.Telemetry
+	peerAuthentication    *config.PeerAuthentication
+	requestAuthentication *config.RequestAuthentication
+	authorizationPolicy   *config.AuthorizationPolicy
+	deployments           []*app.Application
 }
 
 var _ model.Simulation = &Namespace{}
@@ -46,9 +50,32 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 			APIScope:  model.Namespace,
 		})
 	}
-
 	if s.Istio.Default == true || s.Istio.Sidecar != nil {
 		ns.sidecar = config.NewSidecar(config.SidecarSpec{
+			Namespace: ns.Spec.Name,
+			APIScope:  model.Namespace,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.Telemetry != nil {
+		ns.telemetry = config.NewTelemetry(config.TelemetrySpec{
+			Namespace: ns.Spec.Name,
+			APIScope:  model.Namespace,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.RequestAuthentication != nil {
+		ns.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
+			Namespace: ns.Spec.Name,
+			APIScope:  model.Namespace,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.PeerAuthentication != nil {
+		ns.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
+			Namespace: ns.Spec.Name,
+			APIScope:  model.Namespace,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.AuthorizationPolicy != nil {
+		ns.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
 		})
@@ -85,6 +112,19 @@ func (n *Namespace) getSims() []model.Simulation {
 	if n.envoyFilter != nil {
 		sims = append(sims, n.envoyFilter)
 	}
+	if n.telemetry != nil {
+		sims = append(sims, n.telemetry)
+	}
+	if n.authorizationPolicy != nil {
+		sims = append(sims, n.authorizationPolicy)
+	}
+	if n.peerAuthentication != nil {
+		sims = append(sims, n.peerAuthentication)
+	}
+	if n.requestAuthentication != nil {
+		sims = append(sims, n.requestAuthentication)
+	}
+
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}

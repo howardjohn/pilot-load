@@ -23,20 +23,24 @@ type ApplicationSpec struct {
 }
 
 type Application struct {
-	Spec           *ApplicationSpec
-	endpoint       *Endpoint
-	pods           []*Pod
-	deployment     *Deployment
-	service        *Service
-	virtualService *config.VirtualService
-	gateways       []*config.Gateway
-	secrets        []*config.Secret
-	destRule       *config.DestinationRule
-	workloadEntry  *config.WorkloadEntry
-	workloadGroup  *config.WorkloadGroup
-	serviceEntry   *config.ServiceEntry
-	envoyFilter    *config.EnvoyFilter
-	sidecar        *config.Sidecar
+	Spec                  *ApplicationSpec
+	endpoint              *Endpoint
+	pods                  []*Pod
+	deployment            *Deployment
+	service               *Service
+	virtualService        *config.VirtualService
+	gateways              []*config.Gateway
+	secrets               []*config.Secret
+	destRule              *config.DestinationRule
+	workloadEntry         *config.WorkloadEntry
+	workloadGroup         *config.WorkloadGroup
+	serviceEntry          *config.ServiceEntry
+	envoyFilter           *config.EnvoyFilter
+	sidecar               *config.Sidecar
+	telemetry             *config.Telemetry
+	peerAuthentication    *config.PeerAuthentication
+	requestAuthentication *config.RequestAuthentication
+	authorizationPolicy   *config.AuthorizationPolicy
 }
 
 var (
@@ -66,6 +70,34 @@ func NewApplication(s ApplicationSpec) *Application {
 			App:       s.App,
 			Namespace: s.Namespace,
 			Subsets:   []string{"a"},
+		})
+	}
+	if s.Istio.Default == true || s.Istio.Telemetry != nil {
+		w.telemetry = config.NewTelemetry(config.TelemetrySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			APIScope:  model.Application,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.RequestAuthentication != nil {
+		w.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			APIScope:  model.Application,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.PeerAuthentication != nil {
+		w.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			APIScope:  model.Application,
+		})
+	}
+	if s.Istio.Default == true || s.Istio.AuthorizationPolicy != nil {
+		w.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			APIScope:  model.Application,
 		})
 	}
 
@@ -179,6 +211,15 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	if w.workloadEntry != nil {
 		sims = append(sims, w.workloadEntry)
 	}
+	if w.telemetry != nil {
+		sims = append(sims, w.telemetry)
+	}
+	if w.authorizationPolicy != nil {
+		sims = append(sims, w.authorizationPolicy)
+	}
+	if w.peerAuthentication != nil {
+		sims = append(sims, w.peerAuthentication)
+	}
 
 	return sims
 }
@@ -223,6 +264,18 @@ func (w *Application) getSims() []model.Simulation {
 	}
 	if w.workloadGroup != nil {
 		sims = append(sims, w.workloadGroup)
+	}
+	if w.telemetry != nil {
+		sims = append(sims, w.telemetry)
+	}
+	if w.authorizationPolicy != nil {
+		sims = append(sims, w.authorizationPolicy)
+	}
+	if w.peerAuthentication != nil {
+		sims = append(sims, w.peerAuthentication)
+	}
+	if w.requestAuthentication != nil {
+		sims = append(sims, w.requestAuthentication)
 	}
 
 	if w.virtualService != nil {
