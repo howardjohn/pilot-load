@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -23,6 +22,8 @@ import (
 	"istio.io/istio/security/pkg/stsservice/server"
 	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
 	"istio.io/pkg/log"
+
+	"github.com/howardjohn/pilot-load/pkg/kube"
 )
 
 type AuthOptions struct {

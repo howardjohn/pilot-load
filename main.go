@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/howardjohn/pilot-load/cmd"
 	"istio.io/pkg/log"
+
+	"github.com/howardjohn/pilot-load/cmd"
 )
 
 func main() {

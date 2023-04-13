@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"istio.io/istio/pkg/ptr"
 	"istio.io/pkg/log"
 	coordinationv1 "k8s.io/api/coordination/v1"
@@ -12,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type NodeSpec struct {

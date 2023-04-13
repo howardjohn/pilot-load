@@ -436,7 +436,6 @@ type TCPListener struct {
 }
 
 type Target struct {
-
 	// Address is a go address, extracted from the mangled cluster name.
 	Address string
 

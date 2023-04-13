@@ -3,10 +3,11 @@ package app
 import (
 	"fmt"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"istio.io/pkg/log"
 	"k8s.io/apimachinery/pkg/util/rand"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ApplicationSpec struct {
@@ -131,7 +132,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		return w
 	}
 
-	//Apply CRDs for sidecar and GW app type
+	// Apply CRDs for sidecar and GW app type
 	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
 		w.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			App:       s.App,

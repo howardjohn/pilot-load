@@ -7,10 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	clientnetworkingalpha "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	clientnetworkingbeta "istio.io/client-go/pkg/apis/networking/v1beta1"
 	clientsecurity "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -29,6 +25,11 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type ReproduceSpec struct {
@@ -210,7 +211,7 @@ func parseInputs(inputFile string) (map[schema.GroupVersionKind][]runtime.Object
 		// Convert v1beta1 apiversions to v1alpha3 for Istio networking APIs
 		s, exists := collections.PilotGatewayAPI.FindByGroupVersionAliasesKind(resource.FromKubernetesGVK(&gvk))
 		if exists {
-			obj.GetObjectKind().SetGroupVersionKind(toKubernetesGVK(s.Resource().GroupVersionKind()))
+			obj.GetObjectKind().SetGroupVersionKind(s.GroupVersionKind().Kubernetes())
 			gvk = obj.GetObjectKind().GroupVersionKind()
 		}
 
@@ -273,12 +274,4 @@ func shouldSkipResource(ns string, name string, kind string, isIstioApi bool) bo
 		return true
 	}
 	return false
-}
-
-func toKubernetesGVK(in config.GroupVersionKind) schema.GroupVersionKind {
-	return schema.GroupVersionKind{
-		Group:   in.Group,
-		Version: in.Version,
-		Kind:    in.Kind,
-	}
 }

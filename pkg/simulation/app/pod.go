@@ -9,9 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"google.golang.org/grpc/credentials"
 	"istio.io/istio/pkg/ptr"
 	"istio.io/pkg/log"
@@ -20,6 +17,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type PodSpec struct {

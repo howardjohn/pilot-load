@@ -1,11 +1,12 @@
 package config
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	securityv1beta1 "istio.io/api/security/v1beta1"
 	typev1beta1 "istio.io/api/type/v1beta1"
 	"istio.io/client-go/pkg/apis/security/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type RequestAuthenticationSpec struct {

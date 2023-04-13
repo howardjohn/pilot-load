@@ -80,20 +80,22 @@ func (v *EnvoyFilter) getEnvoyFilter() *v1alpha3.EnvoyFilter {
 						StructValue: &structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"@type": {Kind: &structpb.Value_StringValue{StringValue: "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager"}},
-								"tracing": {Kind: &structpb.Value_StructValue{
-									StructValue: &structpb.Struct{
-										Fields: map[string]*structpb.Value{
-											"random_sampling": {Kind: &structpb.Value_StructValue{
-												StructValue: &structpb.Struct{
-													Fields: map[string]*structpb.Value{
-														"value": {Kind: &structpb.Value_NumberValue{NumberValue: float64(s.randomSampling)}},
+								"tracing": {
+									Kind: &structpb.Value_StructValue{
+										StructValue: &structpb.Struct{
+											Fields: map[string]*structpb.Value{
+												"random_sampling": {
+													Kind: &structpb.Value_StructValue{
+														StructValue: &structpb.Struct{
+															Fields: map[string]*structpb.Value{
+																"value": {Kind: &structpb.Value_NumberValue{NumberValue: float64(s.randomSampling)}},
+															},
+														},
 													},
 												},
 											},
-											},
 										},
 									},
-								},
 								},
 							},
 						},

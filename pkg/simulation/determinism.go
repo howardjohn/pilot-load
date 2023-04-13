@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -15,6 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/informers/core/v1"
+
+	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type DeterministicSimulation struct{}

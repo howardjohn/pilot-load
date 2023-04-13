@@ -1,9 +1,10 @@
 package app
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ServiceAccountSpec struct {

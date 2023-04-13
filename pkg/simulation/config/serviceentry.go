@@ -33,7 +33,6 @@ func (v *ServiceEntry) Cleanup(ctx model.Context) error {
 }
 
 func (v *ServiceEntry) getServiceEntry() *v1alpha3.ServiceEntry {
-
 	s := v.Spec
 	spec := networkingv1alpha3.ServiceEntry{
 		Hosts:    []string{s.App},

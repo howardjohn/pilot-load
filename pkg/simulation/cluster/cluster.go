@@ -5,16 +5,17 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/app"
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type ClusterSpec struct {
@@ -256,6 +257,7 @@ func (c *Cluster) watchPods(ctx model.Context) {
 	podInformer.AddEventHandler(controllers.ObjectHandler(q.AddObject))
 	q.Run(ctx.Done())
 }
+
 func (c *Cluster) getIstioResources() []model.Simulation {
 	sims := []model.Simulation{}
 

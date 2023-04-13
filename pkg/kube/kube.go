@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	networkingclientv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	networkingclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	securityclient "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -33,6 +32,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type Client struct {

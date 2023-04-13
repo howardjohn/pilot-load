@@ -5,10 +5,11 @@ import (
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
-	"github.com/howardjohn/pilot-load/pkg/simulation"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/spf13/cobra"
 	"istio.io/pkg/log"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 var (
