@@ -242,7 +242,7 @@ func (c *Client) internalApply(o runtime.Object, skipGet bool) (metav1.Object, e
 				return err
 			}
 			if hasStatus(us) {
-				scope.Debugf("fast updating resource status: %s/%s.%s %+v", us.GetKind(), us.GetName(), us.GetNamespace(), us)
+				scope.Debugf("fast updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
 				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
 					return err
 				}

@@ -59,7 +59,7 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 						Name:     "http",
 						Protocol: "HTTP",
 					},
-					Hosts: []string{n},
+					Hosts: []string{"*.example.com"},
 				},
 				{
 					Port: &networkingv1alpha3.Port{
@@ -67,7 +67,7 @@ func (v *Gateway) getGateway() *v1alpha3.Gateway {
 						Name:     "https",
 						Protocol: "HTTPS",
 					},
-					Hosts: []string{n},
+					Hosts: []string{"*.example.com"},
 					Tls: &networkingv1alpha3.ServerTLSSettings{
 						HttpsRedirect:  false,
 						Mode:           networkingv1alpha3.ServerTLSSettings_SIMPLE,
