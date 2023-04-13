@@ -77,6 +77,8 @@ func (p AppType) HasProxy() bool {
 const (
 	SidecarType AppType = "sidecar"
 
+	PlainType AppType = "plain"
+
 	AmbientType AppType = "ambient"
 
 	GatewayType AppType = "router"

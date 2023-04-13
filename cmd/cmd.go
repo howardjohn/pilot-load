@@ -30,7 +30,7 @@ var (
 	authClusterUrl    = ""
 	authProjectNumber = ""
 
-	qps = 100
+	qps = 10000
 )
 
 func init() {
@@ -68,9 +68,6 @@ func defaultLogOptions() *log.Options {
 
 func GetArgs() (model.Args, error) {
 	var err error
-	if qps == 0 {
-		qps = 100
-	}
 	if kubeconfig == "" {
 		kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/config")
 	}

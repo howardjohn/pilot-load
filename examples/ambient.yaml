@@ -4,14 +4,16 @@ jitter:
   config: "0s"
 namespaces:
 - name: mesh
-  replicas: 10
+  replicas: 100
   applications:
   - name: big
     replicas: 1
-    instances: 20
+    instances: 200
+    type: plain # No sidecar needed
   - name: small
-    replicas: 20
+    replicas: 200
     instances: 1
+    type: plain # No sidecar needed
 nodes:
 - name: node
   count: 2
