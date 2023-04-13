@@ -61,7 +61,7 @@ Below functionalities can be run via pilot-load tool.
     1. Locally:
 
       ```shell script
-      pilot-load cluster --config example-config.yaml
+      pilot-load cluster --config examples/basic.yaml
       ```
 8. Optional: Import the [load testing dashboard](./install/dashboard.json) in Grafana.
 

@@ -132,17 +132,23 @@ type ClusterConfig struct {
 	GracePeriod  Duration               `json:"gracePeriod,omitempty"`
 	Jitter       ClusterJitterConfig    `json:"jitter,omitempty"`
 	Namespaces   []NamespaceConfig      `json:"namespaces,omitempty"`
-	Nodes        int                    `json:"nodes,omitempty"`
+	Nodes        []NodeConfig           `json:"nodes,omitempty"`
 	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
 	ClusterType  ClusterType            `json:"-"`
 	Istio        IstioRootNSConfig      `json:"istio,omitempty"`
 }
 
+type NodeConfig struct {
+	Name    string `json:"name,omitempty"`
+	Ambient bool   `json:"ambient,omitempty"`
+	Count   int    `json:"count,omitempty"`
+}
+
 func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 	cpy := c
 	ret := &cpy
-	if ret.Nodes == 0 {
-		ret.Nodes = 1
+	if len(ret.Nodes) == 0 {
+		ret.Nodes = []NodeConfig{{Count: 1, Name: "default"}}
 	}
 	for n, ns := range ret.Namespaces {
 		if ns.Replicas == 0 {

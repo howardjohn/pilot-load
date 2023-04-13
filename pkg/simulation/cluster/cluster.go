@@ -40,13 +40,15 @@ var _ model.Simulation = &Cluster{}
 func NewCluster(s ClusterSpec) *Cluster {
 	cluster := &Cluster{Name: "primary", Spec: &s}
 
-	for r := 0; r < s.Config.Nodes; r++ {
-		cluster.nodes = append(cluster.nodes, NewNode(NodeSpec{
-			Name:        fmt.Sprintf("node-%s", util.GenUID()),
-			Region:      "region",
-			Zone:        "zone",
-			ClusterType: s.Config.ClusterType,
-		}))
+	for _, node := range s.Config.Nodes {
+		for r := 0; r < node.Count; r++ {
+			cluster.nodes = append(cluster.nodes, NewNode(NodeSpec{
+				Name:        fmt.Sprintf("%s-%s", node.Name, util.GenUID()),
+				Region:      "region",
+				Zone:        "zone",
+				ClusterType: s.Config.ClusterType,
+			}))
+		}
 	}
 
 	if s.Config.Istio.Default == true || s.Config.Istio.EnvoyFilter != nil {

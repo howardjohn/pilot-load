@@ -1,0 +1,18 @@
+nodeMetadata: {}
+jitter:
+  workloads: "5s"
+  config: "0s"
+namespaces:
+- name: mesh
+  replicas: 10
+  applications:
+  - name: big
+    replicas: 1
+    instances: 20
+  - name: small
+    replicas: 20
+    instances: 1
+nodes:
+- name: node
+  count: 2
+  ambient: true
