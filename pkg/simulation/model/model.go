@@ -173,6 +173,26 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 	return *ret
 }
 
+func (c ClusterConfig) PodCount() int {
+	cnt := 0
+	for _, ns := range c.Namespaces {
+		apps := 0
+		for _, app := range ns.Applications {
+			apps += app.Replicas * app.Instances
+		}
+		cnt += apps * ns.Replicas
+	}
+	return cnt
+}
+
+func (c ClusterConfig) NodeCount() int {
+	cnt := 0
+	for _, n := range c.Nodes {
+		cnt += n.Count
+	}
+	return cnt
+}
+
 type DumpConfig struct {
 	Pod       string
 	Namespace string

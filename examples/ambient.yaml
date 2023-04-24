@@ -1,6 +1,6 @@
 nodeMetadata: {}
 jitter:
-  workloads: "5s"
+  workloads: "30s"
   config: "0s"
 namespaces:
 - name: mesh
@@ -16,5 +16,5 @@ namespaces:
     type: plain # No sidecar needed
 nodes:
 - name: node
-  count: 2
+  count: 160
   ambient: true

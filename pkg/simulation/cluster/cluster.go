@@ -40,6 +40,12 @@ var _ model.Simulation = &Cluster{}
 func NewCluster(s ClusterSpec) *Cluster {
 	cluster := &Cluster{Name: "primary", Spec: &s}
 
+	if s.Config.ClusterType == model.FakeNode {
+		needNodes := s.Config.PodCount() / 255
+		if s.Config.NodeCount() < needNodes {
+			log.Fatalf("have %d nodes, but need %d for %d pods", s.Config.NodeCount(), needNodes, s.Config.PodCount())
+		}
+	}
 	for _, node := range s.Config.Nodes {
 		for r := 0; r < node.Count; r++ {
 			cluster.nodes = append(cluster.nodes, NewNode(NodeSpec{

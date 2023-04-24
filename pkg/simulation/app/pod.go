@@ -121,7 +121,6 @@ func (p *Pod) Name() string {
 func (p *Pod) getPod() *v1.Pod {
 	s := p.Spec
 	if p.Spec.ClusterType == model.FakeNode {
-
 		labels := map[string]string{
 			"app":                     s.App,
 			"sidecar.istio.io/inject": "false",

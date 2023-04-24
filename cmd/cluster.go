@@ -48,6 +48,7 @@ var clusterCmd = &cobra.Command{
 		args.ClusterConfig = config
 		logConfig(args.ClusterConfig)
 		logClusterConfig(args.ClusterConfig)
+		log.Infof("Starting cluster, total size: %v pods", args.ClusterConfig.PodCount())
 		return simulation.Cluster(args)
 	},
 }
