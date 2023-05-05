@@ -37,11 +37,13 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
 		Name: s.Name,
 	})
-	ns.sa = map[string]*app.ServiceAccount{
-		"default": app.NewServiceAccount(app.ServiceAccountSpec{
-			Namespace: ns.Spec.Name,
-			Name:      "default",
-		}),
+	if s.ClusterType == model.Fake {
+		ns.sa = map[string]*app.ServiceAccount{
+			"default": app.NewServiceAccount(app.ServiceAccountSpec{
+				Namespace: ns.Spec.Name,
+				Name:      "default",
+			}),
+		}
 	}
 
 	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
