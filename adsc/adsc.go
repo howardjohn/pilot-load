@@ -29,8 +29,8 @@ import (
 )
 
 var (
-	scope     = log.RegisterScope("adsc", "", 0)
-	dumpScope = log.RegisterScope("dump", "", 0)
+	scope     = log.RegisterScope("adsc", "")
+	dumpScope = log.RegisterScope("dump", "")
 )
 
 var marshal = &jsonpb.Marshaler{OrigName: true, Indent: "  "}

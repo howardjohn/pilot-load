@@ -114,7 +114,7 @@ func (c *Client) Delete(o runtime.Object) error {
 	return nil
 }
 
-var scope = log.RegisterScope("kube", "", 0)
+var scope = log.RegisterScope("kube", "")
 
 func init() {
 	if err := istioscheme.AddToScheme(scheme.Scheme); err != nil {

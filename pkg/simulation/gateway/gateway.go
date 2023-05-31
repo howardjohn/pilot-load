@@ -18,7 +18,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-var scope = ilog.RegisterScope("probe", "", 0)
+var scope = ilog.RegisterScope("probe", "")
 
 type ProberSpec struct {
 	Delay          time.Duration
