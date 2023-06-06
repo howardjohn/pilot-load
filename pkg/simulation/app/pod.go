@@ -151,6 +151,9 @@ func (p *Pod) getPod() *v1.Pod {
 				Name:      p.Name(),
 				Namespace: s.Namespace,
 				Labels:    labels,
+				Annotations: map[string]string{
+					"prometheus.io/scrape": "false",
+				},
 			},
 			Spec: v1.PodSpec{
 				TerminationGracePeriodSeconds: ptr.Of(int64(0)),
@@ -167,34 +170,6 @@ func (p *Pod) getPod() *v1.Pod {
 					Operator: v1.TolerationOpExists,
 					Effect:   v1.TaintEffectNoSchedule,
 				}},
-			},
-			Status: v1.PodStatus{
-				Phase: v1.PodRunning,
-				Conditions: []v1.PodCondition{
-					{
-						Type:               v1.PodReady,
-						Status:             v1.ConditionTrue,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               v1.PodScheduled,
-						Status:             v1.ConditionTrue,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               v1.ContainersReady,
-						Status:             v1.ConditionTrue,
-						LastTransitionTime: metav1.Now(),
-					},
-					{
-						Type:               v1.PodInitialized,
-						Status:             v1.ConditionTrue,
-						LastTransitionTime: metav1.Now(),
-					},
-				},
-				ContainerStatuses: cs,
-				PodIP:             s.IP,
-				PodIPs:            []v1.PodIP{{IP: s.IP}},
 			},
 		}
 	}

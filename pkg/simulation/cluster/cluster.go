@@ -165,8 +165,8 @@ func (c *Cluster) getSims() []model.Simulation {
 
 func (c *Cluster) Run(ctx model.Context) error {
 	if c.Spec.Config.ClusterType == model.FakeNode {
-		// Only need for deployments. Currently we never use this.
-		// go c.watchPods(ctx)
+		// Act as kubelet
+		go c.watchPods(ctx)
 	}
 	nodes := []model.Simulation{}
 	for _, ns := range c.nodes {
@@ -228,6 +228,10 @@ func (c *Cluster) watchPods(ctx model.Context) {
 				// no action needed
 				return nil
 			}
+			if p.Spec.NodeName == "" {
+				// Not yet ready
+				return nil
+			}
 			p.Status.Phase = v1.PodRunning
 			p.Status.Conditions = nil
 			p.Status.Conditions = append(p.Status.Conditions, v1.PodCondition{
@@ -249,11 +253,7 @@ func (c *Cluster) watchPods(ctx model.Context) {
 						Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
 					},
 					Ready:        true,
-					RestartCount: 0,
 					Image:        c.Image,
-					ImageID:      "",
-					ContainerID:  "",
-					Started:      nil,
 				}
 			}
 			if err := ctx.Client.ApplyStatus(p); err != nil {

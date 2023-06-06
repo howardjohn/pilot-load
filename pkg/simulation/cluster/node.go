@@ -103,12 +103,12 @@ func (n *Node) getNode() *v1.Node {
 		node.Status = v1.NodeStatus{
 			Capacity: v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewQuantity(32, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(256, resource.BinarySI),
+				v1.ResourceMemory: *resource.NewQuantity(256*1024*1024*1024, resource.BinarySI),
 				v1.ResourcePods:   *resource.NewQuantity(255, resource.DecimalSI),
 			},
 			Allocatable: v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewQuantity(32, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(256, resource.BinarySI),
+				v1.ResourceMemory: *resource.NewQuantity(256*1024*1024*1024, resource.BinarySI),
 				v1.ResourcePods:   *resource.NewQuantity(255, resource.DecimalSI),
 			},
 			Phase: v1.NodeRunning,

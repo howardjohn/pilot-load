@@ -11,4 +11,4 @@ namespaces:
     instances: 1000
 nodes:
 - name: node
-  count: 3
+  count: 10
