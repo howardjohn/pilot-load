@@ -18,7 +18,7 @@ check-git:
 	fi
 
 .PHONY: gen-check
-gen-check: check-git format
+gen-check: format check-git
 
 .PHONY: format
 format:
@@ -29,11 +29,15 @@ format:
 
 .PHONY: lint
 lint:
-	@golangci-lint run --fix -v
+	@golangci-lint run --fix
 
 .PHONY: install
 install:
 	@go install
+
+.PHONY: test
+test:
+	@go test ./...
 
 .PHONY: docker
 docker:
