@@ -25,7 +25,7 @@ format:
 	@go mod tidy
 	@gofumpt -w .
 	@goimports -local $(MODULE) -w .
-	@gci write --section=standard,default,Prefix\($(MODULE)\) .
+	@gci write -s standard -s default -s Prefix\($(MODULE)\) .
 
 .PHONY: lint
 lint:

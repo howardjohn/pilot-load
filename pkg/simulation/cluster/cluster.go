@@ -252,8 +252,8 @@ func (c *Cluster) watchPods(ctx model.Context) {
 					State: v1.ContainerState{
 						Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
 					},
-					Ready:        true,
-					Image:        c.Image,
+					Ready: true,
+					Image: c.Image,
 				}
 			}
 			if err := ctx.Client.ApplyStatus(p); err != nil {
