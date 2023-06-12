@@ -2,4 +2,4 @@ steps:
 - command: "make test gen-check"
   plugins:
   - docker#v5.7.0:
-      image: "gcr.io/howardjohn-istio/go-ci:v0.0.3"
+      image: "gcr.io/howardjohn-istio/go-ci:v0.0.4"
