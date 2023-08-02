@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 var (
@@ -118,9 +118,9 @@ func setDefaultArgs(args model.Args) (model.Args, error) {
 		if wh.ClientConfig.URL == nil {
 			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: clientConfig is not a URL")
 		}
-		addr, _ := url.Parse(*wh.ClientConfig.URL)
-		log.Infof("defaulted CLOUDRUNN_ADDR to %v", addr.Host)
-		xdsMetadata[CLOUDRUN_ADDR] = addr.Host
+		cloudRunAddr := util.GetComponentAfter(*wh.ClientConfig.URL, "ISTIO_META_CLOUDRUN_ADDR")
+		log.Infof("defaulted CLOUDRUNN_ADDR to %v", cloudRunAddr)
+		xdsMetadata[CLOUDRUN_ADDR] = cloudRunAddr
 	}
 	return args, nil
 }
