@@ -2,7 +2,7 @@ nodeMetadata: {}
 istio:
   default: true # create all applicable istio resources for root namespace
 jitter:
-  workloads: "1s"
+  workloads: "10s"
   config: "0s"
 namespaces:
 - name: mesh

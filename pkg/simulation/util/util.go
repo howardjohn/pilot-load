@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -84,4 +85,14 @@ func GetIP() string {
 	v0 := byte((v >> 24) & 0xFF)
 	nextIp = net.IPv4(v0, v1, v2, v3)
 	return ret
+}
+
+func GetComponentAfter(url, component string) string {
+	pattern := fmt.Sprintf(`(?i)%s\/(.+)`, component)
+	re := regexp.MustCompile(pattern)
+	match := re.FindStringSubmatch(url)
+	if match == nil {
+		return ""
+	}
+	return match[1]
 }
