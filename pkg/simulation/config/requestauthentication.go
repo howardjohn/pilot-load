@@ -6,6 +6,7 @@ import (
 	"istio.io/client-go/pkg/apis/security/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -26,11 +27,11 @@ func NewRequestAuthentication(s RequestAuthenticationSpec) *RequestAuthenticatio
 }
 
 func (v *RequestAuthentication) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getRequestAuthentication())
+	return kube.Apply(ctx.Client, v.getRequestAuthentication())
 }
 
 func (v *RequestAuthentication) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getRequestAuthentication())
+	return kube.Delete(ctx.Client, v.getRequestAuthentication())
 }
 
 func (v *RequestAuthentication) getRequestAuthentication() *v1beta1.RequestAuthentication {

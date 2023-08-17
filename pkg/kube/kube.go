@@ -4,55 +4,52 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
-	networkingclientv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	networkingclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
-	securityclient "istio.io/client-go/pkg/apis/security/v1beta1"
-	telemetryclient "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
-	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
+	"istio.io/istio/pkg/cluster"
+	"istio.io/istio/pkg/config"
+	"istio.io/istio/pkg/config/schema/gvk"
+	"istio.io/istio/pkg/config/schema/kubeclient"
+	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
 	"istio.io/istio/pkg/test/scopes"
-	"istio.io/pkg/log"
-	appsv1 "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
-	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type Client struct {
+	kube.Client
 	ClusterName string
-	dynamic     dynamic.Interface
-	Kubernetes  kubernetes.Interface
+}
+
+func NewFakeClient(kf kube.Client) *Client {
+	return &Client{
+		ClusterName: "fake",
+		Client:      kf,
+	}
 }
 
 func NewClient(kubeconfig string, qps int) (*Client, error) {
-	var config *rest.Config
-	var err error
 	var clusterName string
 	if _, err := os.Stat(kubeconfig); err == nil {
 		loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}, nil)
-		config, err = loader.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
 		rc, err := loader.RawConfig()
 		if err != nil {
 			return nil, err
@@ -60,52 +57,133 @@ func NewClient(kubeconfig string, qps int) (*Client, error) {
 		clusterName = rc.Contexts[rc.CurrentContext].Cluster
 	} else {
 		log.Infof("using in cluster kubeconfig")
-		// creates the in-cluster config
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, err
-		}
 	}
-	config.QPS = float32(qps)
-	config.Burst = qps * 2
-	d, err := dynamic.NewForConfig(config)
+	rc, err := kube.DefaultRestConfig(kubeconfig, "", func(config *rest.Config) {
+		config.QPS = float32(qps)
+		config.Burst = qps * 2
+	})
 	if err != nil {
 		return nil, err
 	}
-	k, err := kubernetes.NewForConfig(config)
+
+	kf, err := kube.NewClient(kube.NewClientConfigForRestConfig(rc), cluster.ID(clusterName))
 	if err != nil {
 		return nil, err
 	}
 	return &Client{
 		ClusterName: clusterName,
-		dynamic:     d,
-		Kubernetes:  k,
+		Client:      kf,
 	}, nil
-}
-
-var deletePeriod int64 = 0
-
-func (c *Client) Informers() informers.SharedInformerFactory {
-	inf := informers.NewSharedInformerFactory(c.Kubernetes, 0)
-	return inf
 }
 
 func (c *Client) Finalize(ns *v1.Namespace) error {
 	scope.Debugf("finalizing namespace: %v", ns.Name)
-	_, err := c.Kubernetes.CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
+	_, err := c.Kube().CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
 	return err
 }
 
-func (c *Client) Delete(o runtime.Object) error {
-	us := toUnstructured(o)
-	if us == nil {
-		return fmt.Errorf("bad object %v", o)
+var scope = log.RegisterScope("kube", "")
+
+func ApplyRes[T controllers.Object](c *Client, o T) (T, error) {
+	return internalApply(c, o, false)
+}
+
+func Apply[T controllers.Object](c *Client, o T) error {
+	_, err := internalApply(c, o, false)
+	return err
+}
+
+func ApplyFast[T controllers.Object](c *Client, o T) error {
+	_, err := internalApply(c, o, true)
+	return err
+}
+
+func ApplyStatus[T controllers.Object](c *Client, o T) error {
+	return Apply[T](c, o)
+	// return internalApply(c, o, false)
+}
+
+// TypeIsConcrete checks if T is an interface or a concrete type
+func TypeIsConcrete[T any]() bool {
+	et := ptr.Empty[T]()
+	return reflect.TypeOf(et) != nil
+}
+
+// Create creates a new object, and returns true if it was newly created.
+// If it already exists, no action is taken and false is returned
+// Status is not written
+func Create[T controllers.Object](c *Client, o T) (bool, error) {
+	if !TypeIsConcrete[T]() {
+		cl, gvr := dynamicClient(c, o)
+		scope.Debugf("creating resource: %s/%s/%s", gvr, o.GetName(), o.GetNamespace())
+		o := toUnstructured(o)
+		if _, err := cl.Create(context.Background(), o, metav1.CreateOptions{}); err != nil {
+			if errors.IsAlreadyExists(err) {
+				scope.Debugf("skipped resource, already exists: %s/%s/%s", gvr, o.GetName(), o.GetNamespace())
+				return false, nil
+			}
+			if errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota") {
+				scope.Warnf("skipped resource, exceeded quota: %s/%s/%s", gvr, o.GetName(), o.GetNamespace())
+				return false, nil
+			}
+			return false, fmt.Errorf("create resource: %v", err)
+		}
+		return true, nil
 	}
-	gvr, kind := toGvr(o)
-	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
-	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
-	scope.Debugf("deleting resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-	if err := cl.Delete(context.TODO(), us.GetName(), metav1.DeleteOptions{GracePeriodSeconds: &deletePeriod}); err != nil {
+	cl := kubeclient.GetWriteClient[T](c, o.GetNamespace()).(API[T])
+
+	t := ptr.TypeName[T]()
+	scope.Debugf("creating resource: %s/%s/%s", t, o.GetName(), o.GetNamespace())
+	if _, err := cl.Create(context.Background(), o, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			scope.Debugf("skipped resource, already exists: %s/%s/%s", t, o.GetName(), o.GetNamespace())
+			return false, nil
+		}
+		if errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota") {
+			scope.Warnf("skipped resource, exceeded quota: %s/%s/%s", t, o.GetName(), o.GetNamespace())
+			return false, nil
+		}
+		return false, fmt.Errorf("create resource: %v", err)
+	}
+	return true, nil
+}
+
+func dynamicClient[T controllers.Object](c *Client, o T) (dynamic.ResourceInterface, schema.GroupVersionResource) {
+	gvr := toGvr[T](o)
+	raw := c.Dynamic().Resource(gvr)
+	var cl dynamic.ResourceInterface = raw
+	if o.GetNamespace() != "" {
+		cl = raw.Namespace(o.GetNamespace())
+	}
+	return cl, gvr
+}
+
+func toGvr[T controllers.Object](o T) schema.GroupVersionResource {
+	kk := o.GetObjectKind().GroupVersionKind()
+	ik := config.GroupVersionKind{
+		Group:   kk.Group,
+		Version: kk.Version,
+		Kind:    kk.Kind,
+	}
+	gvr := gvk.MustToGVR(ik)
+	return gvr
+}
+
+func Delete[T controllers.Object](c *Client, o T) error {
+	if !TypeIsConcrete[T]() {
+		cl, gvr := dynamicClient(c, o)
+		scope.Debugf("deleting resource: %s/%s/%s", gvr, o.GetName(), o.GetNamespace())
+		if err := cl.Delete(context.Background(), o.GetName(), metav1.DeleteOptions{GracePeriodSeconds: ptr.Of(int64(0))}); err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		return nil
+	}
+	cl := kubeclient.GetWriteClient[T](c, o.GetNamespace()).(API[T])
+	scope.Debugf("deleting resource: %s/%s/%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
+	if err := cl.Delete(context.Background(), o.GetName(), metav1.DeleteOptions{GracePeriodSeconds: ptr.Of(int64(0))}); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
@@ -114,214 +192,101 @@ func (c *Client) Delete(o runtime.Object) error {
 	return nil
 }
 
-var scope = log.RegisterScope("kube", "")
-
-func init() {
-	if err := istioscheme.AddToScheme(scheme.Scheme); err != nil {
-		panic(err.Error())
-	}
+type API[T runtime.Object] interface {
+	kubetypes.WriteAPI[T]
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (T, error)
 }
 
-// toGvr gets the GVR from an object. Note: GVK is not present in `o`, so cannot be used.
-// Istio collections cannot be used either, as they are spec
-func toGvr(o runtime.Object) (schema.GroupVersionResource, string) {
-	switch o.(type) {
-	case *v1.Pod:
-		return v1.SchemeGroupVersion.WithResource("pods"), "Pod"
-	case *v1.Node:
-		return v1.SchemeGroupVersion.WithResource("nodes"), "Node"
-	case *v1.Service:
-		return v1.SchemeGroupVersion.WithResource("services"), "Service"
-	case *v1.ServiceAccount:
-		return v1.SchemeGroupVersion.WithResource("serviceaccounts"), "ServiceAccount"
-	case *v1.Namespace:
-		return v1.SchemeGroupVersion.WithResource("namespaces"), "Namespace"
-	case *v1.Secret:
-		return v1.SchemeGroupVersion.WithResource("secrets"), "Secret"
-	case *v1.Endpoints:
-		return v1.SchemeGroupVersion.WithResource("endpoints"), "Endpoints"
-	case *v1.ConfigMap:
-		return v1.SchemeGroupVersion.WithResource("configmaps"), "ConfigMap"
-	case *networkingclientv1alpha3.VirtualService, *networkingclientv1beta1.VirtualService:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("virtualservices"), "VirtualService"
-	case *networkingclientv1alpha3.Sidecar, *networkingclientv1beta1.Sidecar:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("sidecars"), "Sidecar"
-	case *networkingclientv1alpha3.Gateway, *networkingclientv1beta1.Gateway:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("gateways"), "Gateway"
-	case *networkingclientv1alpha3.DestinationRule, *networkingclientv1beta1.DestinationRule:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("destinationrules"), "DestinationRule"
-	case *networkingclientv1alpha3.ServiceEntry, *networkingclientv1beta1.ServiceEntry:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("serviceentries"), "ServiceEntry"
-	case *networkingclientv1alpha3.EnvoyFilter:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("envoyfilters"), "EnvoyFilter"
-	case *networkingclientv1alpha3.WorkloadEntry, *networkingclientv1beta1.WorkloadEntry:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("workloadentries"), "WorkloadEntry"
-	case *networkingclientv1alpha3.WorkloadGroup, *networkingclientv1beta1.WorkloadGroup:
-		return networkingclientv1alpha3.SchemeGroupVersion.WithResource("workloadgroups"), "WorkloadGroup"
-	case *telemetryclient.Telemetry:
-		return telemetryclient.SchemeGroupVersion.WithResource("telemetries"), "Telemetry"
-	case *securityclient.AuthorizationPolicy:
-		return securityclient.SchemeGroupVersion.WithResource("authorizationpolicies"), "AuthorizationPolicy"
-	case *securityclient.RequestAuthentication:
-		return securityclient.SchemeGroupVersion.WithResource("requestauthentications"), "RequestAuthentication"
-	case *securityclient.PeerAuthentication:
-		return securityclient.SchemeGroupVersion.WithResource("peerauthentications"), "PeerAuthentication"
-	case *coordinationv1.Lease:
-		return coordinationv1.SchemeGroupVersion.WithResource("leases"), "Lease"
-	case *appsv1.Deployment:
-		return appsv1.SchemeGroupVersion.WithResource("deployments"), "Deployment"
-	default:
-		panic(fmt.Sprintf("unsupported type %T", o))
-	}
-}
-
-func (c *Client) ApplyRes(o runtime.Object) (metav1.Object, error) {
-	return c.internalApply(o, false)
-}
-
-func (c *Client) Apply(o runtime.Object) error {
-	_, err := c.internalApply(o, false)
-	return err
-}
-
-func (c *Client) ApplyFast(o runtime.Object) error {
-	_, err := c.internalApply(o, true)
-	return err
-}
-
-func (c *Client) ApplyStatus(o runtime.Object) error {
-	us := toUnstructured(o)
-	us.SetManagedFields(nil)
-	us.SetUID("")
-	us.SetResourceVersion("")
-	if us == nil {
-		return fmt.Errorf("bad object %v", o)
-	}
-	gvr, kind := toGvr(o)
-	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
-	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
-	scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
-	if _, err := cl.ApplyStatus(context.TODO(), us.GetName(), us, metav1.ApplyOptions{
-		Force:        true,
-		FieldManager: "pilot-load",
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-func hasStatus(us *unstructured.Unstructured) bool {
-	ifc, f := us.Object["status"]
-	if !f {
-		return false
-	}
-	cst, ok := ifc.(map[string]interface{})
-	if ok && len(cst) == 0 {
-		return false
-	}
-	return true
-}
-
-func (c *Client) internalApply(o runtime.Object, skipGet bool) (metav1.Object, error) {
-	us := toUnstructured(o)
-	if us == nil {
-		return nil, fmt.Errorf("bad object %v", o)
-	}
-	gvr, kind := toGvr(o)
+func internalApply[T controllers.Object](c *Client, o T, skipGet bool) (T, error) {
+	empty := ptr.Empty[T]()
+	name := o.GetName()
+	ns := o.GetNamespace()
+	cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
 	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
-	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
-	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+	t := ptr.TypeName[T]()
 
 	if skipGet {
-		var res metav1.Object
+		var res T
 		err := retry.RetryOnConflict(backoff, func() error {
-			scope.Debugf("fast creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
+			scope.Debugf("fast creating resource: %s/%s/%s", t, name, ns)
 			var err error
-			res, err = cl.Create(context.TODO(), us, metav1.CreateOptions{})
+			res, err = cl.Create(context.TODO(), o, metav1.CreateOptions{})
 			if err != nil {
-				return err
+				return fmt.Errorf("create: %v", err)
 			}
-			if hasStatus(us) {
-				scope.Debugf("fast updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
-				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
-					return err
+			if hasStatus(c, o) {
+				scope.Debugf("fast updating resource status: %s/%s.%s", t, name, ns)
+				if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+					return fmt.Errorf("update status: %v", err)
 				}
 			}
 			return nil
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to create %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+			return empty, fmt.Errorf("failed to create %s/%s/%s: %v", t, name, ns, err)
 		}
 		return res, nil
 	}
 
-	var res metav1.Object
+	var res T
 	err := retry.RetryOnConflict(backoff, func() error {
 		var err error
-		res, err = cl.Get(context.TODO(), us.GetName(), metav1.GetOptions{})
+		res, err = cl.Get(context.TODO(), name, metav1.GetOptions{})
 		switch {
 		case errors.IsNotFound(err):
-			scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			if res, err = cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
-				return err
+			scope.Debugf("creating resource: %s/%s/%s", t, name, ns)
+			if res, err = cl.Create(context.TODO(), o, metav1.CreateOptions{}); err != nil {
+				return fmt.Errorf("create: %v", err)
 			}
-			if hasStatus(us) {
-				scope.Debugf("updating resource status: %s/%s.%s", us.GetKind(), us.GetName(), us.GetNamespace())
-				if _, err := cl.UpdateStatus(context.TODO(), us, metav1.UpdateOptions{}); err != nil {
-					return err
+			if hasStatus(c, o) {
+				scope.Debugf("updating resource status: %s/%s.%s", t, name, ns)
+				o.SetResourceVersion(res.GetResourceVersion())
+				if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+					return fmt.Errorf("update status: %v", err)
 				}
 			}
 			return nil
 		case err == nil:
-			scope.Debugf("patching resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			us.SetResourceVersion(res.GetResourceVersion())
-			bytes, err := us.MarshalJSON()
-			if err != nil {
-				return fmt.Errorf("json error for %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+			scope.Debugf("update resource: %s/%s/%s", t, name, ns)
+			o.SetResourceVersion(res.GetResourceVersion())
+			if res, err = cl.Update(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+				return fmt.Errorf("update: %v", err)
 			}
-			res, err = cl.Patch(context.TODO(), us.GetName(), types.ApplyPatchType, bytes, metav1.PatchOptions{
-				FieldManager: "pilot-load",
-				Force:        util.BoolPointer(true),
-			})
+			if hasStatus(c, o) {
+				scope.Debugf("updating resource status: %s/%s.%s", t, name, ns)
+				o.SetResourceVersion(res.GetResourceVersion())
+				if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+					return fmt.Errorf("update status: %v", err)
+				}
+			}
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to apply %s/%s/%s: %v", us.GetKind(), us.GetName(), us.GetNamespace(), err)
+		return empty, fmt.Errorf("failed to apply %s/%s/%s: %v", t, name, ns, err)
 	}
 	return res, nil
 }
 
-// Create creates a new object, and returns true if it was newly created.
-// If it already exists, no action is taken and false is returned
-// Status is not written
-func (c *Client) Create(o runtime.Object) (bool, error) {
-	us := toUnstructured(o)
-	if us == nil {
-		return false, fmt.Errorf("bad object %v", o)
+func hasStatus[T controllers.Object](c *Client, o T) bool {
+	if _, ok := c.Kube().(*kubefake.Clientset); ok {
+		// Fake client has no status...
+		return false
 	}
-	gvr, kind := toGvr(o)
-	cl := c.dynamic.Resource(gvr).Namespace(us.GetNamespace())
-	us.SetGroupVersionKind(gvr.GroupVersion().WithKind(kind))
+	return hasStatusInternal[T](o)
+}
 
-	scope.Debugf("creating resource: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-	if _, err := cl.Create(context.TODO(), us, metav1.CreateOptions{}); err != nil {
-		if errors.IsAlreadyExists(err) {
-			scope.Debugf("skipped resource, already exists: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			return false, nil
-		}
-		if errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota") {
-			scope.Warnf("skipped resource, exceeded quota: %s/%s/%s", us.GetKind(), us.GetName(), us.GetNamespace())
-			return false, nil
-		}
-		return false, fmt.Errorf("create resource: %v", err)
+func hasStatusInternal[T controllers.Object](o T) bool {
+	v := reflect.ValueOf(o).Elem().FieldByName("Status")
+	if v == (reflect.Value{}) {
+		return false
 	}
-	return true, nil
+	return !v.IsZero()
 }
 
 func (c *Client) FetchRootCert() (string, error) {
-	cm, err := c.Kubernetes.CoreV1().ConfigMaps("istio-system").Get(context.TODO(), "istio-ca-root-cert", metav1.GetOptions{})
+	cm, err := c.Kube().CoreV1().ConfigMaps("istio-system").Get(context.TODO(), "istio-ca-root-cert", metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -334,7 +299,7 @@ var saTokenExpiration int64 = 60 * 60 * 24 * 7
 func (c *Client) CreateServiceAccountToken(aud, ns, serviceAccount string) (string, time.Time, error) {
 	scopes.Framework.Debugf("Creating service account token for: %s/%s", ns, serviceAccount)
 
-	token, err := c.Kubernetes.CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
+	token, err := c.Kube().CoreV1().ServiceAccounts(ns).CreateToken(context.TODO(), serviceAccount,
 		&authenticationv1.TokenRequest{
 			Spec: authenticationv1.TokenRequestSpec{
 				Audiences:         []string{aud},
@@ -353,18 +318,4 @@ func toUnstructured(o runtime.Object) *unstructured.Unstructured {
 		return nil
 	}
 	return &unstructured.Unstructured{Object: unsObj}
-}
-
-func ignoreAlreadyExists(err error) error {
-	if errors.IsAlreadyExists(err) {
-		return nil
-	}
-	return err
-}
-
-// Object is a union of runtime + meta objects. Essentially every k8s object meets this interface.
-// and certainly all that we care about.
-type Object interface {
-	metav1.Object
-	runtime.Object
 }

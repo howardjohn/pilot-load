@@ -15,8 +15,9 @@ import (
 	"istio.io/istio/pkg/config/schema/collections"
 	"istio.io/istio/pkg/config/schema/gvk"
 	"istio.io/istio/pkg/config/schema/resource"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/util/sets"
-	"istio.io/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -161,7 +162,7 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 				sa.SetAnnotations(nil)
 				sa.SetLabels(nil)
 			}
-			s := newCreateSim(co.(kube.Object))
+			s := newCreateSim(co.(controllers.Object))
 			i.sims = append(i.sims, s)
 			if err := s.Run(ctx); err != nil {
 				// Ignore errors
@@ -232,19 +233,19 @@ var IstioScheme = func() *runtime.Scheme {
 	return scheme
 }()
 
-type createSim struct {
-	Spec        kube.Object
+type createSim[T controllers.Object] struct {
+	Spec        T
 	skipCleanup bool
 }
 
-var _ model.Simulation = &createSim{}
+var _ model.Simulation = &createSim[controllers.Object]{}
 
-func newCreateSim(s kube.Object) *createSim {
-	return &createSim{Spec: s}
+func newCreateSim[T controllers.Object](s T) *createSim[T] {
+	return &createSim[T]{Spec: s}
 }
 
-func (v *createSim) Run(ctx model.Context) (err error) {
-	created, err := ctx.Client.Create(v.Spec)
+func (v *createSim[T]) Run(ctx model.Context) (err error) {
+	created, err := kube.Create(ctx.Client, v.Spec)
 	if err != nil {
 		return err
 	}
@@ -254,13 +255,13 @@ func (v *createSim) Run(ctx model.Context) (err error) {
 	return nil
 }
 
-func (v *createSim) Cleanup(ctx model.Context) error {
+func (v *createSim[T]) Cleanup(ctx model.Context) error {
 	if v.skipCleanup {
 		return nil
 	}
 
 	log.Infof("cleaning up %v/%v.%v", v.Spec.GetObjectKind().GroupVersionKind().Kind, v.Spec.GetName(), v.Spec.GetNamespace())
-	return ctx.Client.Delete(v.Spec)
+	return kube.Delete(ctx.Client, v.Spec)
 }
 
 func shouldSkipResource(ns string, name string, kind string, isIstioApi bool) bool {

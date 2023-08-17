@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/adsc"
@@ -77,6 +77,7 @@ func (x XdsLatencySimulation) Run(ctx model.Context) error {
 		t0 := time.Now()
 		cfg := config.NewGeneric(createConfig(i))
 		cc = cfg
+		drain(updates)
 		if err := cfg.Run(ctx); err != nil {
 			return err
 		}
@@ -93,6 +94,16 @@ func (x XdsLatencySimulation) Run(ctx model.Context) error {
 			return err
 		}
 		time.Sleep(time.Millisecond * 250)
+	}
+}
+
+func drain(updates chan string) {
+	for {
+		select {
+		case <-updates:
+		default:
+			return
+		}
 	}
 }
 

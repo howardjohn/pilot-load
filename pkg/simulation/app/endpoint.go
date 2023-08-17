@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -37,11 +38,11 @@ func (e *Endpoint) SetAddresses(ctx model.Context, ips map[string]string) error 
 }
 
 func (e *Endpoint) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(e.getEndpoint())
+	return kube.Apply(ctx.Client, e.getEndpoint())
 }
 
 func (e *Endpoint) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(e.getEndpoint())
+	return kube.Delete(ctx.Client, e.getEndpoint())
 }
 
 func (e *Endpoint) getEndpoint() *v1.Endpoints {

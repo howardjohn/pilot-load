@@ -5,6 +5,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -26,11 +27,11 @@ func NewDestinationRule(s DestinationRuleSpec) *DestinationRule {
 }
 
 func (v *DestinationRule) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getDestinationRule())
+	return kube.Apply(ctx.Client, v.getDestinationRule())
 }
 
 func (v *DestinationRule) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getDestinationRule())
+	return kube.Delete(ctx.Client, v.getDestinationRule())
 }
 
 func (v *DestinationRule) Refresh(ctx model.Context) error {

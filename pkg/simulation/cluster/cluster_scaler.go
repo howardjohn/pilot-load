@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/lthibault/jitterbug"
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )

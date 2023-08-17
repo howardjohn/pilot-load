@@ -4,14 +4,15 @@ import (
 	"errors"
 	"time"
 
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/ptr"
-	"istio.io/pkg/log"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -35,10 +36,10 @@ func NewNode(s NodeSpec) *Node {
 }
 
 func (n *Node) Run(ctx model.Context) (err error) {
-	if n.Spec.ClusterType == model.Real {
+	if n.Spec.ClusterType == model.Fake {
 		return nil
 	}
-	nm, err := ctx.Client.ApplyRes(n.getNode())
+	nm, err := kube.ApplyRes(ctx.Client, n.getNode())
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func (n *Node) Run(ctx model.Context) (err error) {
 			case <-ctx.Done():
 				return
 			case <-tc:
-				if err := ctx.Client.Apply(n.getLease()); err != nil {
+				if err := kube.Apply(ctx.Client, n.getLease()); err != nil {
 					// fast retry
 					tc = time.After(time.Second * 1)
 					log.Warnf("lease update for %v failed: %v", n.Spec.Name, err)
@@ -69,8 +70,8 @@ func (n *Node) Cleanup(ctx model.Context) error {
 		return nil
 	}
 	return errors.Join(
-		ctx.Client.Delete(n.getNode()),
-		ctx.Client.Delete(n.getLease()),
+		kube.Delete(ctx.Client, n.getNode()),
+		kube.Delete(ctx.Client, n.getLease()),
 	)
 }
 

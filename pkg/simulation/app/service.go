@@ -5,6 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -24,12 +25,12 @@ func NewService(s ServiceSpec) *Service {
 	return &Service{Spec: &s}
 }
 
-func (s *Service) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(s.getService())
+func (s *Service) Run(ctx model.Context) (err error) {
+	return kube.Apply(ctx.Client, s.getService())
 }
 
-func (s *Service) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(s.getService())
+func (s *Service) Cleanup(ctx model.Context) error {
+	return kube.Delete(ctx.Client, s.getService())
 }
 
 func (s *Service) getService() *v1.Service {

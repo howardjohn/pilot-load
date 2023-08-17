@@ -1,16 +1,17 @@
 package impersonate
 
 import (
-	"sync"
 	"time"
 
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/config"
+	kubelib "istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/api/core/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
@@ -20,65 +21,57 @@ type ImpersonateSpec struct {
 	Selector model.Selector
 	Delay    time.Duration
 	Replicas int
-	Watch    bool
 }
 
 type ImpersonateSimulation struct {
 	Spec ImpersonateSpec
-	done []chan struct{}
 
-	podsMut sync.Mutex
-	pods    map[types.UID][]*xds.Simulation
+	knownPods map[types.NamespacedName][]*xds.Simulation
+
+	pods  kclient.Client[*v1.Pod]
+	queue controllers.Queue
 }
 
 var _ model.Simulation = &ImpersonateSimulation{}
 
 func NewSimulation(spec ImpersonateSpec) *ImpersonateSimulation {
 	return &ImpersonateSimulation{
-		Spec: spec,
-		pods: map[types.UID][]*xds.Simulation{},
+		Spec:      spec,
+		knownPods: map[types.NamespacedName][]*xds.Simulation{},
 	}
 }
 
 func (i *ImpersonateSimulation) Run(ctx model.Context) error {
-	informers := ctx.Client.Informers()
-	if i.Spec.Watch {
-		return i.watch(ctx, informers)
-	}
-	return i.list(ctx, informers)
-}
-
-func (i *ImpersonateSimulation) list(ctx model.Context, informers informers.SharedInformerFactory) error {
-	informers.Start(ctx.Done())
-	informers.WaitForCacheSync(ctx.Done())
-	pods := informers.Core().V1().Pods()
-	plist, err := pods.Lister().Pods(metav1.NamespaceAll).List(getLabelSelector(i.Spec.Selector))
-	if err != nil {
-		return err
-	}
-	total := 0
-	for n := 1; n <= i.Spec.Replicas; n++ {
-		for _, pod := range plist {
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-			}
-			total++
-			xsim := newSimulation(ctx, pod)
-			done := make(chan struct{})
-			i.done = append(i.done, done)
-			log.Infof("Starting pod %v/%v (%v), replica %d", pod.Name, pod.Namespace, xsim.IP, n)
-			go func() {
-				if err := xsim.Run(ctx); err != nil {
-					log.Errorf("failed running %v: %v", xsim.IP, err)
-				}
-				close(done)
-			}()
-			time.Sleep(i.Spec.Delay)
+	sel := getLabelSelector(i.Spec.Selector)
+	i.pods = kclient.New[*v1.Pod](ctx.Client)
+	i.pods.Start(ctx.Done())
+	i.queue = controllers.NewQueue("pods", controllers.WithReconciler(func(key types.NamespacedName) error {
+		pod := i.pods.Get(key.Name, key.Namespace)
+		if pod == nil {
+			i.del(ctx, key)
+			return nil
 		}
-	}
-	log.Infof("All pods started (%d total)", total)
+		if pod.Status.PodIP == "" {
+			// Need a pod IP before we can watch
+			i.del(ctx, key)
+			return nil
+		}
+		selected := sel.Matches(klabels.Set(pod.GetLabels()))
+		if selected {
+			i.add(ctx, pod)
+		} else {
+			i.del(ctx, key)
+		}
+		return nil
+	}))
+	i.pods.AddEventHandler(controllers.ObjectHandler(i.queue.AddObject))
+	// Wait until pods are queued up.
+	kubelib.WaitForCacheSync("pods", ctx.Done(), i.pods.HasSynced)
+	go i.queue.Run(ctx.Done())
+
+	// Now wait until initial pods are established.
+	kubelib.WaitForCacheSync("queue", ctx.Done(), i.queue.HasSynced)
+
 	return nil
 }
 
@@ -95,44 +88,10 @@ func newSimulation(ctx model.Context, pod *corev1.Pod) *xds.Simulation {
 	}
 }
 
-func (i *ImpersonateSimulation) watch(ctx model.Context, informers informers.SharedInformerFactory) error {
-	sel := getLabelSelector(i.Spec.Selector)
-
-	pods := informers.Core().V1().Pods()
-	_, err := pods.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			pod := obj.(*corev1.Pod).DeepCopy()
-			if !sel.Matches(klabels.Set(pod.Labels)) {
-				return
-			}
-			i.add(ctx, pod)
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			pod := newObj.(*corev1.Pod).DeepCopy()
-			if !sel.Matches(klabels.Set(pod.Labels)) {
-				i.del(ctx, pod)
-			} else {
-				i.add(ctx, pod)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			pod := obj.(*corev1.Pod).DeepCopy()
-			i.del(ctx, pod)
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	informers.Start(ctx.Done())
-	return nil
-}
-
 func (i *ImpersonateSimulation) add(ctx model.Context, pod *corev1.Pod) {
-	i.podsMut.Lock()
-	defer i.podsMut.Unlock()
-	p := i.pods[pod.UID]
-	if p != nil {
+	key := config.NamespacedName(pod)
+	if _, f := i.knownPods[key]; f {
+		// Pod already found, no updates. In theory we could replace it but too complex
 		return
 	}
 
@@ -148,15 +107,13 @@ func (i *ImpersonateSimulation) add(ctx model.Context, pod *corev1.Pod) {
 		xsims = append(xsims, xsim)
 		time.Sleep(i.Spec.Delay)
 	}
-	i.pods[pod.UID] = xsims
+	i.knownPods[key] = xsims
 }
 
-func (i *ImpersonateSimulation) del(ctx model.Context, pod *corev1.Pod) {
-	i.podsMut.Lock()
-	defer i.podsMut.Unlock()
-
-	p := i.pods[pod.UID]
-	if p == nil {
+func (i *ImpersonateSimulation) del(ctx model.Context, key types.NamespacedName) {
+	p, f := i.knownPods[key]
+	if !f {
+		// Pod not found, nothing to do.
 		return
 	}
 	for _, d := range p {
@@ -165,19 +122,13 @@ func (i *ImpersonateSimulation) del(ctx model.Context, pod *corev1.Pod) {
 			log.Error(err)
 		}
 	}
-	delete(i.pods, pod.UID)
+	delete(i.knownPods, key)
 }
 
 func (i *ImpersonateSimulation) Cleanup(ctx model.Context) error {
-	// Wait for terminations
-	for _, d := range i.done {
-		<-d
-	}
-
-	i.podsMut.Lock()
-	defer i.podsMut.Unlock()
-	if len(i.pods) != 0 {
-		for _, p := range i.pods {
+	<-i.queue.Closed()
+	if len(i.knownPods) != 0 {
+		for _, p := range i.knownPods {
 			for _, d := range p {
 				err := d.Cleanup(ctx)
 				if err != nil {
@@ -185,7 +136,6 @@ func (i *ImpersonateSimulation) Cleanup(ctx model.Context) error {
 				}
 			}
 		}
-		i.pods = map[types.UID][]*xds.Simulation{}
 	}
 	return nil
 }

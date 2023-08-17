@@ -8,6 +8,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -34,11 +35,11 @@ func (v *EnvoyFilter) Refresh(ctx model.Context) error {
 }
 
 func (v *EnvoyFilter) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getEnvoyFilter())
+	return kube.Apply(ctx.Client, v.getEnvoyFilter())
 }
 
 func (v *EnvoyFilter) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getEnvoyFilter())
+	return kube.Delete(ctx.Client, v.getEnvoyFilter())
 }
 
 func (v *EnvoyFilter) getEnvoyFilter() *v1alpha3.EnvoyFilter {

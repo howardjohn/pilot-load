@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/informers"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -203,14 +204,10 @@ func (c *Cluster) Cleanup(ctx model.Context) error {
 }
 
 func (c *Cluster) watchPods(ctx model.Context) {
-	inf := informers.NewSharedInformerFactoryWithOptions(ctx.Client.Kubernetes, 0)
-	podInformer := inf.Core().V1().Pods().Informer()
-	podLister := inf.Core().V1().Pods().Lister()
-	inf.Start(ctx.Done())
-	inf.WaitForCacheSync(ctx.Done())
+	pods := kclient.New[*v1.Pod](ctx.Client)
 	q := controllers.NewQueue("pods",
 		controllers.WithReconciler(func(key types.NamespacedName) error {
-			p, _ := podLister.Pods(key.Namespace).Get(key.Name)
+			p := pods.Get(key.Name, key.Namespace)
 			if p == nil {
 				return nil
 			}
@@ -219,7 +216,7 @@ func (c *Cluster) watchPods(ctx model.Context) {
 				return nil
 			}
 			if p.DeletionTimestamp != nil {
-				if err := ctx.Client.Delete(p); err != nil {
+				if err := pods.Delete(p.Name, p.Namespace); err != nil {
 					return fmt.Errorf("delete: %v", err)
 				}
 				return nil
@@ -256,13 +253,14 @@ func (c *Cluster) watchPods(ctx model.Context) {
 					Image: c.Image,
 				}
 			}
-			if err := ctx.Client.ApplyStatus(p); err != nil {
+			if err := kube.ApplyStatus(ctx.Client, p); err != nil {
 				return fmt.Errorf("apply status: %v", err)
 			}
 			return nil
 		}),
 		controllers.WithMaxAttempts(5))
-	podInformer.AddEventHandler(controllers.ObjectHandler(q.AddObject))
+	pods.AddEventHandler(controllers.ObjectHandler(q.AddObject))
+	pods.Start(ctx.Done())
 	q.Run(ctx.Done())
 }
 

@@ -4,6 +4,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -24,11 +25,11 @@ func NewKubernetesNamespace(s KubernetesNamespaceSpec) *KubernetesNamespace {
 }
 
 func (n *KubernetesNamespace) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(n.getKubernetesNamespace())
+	return kube.Apply(ctx.Client, n.getKubernetesNamespace())
 }
 
 func (n *KubernetesNamespace) Cleanup(ctx model.Context) error {
-	if err := ctx.Client.Delete(n.getKubernetesNamespace()); err != nil {
+	if err := kube.Delete(ctx.Client, n.getKubernetesNamespace()); err != nil {
 		return err
 	}
 	if !n.Spec.RealCluster {

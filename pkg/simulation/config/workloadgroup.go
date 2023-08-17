@@ -5,6 +5,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -24,11 +25,11 @@ func NewWorkloadGroup(s WorkloadGroupSpec) *WorkloadGroup {
 }
 
 func (v *WorkloadGroup) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getWorkloadGroup())
+	return kube.Apply(ctx.Client, v.getWorkloadGroup())
 }
 
 func (v *WorkloadGroup) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getWorkloadGroup())
+	return kube.Delete(ctx.Client, v.getWorkloadGroup())
 }
 
 func (v *WorkloadGroup) getWorkloadGroup() *v1alpha3.WorkloadGroup {

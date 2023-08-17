@@ -4,6 +4,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -27,7 +28,7 @@ func NewSecret(s SecretSpec) *Secret {
 }
 
 func (s *Secret) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(s.getSecret())
+	return kube.Apply(ctx.Client, s.getSecret())
 }
 
 func (s *Secret) Refresh(ctx model.Context) error {
@@ -36,7 +37,7 @@ func (s *Secret) Refresh(ctx model.Context) error {
 }
 
 func (s *Secret) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(s.getSecret())
+	return kube.Delete(ctx.Client, s.getSecret())
 }
 
 func (s *Secret) getSecret() *v1.Secret {

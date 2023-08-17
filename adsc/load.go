@@ -8,11 +8,7 @@ import (
 )
 
 func Fetch(pilotAddress string, config *Config) (*Responses, error) {
-	log := func(template string, args ...interface{}) {
-		a := []interface{}{"%v: " + template, config.Workload}
-		a = append(a, args...)
-		scope.Infof(a...)
-	}
+	log := scope.WithLabels("workload", config.Workload).Infof
 	watchAll := map[string]struct{}{"cds": {}, "eds": {}, "rds": {}, "lds": {}}
 	log("Connecting: %v", config.IP)
 	con, err := Dial(pilotAddress, config)
@@ -51,11 +47,7 @@ func Fetch(pilotAddress string, config *Config) (*Responses, error) {
 
 func Connect(pilotAddress string, config *Config) {
 	attempts := 0
-	log := func(template string, args ...interface{}) {
-		a := []interface{}{"%v: " + template, config.Workload}
-		a = append(a, args...)
-		scope.Infof(a...)
-	}
+	log := scope.WithLabels("workload", config.Workload).Infof
 	// Follow envoy defaults https://github.com/envoyproxy/envoy/blob/v1.12.1/source/common/config/grpc_stream.h#L40-L43
 	b := backoff.NewExponentialBackOff()
 	b.MaxElapsedTime = 0

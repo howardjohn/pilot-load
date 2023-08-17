@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
@@ -95,7 +96,7 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 	work := func() (res result) {
 		pod := a.createPod()
 		t0 := time.Now()
-		if err := ctx.Client.Apply(pod); err != nil {
+		if err := kube.Apply(ctx.Client, pod); err != nil {
 			log.Warnf("pod creation failed: %v", err)
 			return
 		}
@@ -103,19 +104,19 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 			if cleanupDelay > 0 {
 				go func() {
 					time.Sleep(cleanupDelay)
-					if err := ctx.Client.Delete(pod); err != nil {
+					if err := kube.Delete(ctx.Client, pod); err != nil {
 						log.Warnf("pod cleanup: %v", err)
 					}
 				}()
 			} else {
-				if err := ctx.Client.Delete(pod); err != nil {
+				if err := kube.Delete(ctx.Client, pod); err != nil {
 					log.Warnf("pod cleanup: %v", err)
 				}
 			}
 		}()
 		for {
 			log.Debugf("lookup %v", pod.Name)
-			kpod, err := ctx.Client.Kubernetes.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+			kpod, err := ctx.Client.Kube().CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 			if err != nil {
 				// We got a real error, exit
 				if !errors.IsNotFound(err) {

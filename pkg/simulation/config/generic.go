@@ -1,25 +1,26 @@
 package config
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
+	"istio.io/istio/pkg/kube/controllers"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-type Generic struct {
-	Spec runtime.Object
+type Generic[T controllers.Object] struct {
+	Spec T
 }
 
-var _ model.Simulation = &Generic{}
+var _ model.Simulation = &Generic[controllers.Object]{}
 
-func NewGeneric(s runtime.Object) *Generic {
-	return &Generic{Spec: s}
+func NewGeneric[T controllers.Object](s T) *Generic[T] {
+	return &Generic[T]{Spec: s}
 }
 
-func (v *Generic) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.Spec)
+func (v *Generic[T]) Run(ctx model.Context) (err error) {
+	return kube.Apply(ctx.Client, v.Spec)
 }
 
-func (v *Generic) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.Spec)
+func (v *Generic[T]) Cleanup(ctx model.Context) error {
+	return kube.Delete(ctx.Client, v.Spec)
 }

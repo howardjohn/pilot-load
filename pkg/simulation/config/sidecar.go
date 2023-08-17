@@ -5,6 +5,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -31,11 +32,11 @@ func (v *Sidecar) Refresh(ctx model.Context) error {
 }
 
 func (v *Sidecar) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getSidecar())
+	return kube.Apply(ctx.Client, v.getSidecar())
 }
 
 func (v *Sidecar) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getSidecar())
+	return kube.Delete(ctx.Client, v.getSidecar())
 }
 
 func (v *Sidecar) getSidecar() *v1alpha3.Sidecar {
