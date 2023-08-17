@@ -3,10 +3,11 @@ package simulation
 import (
 	"time"
 
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -43,7 +44,7 @@ func (a ApiServerSimulation) Run(ctx model.Context) error {
 			requests++
 			t0 := time.Now()
 			pod.Spec.Containers[0].Image = image[requests%2]
-			if err := ctx.Client.Apply(pod); err != nil {
+			if err := kube.Apply(ctx.Client, pod); err != nil {
 				return err
 			}
 			latency := time.Since(t0)
@@ -54,7 +55,7 @@ func (a ApiServerSimulation) Run(ctx model.Context) error {
 }
 
 func (a ApiServerSimulation) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(&v1.Pod{
+	return kube.Delete(ctx.Client, &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",

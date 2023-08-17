@@ -8,11 +8,12 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
-	"istio.io/pkg/log"
+	kubelib "istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
-	corev1 "k8s.io/client-go/informers/core/v1"
 
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -20,9 +21,9 @@ import (
 
 type DeterministicSimulation struct{}
 
-func getIstiodAddresses(pods corev1.PodInformer) []string {
+func getIstiodAddresses(pods kclient.Client[*v1.Pod]) []string {
 	s, _ := klabels.Parse("app=istiod")
-	ps, _ := pods.Lister().Pods("istio-system").List(s)
+	ps := pods.List("istio-system", s)
 	res := []string{}
 	for _, p := range ps {
 		res = append(res, p.Status.PodIP+":15010")
@@ -31,15 +32,11 @@ func getIstiodAddresses(pods corev1.PodInformer) []string {
 }
 
 func (d DeterministicSimulation) Run(ctx model.Context) error {
-	informers := ctx.Client.Informers()
-	pods, _ := informers.Core().V1().Pods(), informers.Core().V1().Pods().Informer()
-	informers.Start(ctx.Done())
-	informers.WaitForCacheSync(ctx.Done())
+	pods := kclient.New[*v1.Pod](ctx.Client)
+	pods.Start(ctx.Done())
+	kubelib.WaitForCacheSync("pods", ctx.Done(), pods.HasSynced)
 	s, _ := klabels.Parse("security.istio.io/tlsMode")
-	plist, err := pods.Lister().Pods(metav1.NamespaceAll).List(s)
-	if err != nil {
-		return err
-	}
+	plist := pods.List(metav1.NamespaceAll, s)
 	total := 0
 	addresses := getIstiodAddresses(pods)
 	if len(addresses) == 0 {
@@ -102,7 +99,7 @@ func (d DeterministicSimulation) checkPod(ctx model.Context, pod *v1.Pod, addres
 				StoreResponses: true,
 			})
 			if err != nil {
-				log.Errorf(err)
+				log.Error(err)
 				return
 			}
 			resps[i] = res

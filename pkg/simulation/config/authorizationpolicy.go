@@ -6,6 +6,7 @@ import (
 	"istio.io/client-go/pkg/apis/security/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -32,11 +33,11 @@ func (v *AuthorizationPolicy) Refresh(ctx model.Context) error {
 }
 
 func (v *AuthorizationPolicy) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getAuthorizationPolicy())
+	return kube.Apply(ctx.Client, v.getAuthorizationPolicy())
 }
 
 func (v *AuthorizationPolicy) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getAuthorizationPolicy())
+	return kube.Delete(ctx.Client, v.getAuthorizationPolicy())
 }
 
 func (v *AuthorizationPolicy) getAuthorizationPolicy() *v1beta1.AuthorizationPolicy {

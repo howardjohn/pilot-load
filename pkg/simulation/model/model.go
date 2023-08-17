@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
@@ -217,7 +217,6 @@ type ImpersonateConfig struct {
 	Replicas int
 	Delay    time.Duration
 	Selector string
-	Watch    bool
 }
 
 type ReproduceConfig struct {

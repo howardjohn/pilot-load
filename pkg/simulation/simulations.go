@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/dump"
@@ -54,7 +54,6 @@ func Impersonate(a model.Args) error {
 		Selector: model.Selector(a.ImpersonateConfig.Selector),
 		Replicas: a.ImpersonateConfig.Replicas,
 		Delay:    a.ImpersonateConfig.Delay,
-		Watch:    a.ImpersonateConfig.Watch,
 	})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
@@ -139,9 +138,9 @@ func Latency(a model.Args) error {
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	go captureTermination(ctx, cancel)
+	go CaptureTermination(ctx, cancel)
 	defer cancel()
-	go monitoring.StartMonitoring(ctx, 8765)
+	monitoring.StartMonitoring(8765)
 	simulationContext := model.Context{Context: ctx, Args: a, Client: a.Client, Cancel: cancel}
 	if err := simulation.Run(simulationContext); err != nil {
 		log.Errorf("failed: %v, starting cleanup", err)
@@ -154,9 +153,9 @@ func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 
 func ExecuteOneshot(a model.Args, simulation model.Simulation) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	go captureTermination(ctx, cancel)
+	go CaptureTermination(ctx, cancel)
 	defer cancel()
-	go monitoring.StartMonitoring(ctx, 8765)
+	monitoring.StartMonitoring(8765)
 	simulationContext := model.Context{Context: ctx, Args: a, Client: a.Client, Cancel: cancel}
 	if err := simulation.Run(simulationContext); err != nil {
 		log.Errorf("failed: %v, starting cleanup", err)
@@ -167,7 +166,7 @@ func ExecuteOneshot(a model.Args, simulation model.Simulation) error {
 	return simulation.Cleanup(simulationContext)
 }
 
-func captureTermination(ctx context.Context, cancel context.CancelFunc) {
+func CaptureTermination(ctx context.Context, cancel context.CancelFunc) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	signal.Notify(c, syscall.SIGTERM)

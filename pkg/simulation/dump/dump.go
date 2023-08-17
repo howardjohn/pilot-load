@@ -24,8 +24,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"istio.io/istio/pilot/pkg/util/protoconv"
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/util/protomarshal"
-	"istio.io/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/adsc"
@@ -52,7 +52,7 @@ func NewSimulation(spec DumpSpec) *DumpSimulation {
 }
 
 func (i *DumpSimulation) Run(ctx model.Context) error {
-	pod, err := ctx.Client.Kubernetes.CoreV1().Pods(i.Spec.Namespace).Get(context.Background(), i.Spec.Pod, metav1.GetOptions{})
+	pod, err := ctx.Client.Kube().CoreV1().Pods(i.Spec.Namespace).Get(context.Background(), i.Spec.Pod, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("pod not found: %v", err)
 	}

@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -30,11 +31,11 @@ func NewDeployment(s DeploymentSpec) *Deployment {
 }
 
 func (e *Deployment) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(e.getDeployment())
+	return kube.Apply(ctx.Client, e.getDeployment())
 }
 
 func (e *Deployment) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(e.getDeployment())
+	return kube.Delete(ctx.Client, e.getDeployment())
 }
 
 func (e *Deployment) getDeployment() *appsv1.Deployment {

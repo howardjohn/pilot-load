@@ -9,6 +9,7 @@ import (
 	"istio.io/client-go/pkg/apis/telemetry/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -35,11 +36,11 @@ func (v *Telemetry) Refresh(ctx model.Context) error {
 }
 
 func (v *Telemetry) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getTelemetry())
+	return kube.Apply(ctx.Client, v.getTelemetry())
 }
 
 func (v *Telemetry) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getTelemetry())
+	return kube.Delete(ctx.Client, v.getTelemetry())
 }
 
 func (v *Telemetry) getTelemetry() *v1alpha1.Telemetry {

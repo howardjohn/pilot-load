@@ -6,6 +6,7 @@ import (
 	"istio.io/client-go/pkg/apis/security/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -32,11 +33,11 @@ func (v *PeerAuthentication) Refresh(ctx model.Context) error {
 }
 
 func (v *PeerAuthentication) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getPeerAuthentication())
+	return kube.Apply(ctx.Client, v.getPeerAuthentication())
 }
 
 func (v *PeerAuthentication) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getPeerAuthentication())
+	return kube.Delete(ctx.Client, v.getPeerAuthentication())
 }
 
 func (v *PeerAuthentication) getPeerAuthentication() *v1beta1.PeerAuthentication {

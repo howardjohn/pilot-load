@@ -5,6 +5,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -25,11 +26,11 @@ func NewServiceEntry(s ServiceEntrySpec) *ServiceEntry {
 }
 
 func (v *ServiceEntry) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getServiceEntry())
+	return kube.Apply(ctx.Client, v.getServiceEntry())
 }
 
 func (v *ServiceEntry) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getServiceEntry())
+	return kube.Delete(ctx.Client, v.getServiceEntry())
 }
 
 func (v *ServiceEntry) getServiceEntry() *v1alpha3.ServiceEntry {

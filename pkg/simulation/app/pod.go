@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"google.golang.org/grpc/credentials"
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/ptr"
-	"istio.io/pkg/log"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
@@ -73,7 +74,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
 	if p.Spec.ClusterType != model.Real {
-		if err = ctx.Client.ApplyFast(pod); err != nil {
+		if err := kube.ApplyFast(ctx.Client, pod); err != nil {
 			return fmt.Errorf("failed to apply config: %v", err)
 		}
 		p.created = true
@@ -104,7 +105,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 
 func (p *Pod) Cleanup(ctx model.Context) error {
 	if p.created {
-		if err := ctx.Client.Delete(p.getPod()); err != nil {
+		if err := kube.Delete(ctx.Client, p.getPod()); err != nil {
 			return err
 		}
 	}

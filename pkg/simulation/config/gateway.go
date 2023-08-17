@@ -7,6 +7,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
@@ -32,11 +33,11 @@ func NewGateway(s GatewaySpec) *Gateway {
 }
 
 func (v *Gateway) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getGateway())
+	return kube.Apply(ctx.Client, v.getGateway())
 }
 
 func (v *Gateway) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getGateway())
+	return kube.Delete(ctx.Client, v.getGateway())
 }
 
 func (v *Gateway) Name() string {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
-	"istio.io/pkg/log"
+	"istio.io/istio/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -107,7 +107,7 @@ func setDefaultArgs(args model.Args) (model.Args, error) {
 		return model.Args{}, err
 	}
 	if _, f := xdsMetadata[CLOUDRUN_ADDR]; !f && args.Auth.Type == security.AuthTypeGoogle {
-		mwh, err := args.Client.Kubernetes.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.Background(), "istiod-asm-managed", metav1.GetOptions{})
+		mwh, err := args.Client.Kube().AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.Background(), "istiod-asm-managed", metav1.GetOptions{})
 		if err != nil {
 			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: %v", err)
 		}
@@ -130,8 +130,6 @@ var rootCmd = &cobra.Command{
 	Short:        "open XDS connections to pilot",
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		log.FindScope("dump").SetOutputLevel(log.WarnLevel)
-
 		return log.Configure(loggingOptions)
 	},
 }
@@ -154,6 +152,7 @@ func init() {
 		xdsLatencyCmd,
 		reproduceCmd,
 		dumpCmd,
+		isolatedCmd,
 	)
 }
 

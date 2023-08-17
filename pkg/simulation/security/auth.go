@@ -15,13 +15,13 @@ import (
 	"google.golang.org/grpc/metadata"
 	pb "istio.io/api/security/v1alpha1"
 	"istio.io/istio/pkg/bootstrap/platform"
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/security"
 	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
 	pkiutil "istio.io/istio/security/pkg/pki/util"
 	"istio.io/istio/security/pkg/stsservice"
 	"istio.io/istio/security/pkg/stsservice/server"
 	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
-	"istio.io/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 )
@@ -39,7 +39,7 @@ type AuthOptions struct {
 
 type AuthType string
 
-var (
+const (
 	AuthTypeDefault      AuthType = ""
 	AuthTypePlaintext    AuthType = "plaintext"
 	AuthTypeMTLS         AuthType = "mtls"

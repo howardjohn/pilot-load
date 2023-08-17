@@ -10,7 +10,7 @@ import (
 
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	ilog "istio.io/pkg/log"
+	ilog "istio.io/istio/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"

@@ -16,7 +16,6 @@ func init() {
 	impersonateCmd.PersistentFlags().DurationVar(&impersonateConfig.Delay, "delay", impersonateConfig.Delay, "delay between each connection")
 	impersonateCmd.PersistentFlags().IntVar(&impersonateConfig.Replicas, "replicas", impersonateConfig.Replicas, "number of connections to make for each pod")
 	impersonateCmd.PersistentFlags().StringVar(&impersonateConfig.Selector, "selector", impersonateConfig.Selector, "selector to use {sidecar,external,both}")
-	impersonateCmd.PersistentFlags().BoolVar(&impersonateConfig.Watch, "watch", impersonateConfig.Watch, "watch for pod changes")
 }
 
 var impersonateCmd = &cobra.Command{

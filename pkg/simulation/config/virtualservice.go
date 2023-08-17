@@ -7,6 +7,7 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
@@ -36,11 +37,11 @@ func NewVirtualService(s VirtualServiceSpec) *VirtualService {
 }
 
 func (v *VirtualService) Run(ctx model.Context) (err error) {
-	return ctx.Client.Apply(v.getVirtualService())
+	return kube.Apply(ctx.Client, v.getVirtualService())
 }
 
 func (v *VirtualService) Cleanup(ctx model.Context) error {
-	return ctx.Client.Delete(v.getVirtualService())
+	return kube.Delete(ctx.Client, v.getVirtualService())
 }
 
 func getRandomWeights(size int) []int {
