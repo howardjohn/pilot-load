@@ -11,7 +11,6 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/dump"
-	"github.com/howardjohn/pilot-load/pkg/simulation/gateway"
 	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
@@ -31,19 +30,6 @@ func ApiServer(a model.Args) error {
 // Load testing pod startup
 func PodStartup(a model.Args) error {
 	if err := ExecuteSimulations(a, &PodStartupSimulation{a.StartupConfig}); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
-
-func GatewayProber(a model.Args) error {
-	sim := gateway.NewSimulation(gateway.ProberSpec{
-		Replicas:       a.ProberConfig.Replicas,
-		Delay:          a.ProberConfig.Delay,
-		DelayThreshold: a.ProberConfig.DelayThreshold,
-		Address:        a.ProberConfig.GatewayAddress,
-	})
-	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}
 	return nil
