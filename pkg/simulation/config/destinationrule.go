@@ -50,7 +50,7 @@ func (v *DestinationRule) getDestinationRule() *v1alpha3.DestinationRule {
 	case 0:
 		lbPolicy = networkingv1alpha3.LoadBalancerSettings_ROUND_ROBIN
 	case 1:
-		lbPolicy = networkingv1alpha3.LoadBalancerSettings_LEAST_CONN
+		lbPolicy = networkingv1alpha3.LoadBalancerSettings_LEAST_REQUEST
 	}
 	return &v1alpha3.DestinationRule{
 		ObjectMeta: metav1.ObjectMeta{

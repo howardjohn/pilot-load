@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
@@ -63,7 +63,7 @@ func readConfigFile(filename string) (model.ClusterConfig, error) {
 	if filename == "" {
 		return defaultConfig, nil
 	}
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return model.ClusterConfig{}, fmt.Errorf("failed to read configFile file: %v", filename)
 	}

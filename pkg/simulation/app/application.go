@@ -54,7 +54,7 @@ func NewApplication(s ApplicationSpec) *Application {
 	w := &Application{Spec: &s}
 
 	// Apply common CRDs to all app types
-	if s.Istio.Default == true || s.Istio.VirtualService != nil {
+	if s.Istio.Default || s.Istio.VirtualService != nil {
 		var gateways []string
 		if s.Istio.VirtualService != nil && len(s.Istio.VirtualService.Gateways) != 0 {
 			gateways = s.Istio.VirtualService.Gateways
@@ -66,35 +66,35 @@ func NewApplication(s ApplicationSpec) *Application {
 			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
 		})
 	}
-	if s.Istio.Default == true || s.Istio.DestinationRule != nil {
+	if s.Istio.Default || s.Istio.DestinationRule != nil {
 		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
 			Subsets:   []string{"a"},
 		})
 	}
-	if s.Istio.Default == true || s.Istio.Telemetry != nil {
+	if s.Istio.Default || s.Istio.Telemetry != nil {
 		w.telemetry = config.NewTelemetry(config.TelemetrySpec{
 			App:       s.App,
 			Namespace: s.Namespace,
 			APIScope:  model.Application,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.RequestAuthentication != nil {
+	if s.Istio.Default || s.Istio.RequestAuthentication != nil {
 		w.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
 			APIScope:  model.Application,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.PeerAuthentication != nil {
+	if s.Istio.Default || s.Istio.PeerAuthentication != nil {
 		w.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
 			APIScope:  model.Application,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.AuthorizationPolicy != nil {
+	if s.Istio.Default || s.Istio.AuthorizationPolicy != nil {
 		w.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
 			App:       s.App,
 			Namespace: s.Namespace,
@@ -133,14 +133,14 @@ func NewApplication(s ApplicationSpec) *Application {
 	}
 
 	// Apply CRDs for sidecar and GW app type
-	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
+	if s.Istio.Default || s.Istio.EnvoyFilter != nil {
 		w.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			App:       s.App,
 			Namespace: s.Namespace,
 			APIScope:  model.Application,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.Sidecar != nil {
+	if s.Istio.Default || s.Istio.Sidecar != nil {
 		w.sidecar = config.NewSidecar(config.SidecarSpec{
 			App:       s.App,
 			Namespace: s.Namespace,

@@ -57,20 +57,6 @@ func (a *PodStartupSimulation) createPod() *v1.Pod {
 			TerminationGracePeriodSeconds: &grace,
 		},
 	}
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("startup-test-%s", id),
-			Namespace: a.Config.Namespace,
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{{
-				Name:    "app",
-				Image:   "alpine:3.12.3",
-				Command: []string{"sleep", "1000"},
-			}},
-			TerminationGracePeriodSeconds: &grace,
-		},
-	}
 }
 
 type result struct {

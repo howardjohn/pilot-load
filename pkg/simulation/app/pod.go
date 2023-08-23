@@ -172,6 +172,7 @@ func (p *Pod) getPod() *v1.Pod {
 					Effect:   v1.TaintEffectNoSchedule,
 				}},
 			},
+			Status: v1.PodStatus{ContainerStatuses: cs},
 		}
 	}
 
