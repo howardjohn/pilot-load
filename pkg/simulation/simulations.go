@@ -54,6 +54,7 @@ func Impersonate(a model.Args) error {
 		Selector: model.Selector(a.ImpersonateConfig.Selector),
 		Replicas: a.ImpersonateConfig.Replicas,
 		Delay:    a.ImpersonateConfig.Delay,
+		Watch:    a.ImpersonateConfig.Watch,
 	})
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
