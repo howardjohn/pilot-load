@@ -228,43 +228,88 @@ func internalApply[T controllers.Object](c *Client, o T, skipGet bool) (T, error
 		return res, nil
 	}
 
-	var res T
+	res, err := cl.Get(context.TODO(), name, metav1.GetOptions{})
+	switch {
+	// New resource to create. Create and maybe updat status
+	case errors.IsNotFound(err):
+		scope.Debugf("creating resource: %s/%s/%s", t, name, ns)
+		if res, err = cl.Create(context.TODO(), o, metav1.CreateOptions{}); err != nil {
+			return empty, fmt.Errorf("create: %w", err)
+		}
+		o.SetResourceVersion(res.GetResourceVersion())
+		if hasStatus(c, o) {
+			if err := updateStatus[T](cl, o); err != nil {
+				return empty, err
+			}
+		}
+		return res, nil
+		// Existing resource. Update then UpdateStatus
+	default:
+		o.SetResourceVersion(res.GetResourceVersion())
+		res, err := update[T](cl, o)
+		if err != nil {
+			return empty, err
+		}
+		o.SetResourceVersion(res.GetResourceVersion())
+		if hasStatus(c, o) {
+			if err := updateStatus[T](cl, o); err != nil {
+				return res, err
+			}
+		}
+		return res, nil
+	}
+}
+
+func updateStatus[T controllers.Object](cl API[T], o T) error {
+	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
+	scope.Debugf("updating resource status: %s/%s.%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
+
+	firstRun := true
 	err := retry.RetryOnConflict(backoff, func() error {
-		var err error
-		res, err = cl.Get(context.TODO(), name, metav1.GetOptions{})
-		switch {
-		case errors.IsNotFound(err):
-			scope.Debugf("creating resource: %s/%s/%s", t, name, ns)
-			if res, err = cl.Create(context.TODO(), o, metav1.CreateOptions{}); err != nil {
-				return fmt.Errorf("create: %v", err)
+		if firstRun {
+			firstRun = false
+		} else {
+			current, err := cl.Get(context.TODO(), o.GetName(), metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get: %w", err)
 			}
-			if hasStatus(c, o) {
-				scope.Debugf("updating resource status: %s/%s.%s", t, name, ns)
-				o.SetResourceVersion(res.GetResourceVersion())
-				if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
-					return fmt.Errorf("update status: %v", err)
-				}
-			}
-			return nil
-		case err == nil:
-			scope.Debugf("update resource: %s/%s/%s", t, name, ns)
-			o.SetResourceVersion(res.GetResourceVersion())
-			if res, err = cl.Update(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
-				return fmt.Errorf("update: %v", err)
-			}
-			if hasStatus(c, o) {
-				scope.Debugf("updating resource status: %s/%s.%s", t, name, ns)
-				o.SetResourceVersion(res.GetResourceVersion())
-				if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
-					return fmt.Errorf("update status: %v", err)
-				}
-			}
-			return err
+			o.SetResourceVersion(current.GetResourceVersion())
+		}
+		if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update status: %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return empty, fmt.Errorf("failed to apply %s/%s/%s: %v", t, name, ns, err)
+		return err
+	}
+	return nil
+}
+
+func update[T controllers.Object](cl API[T], o T) (T, error) {
+	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
+	scope.Debugf("updating resource status: %s/%s.%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
+
+	firstRun := true
+	var res T
+	err := retry.RetryOnConflict(backoff, func() error {
+		if firstRun {
+			firstRun = false
+		} else {
+			current, err := cl.Get(context.TODO(), o.GetName(), metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get: %w", err)
+			}
+			o.SetResourceVersion(current.GetResourceVersion())
+		}
+		var err error
+		if res, err = cl.(kubetypes.WriteAPI[T]).Update(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return res, err
 	}
 	return res, nil
 }

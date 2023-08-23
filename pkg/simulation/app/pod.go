@@ -75,7 +75,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 
 	if p.Spec.ClusterType != model.Real {
 		if err := kube.ApplyFast(ctx.Client, pod); err != nil {
-			return fmt.Errorf("failed to apply config: %v", err)
+			return fmt.Errorf("failed to apply pod: %v", err)
 		}
 		p.created = true
 	}
