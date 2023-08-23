@@ -147,7 +147,6 @@ func init() {
 		adscCmd,
 		clusterCmd,
 		impersonateCmd,
-		proberCmd,
 		startupCmd,
 		xdsLatencyCmd,
 		reproduceCmd,
