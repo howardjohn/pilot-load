@@ -58,37 +58,37 @@ func NewCluster(s ClusterSpec) *Cluster {
 		}
 	}
 
-	if s.Config.Istio.Default == true || s.Config.Istio.EnvoyFilter != nil {
+	if s.Config.Istio.Default || s.Config.Istio.EnvoyFilter != nil {
 		cluster.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,
 		})
 	}
-	if s.Config.Istio.Default == true || s.Config.Istio.Sidecar != nil {
+	if s.Config.Istio.Default || s.Config.Istio.Sidecar != nil {
 		cluster.sidecar = config.NewSidecar(config.SidecarSpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,
 		})
 	}
-	if s.Config.Istio.Default == true || s.Config.Istio.Telemetry != nil {
+	if s.Config.Istio.Default || s.Config.Istio.Telemetry != nil {
 		cluster.telemetry = config.NewTelemetry(config.TelemetrySpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,
 		})
 	}
-	if s.Config.Istio.Default == true || s.Config.Istio.RequestAuthentication != nil {
+	if s.Config.Istio.Default || s.Config.Istio.RequestAuthentication != nil {
 		cluster.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,
 		})
 	}
-	if s.Config.Istio.Default == true || s.Config.Istio.PeerAuthentication != nil {
+	if s.Config.Istio.Default || s.Config.Istio.PeerAuthentication != nil {
 		cluster.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,
 		})
 	}
-	if s.Config.Istio.Default == true || s.Config.Istio.AuthorizationPolicy != nil {
+	if s.Config.Istio.Default || s.Config.Istio.AuthorizationPolicy != nil {
 		cluster.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
 			Namespace: "istio-system",
 			APIScope:  model.Global,

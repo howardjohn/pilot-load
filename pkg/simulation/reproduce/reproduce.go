@@ -265,7 +265,7 @@ func (v *createSim[T]) Cleanup(ctx model.Context) error {
 }
 
 func shouldSkipResource(ns string, name string, kind string, isIstioApi bool) bool {
-	if denylistNamespaces.Contains(ns) && isIstioApi == false { // Allow Istio APIs to created, valid usecase is root namespace
+	if denylistNamespaces.Contains(ns) && !isIstioApi { // Allow Istio APIs to created, valid usecase is root namespace
 		return true
 	}
 	if ns == "default" && name == "kubernetes" && kind == "Service" { // Skip the Kubernetes Service

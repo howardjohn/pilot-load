@@ -46,37 +46,37 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}
 	}
 
-	if s.Istio.Default == true || s.Istio.EnvoyFilter != nil {
+	if s.Istio.Default || s.Istio.EnvoyFilter != nil {
 		ns.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.Sidecar != nil {
+	if s.Istio.Default || s.Istio.Sidecar != nil {
 		ns.sidecar = config.NewSidecar(config.SidecarSpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.Telemetry != nil {
+	if s.Istio.Default || s.Istio.Telemetry != nil {
 		ns.telemetry = config.NewTelemetry(config.TelemetrySpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.RequestAuthentication != nil {
+	if s.Istio.Default || s.Istio.RequestAuthentication != nil {
 		ns.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.PeerAuthentication != nil {
+	if s.Istio.Default || s.Istio.PeerAuthentication != nil {
 		ns.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
 		})
 	}
-	if s.Istio.Default == true || s.Istio.AuthorizationPolicy != nil {
+	if s.Istio.Default || s.Istio.AuthorizationPolicy != nil {
 		ns.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
 			Namespace: ns.Spec.Name,
 			APIScope:  model.Namespace,
