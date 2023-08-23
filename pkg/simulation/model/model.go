@@ -217,6 +217,7 @@ type ImpersonateConfig struct {
 	Replicas int
 	Delay    time.Duration
 	Selector string
+	Watch    bool
 }
 
 type ReproduceConfig struct {

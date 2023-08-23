@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    istio-injection: disabled
+  name: pilot-load
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pilot-load
+  namespace: pilot-load
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adsc-load
+  namespace: pilot-load
+  labels:
+    app: adsc-load
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adsc-load
+  template:
+    metadata:
+      name: adsc-load
+      annotations:
+        sidecar.istio.io/inject: "false"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8765"
+      labels:
+        app: adsc-load
+    spec:
+      serviceAccountName: pilot-load
+      terminationGracePeriodSeconds: 2000
+      containers:
+        - name: pilot-load
+          image: gcr.io/howardjohn-istio/pilot-load
+          imagePullPolicy: IfNotPresent
+          args:
+            - "impersonate"
+            - "--pilot-address=istiod.istio-system:15010"
+            - "--watch=true"
+            - "--replicas=1"
+            - "--delay=0"
+            - "--selector=sidecar"
+            - "--qps=500"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pilot-load
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pilot-load-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pilot-load
+subjects:
+  - kind: ServiceAccount
+    name: pilot-load
+    namespace: pilot-load
