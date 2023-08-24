@@ -7,11 +7,16 @@ import (
 	"net/http/pprof"
 
 	"github.com/felixge/fgprof"
+	"istio.io/istio/pkg/monitoring"
 )
 
 func StartMonitoring(port int) *http.Server {
-	// TODO add metrics
+	exporter, err := monitoring.RegisterPrometheusExporter(nil, nil)
+	if err != nil {
+		panic(err.Error())
+	}
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", exporter)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)

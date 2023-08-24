@@ -1,17 +1,22 @@
 nodeMetadata: {}
 jitter:
-  workloads: "30s"
+  workloads: "10s"
   config: "0s"
 namespaces:
 - name: mesh
-  replicas: 100
+  replicas: 3
+  # 300 pods, 20 services
   applications:
   - name: big
     replicas: 1
     instances: 200
     type: plain # No sidecar needed
+  - name: med
+    replicas: 9
+    instances: 10
+    type: plain # No sidecar needed
   - name: small
-    replicas: 200
+    replicas: 10
     instances: 1
     type: plain # No sidecar needed
 nodes:

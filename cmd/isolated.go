@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/pprof"
+	"time"
 
 	"github.com/spf13/cobra"
 	"istio.io/istio/pilot/pkg/features"
@@ -85,9 +86,10 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 		// Bump up QPS of requests so test starts faster
 		features.RequestLimit = 200.0
 		// Kube fake explodes too early
-		watch.DefaultChanSize = 10_000
+		watch.DefaultChanSize = 100_000
 		go test.Wrap(func(t test.Failer) {
 			ds = xds.NewFakeDiscoveryServer(t, xds.FakeOptions{
+				DebounceTime: time.Millisecond * 50,
 				ListenerBuilder: func() (net.Listener, error) {
 					return net.Listen("tcp", "127.0.0.1:0")
 				},
@@ -95,6 +97,7 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 			close(ready)
 			<-done
 		})
+		// TODO: we may want to load all pods first before we start...?
 		<-ready
 		ms := monitoring.StartMonitoring(8765)
 		ds.Discovery.InitDebug(ms.Handler.(*http.ServeMux), false, func() map[string]string {

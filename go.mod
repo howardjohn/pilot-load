@@ -2,6 +2,9 @@ module github.com/howardjohn/pilot-load
 
 go 1.19
 
+// Uncomment to use fake go client that has no leaking or copies
+//replace k8s.io/client-go => github.com/howardjohn/k8s-client-go v0.0.0-20230824140157-c9da8fe0a2e8
+
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cncf/udpa/go v0.0.0-20220112060539-c52dc94e7fbe
