@@ -36,7 +36,7 @@ func NewNode(s NodeSpec) *Node {
 }
 
 func (n *Node) Run(ctx model.Context) (err error) {
-	if n.Spec.ClusterType == model.Fake {
+	if n.Spec.ClusterType == model.Real {
 		return nil
 	}
 	nm, err := kube.ApplyRes(ctx.Client, n.getNode())
