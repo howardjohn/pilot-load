@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"golang.org/x/sync/errgroup"
+
+	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -228,7 +228,7 @@ type ReproduceConfig struct {
 type StartupConfig struct {
 	Namespace   string
 	Concurrency int
-	InCluster   bool
+	Inject      bool
 	Cooldown    time.Duration
 }
 
