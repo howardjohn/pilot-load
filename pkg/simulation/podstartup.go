@@ -8,11 +8,9 @@ import (
 
 	"github.com/ghodss/yaml"
 	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -30,77 +28,13 @@ func (a *PodStartupSimulation) createPod() (*v1.Pod, error) {
 	if err := yaml.Unmarshal([]byte(a.Config.Spec), p); err != nil {
 		return nil, err
 	}
-	p.Name = ""
 	p.Namespace = a.Config.Namespace
-	p.GenerateName = "startup-"
+	p.Name = "startup-" + util.GenUID()
 	if p.Labels == nil {
 		p.Labels = map[string]string{}
 	}
 	p.Labels["sidecar.istio.io/inject"] = fmt.Sprint(a.Config.Inject)
 	return p, nil
-}
-
-func (a *PodStartupSimulation) createPodNativeStartup() *v1.Pod {
-	id := util.GenUID()
-	return &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("startup-test-%s", id),
-			Labels: map[string]string{
-				"sidecar.istio.io/inject": fmt.Sprint(a.Config.Inject),
-			},
-			Namespace: a.Config.Namespace,
-		},
-		Spec: v1.PodSpec{
-			InitContainers: []v1.Container{{
-				Name:          "sidecar",
-				Image:         "alpine:3.12.3",
-				RestartPolicy: ptr.Of(v1.ContainerRestartPolicyAlways),
-				Command:       []string{"nc", "-lk", "-p", "12346", "-e", "echo", "hi"},
-				ReadinessProbe: &v1.Probe{
-					ProbeHandler: v1.ProbeHandler{
-						TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12346)},
-					},
-					InitialDelaySeconds: 0,
-					PeriodSeconds:       15,
-					SuccessThreshold:    1,
-					FailureThreshold:    1,
-				},
-				StartupProbe: &v1.Probe{
-					ProbeHandler: v1.ProbeHandler{
-						TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12346)},
-					},
-					InitialDelaySeconds: 0,
-					PeriodSeconds:       1,
-					SuccessThreshold:    1,
-					FailureThreshold:    2,
-				},
-			}},
-			Containers: []v1.Container{{
-				Name:    "app",
-				Image:   "alpine:3.12.3",
-				Command: []string{"nc", "-lk", "-p", "12345", "-e", "echo", "hi"},
-				ReadinessProbe: &v1.Probe{
-					ProbeHandler: v1.ProbeHandler{
-						TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
-					},
-					InitialDelaySeconds: 1,
-					PeriodSeconds:       1,
-					SuccessThreshold:    1,
-					FailureThreshold:    1,
-				},
-				//StartupProbe: &v1.Probe{
-				//	ProbeHandler: v1.ProbeHandler{
-				//		TCPSocket: &v1.TCPSocketAction{Port: intstr.FromInt(12345)},
-				//	},
-				//	InitialDelaySeconds: 1,
-				//	PeriodSeconds:       1,
-				//	SuccessThreshold:    1,
-				//	FailureThreshold:    2,
-				//},
-			}},
-			TerminationGracePeriodSeconds: &grace,
-		},
-	}
 }
 
 type result struct {
@@ -124,8 +58,10 @@ const cleanupDelay = time.Second * 0
 
 func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) {
 	work := func() (res result) {
-		// pod := a.createPod()
-		pod := a.createPodNativeStartup()
+		pod, err := a.createPod()
+		if err != nil {
+			log.Fatal(err)
+		}
 		t0 := time.Now()
 		if err := kube.Apply(ctx.Client, pod); err != nil {
 			log.Warnf("pod creation failed: %v", err)

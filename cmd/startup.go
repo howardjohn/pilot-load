@@ -43,7 +43,7 @@ var startupCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		args.StartupConfig.Spec = string(f)
+		startupConfig.Spec = string(f)
 
 		args.StartupConfig = startupConfig
 		logConfig(args.StartupConfig)
