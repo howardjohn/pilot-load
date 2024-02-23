@@ -3,18 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	xdstest "istio.io/istio/pilot/test/xds"
 	"net"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"time"
-
-	"github.com/spf13/cobra"
-	"istio.io/istio/pilot/pkg/features"
-	"istio.io/istio/pilot/pkg/xds"
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/test"
-	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
@@ -22,6 +16,11 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/spf13/cobra"
+	"istio.io/istio/pilot/pkg/features"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/test"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 func init() {
@@ -77,7 +76,7 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 	Use:   "isolated",
 	Short: "simulate a full cluster in a single binary",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		var ds *xds.FakeDiscoveryServer
+		var ds *xdstest.FakeDiscoveryServer
 		ready := make(chan struct{})
 		done := make(chan struct{})
 		defer func() {
@@ -88,7 +87,7 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 		// Kube fake explodes too early
 		watch.DefaultChanSize = 100_000
 		go test.Wrap(func(t test.Failer) {
-			ds = xds.NewFakeDiscoveryServer(t, xds.FakeOptions{
+			ds = xdstest.NewFakeDiscoveryServer(t, xdstest.FakeOptions{
 				DebounceTime: time.Millisecond * 50,
 				ListenerBuilder: func() (net.Listener, error) {
 					return net.Listen("tcp", "127.0.0.1:0")
