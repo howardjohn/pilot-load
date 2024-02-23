@@ -52,8 +52,9 @@ Below functionalities can be run via pilot-load tool.
     1. In cluster:
 
       ```shell script
+      kubectl create namespace pilot-load
       # Select a configuration to run
-      kubectl apply -f install/configs/canonical.yaml
+      kubectl create configmap pilot-load-config -n pilot-load --from-file=config.yaml=examples/ambient.yaml --dry-run=client -oyaml | kubectl apply -f -
       # Apply the actual deployment
       kubectl apply -f install/load-deployment.yaml
       ```
