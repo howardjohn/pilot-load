@@ -112,6 +112,7 @@ func (i *DumpSimulation) write(resp *adsc.Responses, cert security.Cert) error {
 		_ = os.MkdirAll(i.Spec.OutputDir+"/rds", 0o777)
 		_ = os.MkdirAll(i.Spec.OutputDir+"/eds", 0o777)
 		_ = os.MkdirAll(i.Spec.OutputDir+"/sds", 0o777)
+		_ = os.MkdirAll(i.Spec.OutputDir+"/ecds", 0o777)
 	}
 	writeResponse(clusterResponse(i.Spec.OutputDir, transmute[*cluster.Cluster](resp.Clusters)), i.Spec.OutputDir, "cds.yaml")
 	writeResponse(listenerResponse(i.Spec.OutputDir, transmute[*listener.Listener](resp.Listeners)), i.Spec.OutputDir, "lds.yaml")
@@ -120,6 +121,9 @@ func (i *DumpSimulation) write(resp *adsc.Responses, cert security.Cert) error {
 	}
 	for name, ep := range resp.Endpoints {
 		writeResponse(endpointsResponse([]*endpoint.ClusterLoadAssignment{ep.(*endpoint.ClusterLoadAssignment)}), i.Spec.OutputDir, fmt.Sprintf("eds/%s.yaml", SanitizeName(name)))
+	}
+	for name, ex := range resp.Extensions {
+		writeResponse(extensionsResponse([]*core.TypedExtensionConfig{ex.(*core.TypedExtensionConfig)}), i.Spec.OutputDir, fmt.Sprintf("ecds/%s.yaml", SanitizeName(name)))
 	}
 	for name, s := range resp.Secrets {
 		writeResponse(secretXdsResponse(i.Spec.OutputDir, []*tls.Secret{s.(*tls.Secret)}), i.Spec.OutputDir, fmt.Sprintf("sds/%s.yaml", SanitizeName(name)))
@@ -159,6 +163,20 @@ func transmute[T proto.Message](resp map[string]proto.Message) []T {
 func endpointsResponse(response []*endpoint.ClusterLoadAssignment) *discovery.DiscoveryResponse {
 	out := &discovery.DiscoveryResponse{
 		TypeUrl:     v3.EndpointType,
+		VersionInfo: "0",
+	}
+
+	for _, c := range response {
+		cc, _ := anypb.New(c)
+		out.Resources = append(out.Resources, cc)
+	}
+
+	return out
+}
+
+func extensionsResponse(response []*core.TypedExtensionConfig) *discovery.DiscoveryResponse {
+	out := &discovery.DiscoveryResponse{
+		TypeUrl:     v3.ExtensionConfigurationType,
 		VersionInfo: "0",
 	}
 
@@ -352,8 +370,13 @@ func sanitizeListenerAds(path string, response []*listener.Listener) {
 		for _, fc := range filterChains(c) {
 			rewriteTransportSocket(path, fc.TransportSocket)
 			for _, f := range fc.Filters {
-				if f.GetTypedConfig() == nil {
-					continue
+				if cd := f.GetConfigDiscovery(); cd != nil {
+					f.ConfigType = &listener.Filter_ConfigDiscovery{ConfigDiscovery: &core.ExtensionConfigSource{
+						ConfigSource:                     toPath(filepath.Join(path, "ecds", SanitizeName(f.Name)+".yaml")),
+						DefaultConfig:                    cd.DefaultConfig,
+						ApplyDefaultConfigWithoutWarming: cd.ApplyDefaultConfigWithoutWarming,
+						TypeUrls:                         cd.TypeUrls,
+					}}
 				}
 				switch f.Name {
 				case wellknown.HTTPConnectionManager:
@@ -366,6 +389,17 @@ func sanitizeListenerAds(path string, response []*listener.Listener) {
 							RouteConfigName: "routeName",
 						}}
 						f.ConfigType = &listener.Filter_TypedConfig{TypedConfig: protoconv.MessageToAny(h)}
+					}
+					for i, f := range h.HttpFilters {
+						if cd := f.GetConfigDiscovery(); cd != nil {
+							f.ConfigType = &hcm.HttpFilter_ConfigDiscovery{ConfigDiscovery: &core.ExtensionConfigSource{
+								ConfigSource:                     toPath(filepath.Join(path, "ecds", SanitizeName(f.Name)+".yaml")),
+								DefaultConfig:                    cd.DefaultConfig,
+								ApplyDefaultConfigWithoutWarming: cd.ApplyDefaultConfigWithoutWarming,
+								TypeUrls:                         cd.TypeUrls,
+							}}
+						}
+						h.HttpFilters[i] = f
 					}
 				default:
 				}

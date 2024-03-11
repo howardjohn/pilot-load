@@ -111,11 +111,12 @@ func (a *ADSC) Responses() Responses {
 }
 
 type Responses struct {
-	Clusters  map[string]proto.Message
-	Listeners map[string]proto.Message
-	Routes    map[string]proto.Message
-	Endpoints map[string]proto.Message
-	Secrets   map[string]proto.Message
+	Clusters   map[string]proto.Message
+	Listeners  map[string]proto.Message
+	Routes     map[string]proto.Message
+	Endpoints  map[string]proto.Message
+	Extensions map[string]proto.Message
+	Secrets    map[string]proto.Message
 }
 
 type Watch struct {
@@ -158,11 +159,12 @@ func Dial(url string, opts *Config) (ADSClient, error) {
 		updates: make(chan string, 100),
 		watches: map[string]Watch{},
 		responses: Responses{
-			Clusters:  map[string]proto.Message{},
-			Listeners: map[string]proto.Message{},
-			Routes:    map[string]proto.Message{},
-			Endpoints: map[string]proto.Message{},
-			Secrets:   map[string]proto.Message{},
+			Clusters:   map[string]proto.Message{},
+			Listeners:  map[string]proto.Message{},
+			Routes:     map[string]proto.Message{},
+			Endpoints:  map[string]proto.Message{},
+			Secrets:    map[string]proto.Message{},
+			Extensions: map[string]proto.Message{},
 		},
 		GrpcOpts: opts.GrpcOpts,
 		url:      url,
@@ -251,6 +253,7 @@ func (a *ADSC) handleRecv() {
 		routes := []*route.RouteConfiguration{}
 		eds := []*endpoint.ClusterLoadAssignment{}
 		secrets := []*tls.Secret{}
+		ecds := []*core.TypedExtensionConfig{}
 		// TODO re-enable use of names. For now its skipped
 		names := []string{}
 		resp := map[string]proto.Message{}
@@ -294,6 +297,15 @@ func (a *ADSC) handleRecv() {
 				if a.store {
 					resp[ll.Name] = ll
 				}
+			} else if rsc.TypeUrl == resource.ExtensionConfigType {
+				ll := &core.TypedExtensionConfig{}
+				_ = proto.Unmarshal(valBytes, ll)
+				ecds = append(ecds, ll)
+				names = append(names, ll.Name)
+				if a.store {
+					resp[ll.Name] = ll
+				}
+
 			}
 		}
 
@@ -309,6 +321,8 @@ func (a *ADSC) handleRecv() {
 			a.responses.Routes = resp
 		case resource.SecretType:
 			a.responses.Secrets = resp
+		case resource.ExtensionConfigType:
+			a.responses.Extensions = resp
 		}
 		a.ack(msg, names)
 		a.mutex.Unlock()
@@ -324,6 +338,8 @@ func (a *ADSC) handleRecv() {
 			a.handleRDS(routes)
 		case resource.SecretType:
 			a.handleSDS(secrets)
+		case resource.ExtensionConfigType:
+			a.handleECDS(ecds)
 		}
 	}
 }
@@ -339,6 +355,7 @@ func getFilterChains(l *listener.Listener) []*listener.FilterChain {
 // nolint: staticcheck
 func (a *ADSC) handleLDS(ll []*listener.Listener) {
 	routes := []string{}
+	extensions := sets.New[string]()
 	sockets := []*core.TransportSocket{}
 	secrets := sets.New[string]()
 	for _, l := range ll {
@@ -350,6 +367,14 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 					if r := hcm.GetRds().GetRouteConfigName(); r != "" {
 						routes = append(routes, r)
 					}
+					for _, f := range hcm.GetHttpFilters() {
+						if f.GetConfigDiscovery() != nil {
+							extensions.Insert(f.GetName())
+						}
+					}
+				}
+				if f.GetConfigDiscovery() != nil {
+					extensions.Insert(f.GetName())
 				}
 			}
 			if fc.GetTransportSocket() != nil {
@@ -389,6 +414,10 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 
 	if len(secrets) > 0 {
 		a.handleResourceUpdate(resource.SecretType, sets.SortedList(secrets))
+	}
+
+	if len(extensions) > 0 {
+		a.handleResourceUpdate(resource.ExtensionConfigType, sets.SortedList(extensions))
 	}
 	a.handleResourceUpdate(resource.RouteType, routes)
 
@@ -577,6 +606,30 @@ func (a *ADSC) handleSDS(configurations []*tls.Secret) {
 
 	select {
 	case a.updates <- "sds":
+	default:
+	}
+}
+
+func (a *ADSC) handleECDS(configurations []*core.TypedExtensionConfig) {
+	ecds := map[string]*core.TypedExtensionConfig{}
+
+	for _, r := range configurations {
+		ecds[r.Name] = r
+	}
+
+	if dumpScope.DebugEnabled() {
+		for i, r := range configurations {
+			b, err := marshal.MarshalToString(r)
+			if err != nil {
+				dumpScope.Errorf("Error in ECDS: %v", err)
+			}
+
+			dumpScope.Debugf("ecds %d: %v", i, b)
+		}
+	}
+
+	select {
+	case a.updates <- "ecds":
 	default:
 	}
 }
