@@ -60,8 +60,8 @@ func defaultLogOptions() *log.Options {
 	o := log.DefaultOptions()
 
 	// These scopes are, at the default "INFO" level, too chatty for command line use
-	o.SetOutputLevel("dump", log.WarnLevel)
-	o.SetOutputLevel("token", log.ErrorLevel)
+	o.SetDefaultOutputLevel("dump", log.WarnLevel)
+	o.SetDefaultOutputLevel("token", log.ErrorLevel)
 
 	return o
 }
