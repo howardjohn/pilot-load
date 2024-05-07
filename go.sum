@@ -161,8 +161,8 @@ github.com/emicklei/go-restful/v3 v3.12.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRr
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
-github.com/envoyproxy/go-control-plane v0.12.1-0.20240425230418-212e93054f1a h1:OmSlDWdXUzNgoMWOtrcEAmiO9BxTt6cGotwz7cZwIyw=
-github.com/envoyproxy/go-control-plane v0.12.1-0.20240425230418-212e93054f1a/go.mod h1:5Wkq+JduFtdAXihLmeTJf+tRYIT4KBc2vPXDhwVo1pA=
+github.com/envoyproxy/go-control-plane v0.12.1-0.20240502154003-bc7bb4ca8b9d h1:7h0XQmoTFOKmy+Yjha7S5vgNgfuenOi4ToGJILUeDqU=
+github.com/envoyproxy/go-control-plane v0.12.1-0.20240502154003-bc7bb4ca8b9d/go.mod h1:5Wkq+JduFtdAXihLmeTJf+tRYIT4KBc2vPXDhwVo1pA=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/envoyproxy/protoc-gen-validate v1.0.4 h1:gVPz/FMfvh57HdSJQyvBtF00j8JU4zdyUgIUNhlgg0A=
 github.com/envoyproxy/protoc-gen-validate v1.0.4/go.mod h1:qys6tmnRsYrQqIhm2bvKZH4Blx/1gTIZ2UKVY1M+Yew=
@@ -933,8 +933,6 @@ istio.io/api v1.22.0-alpha.1.0.20240502140243-ee871f771167 h1:35Rr4UrtIqmENVasV+
 istio.io/api v1.22.0-alpha.1.0.20240502140243-ee871f771167/go.mod h1:WKz6cReGS673+9crbXmIARZvk6wxQIao7u7Y4xUgbOM=
 istio.io/client-go v1.22.0-alpha.1.0.20240502155741-72326b03a2fd h1:odDSPIpZCUDlgufKGndOolrc0FzUnlIazdpQylZyWUk=
 istio.io/client-go v1.22.0-alpha.1.0.20240502155741-72326b03a2fd/go.mod h1:orizsjobRK0OickbFJoi6LNbmPMUKqSeDfLDcJiCJdU=
-istio.io/istio v0.0.0-20240502172449-6296473510b7 h1:gxU76Blu+qMq5jXO0dl32fFvrxA6fHyOrKd/J4DxfVY=
-istio.io/istio v0.0.0-20240502172449-6296473510b7/go.mod h1:LcASzB5T1fiHa/V6ghsVdOPaDdukTYR94JOmvZ8YRhM=
 k8s.io/api v0.18.2/go.mod h1:SJCWI7OLzhZSvbY7U8zwNl9UA4o1fizoug34OV/2r78=
 k8s.io/api v0.18.4/go.mod h1:lOIQAKYgai1+vz9J7YcDZwC26Z0zQewYOGWdyIPUUQ4=
 k8s.io/api v0.30.0 h1:siWhRq7cNjy2iHssOB9SCGNCl2spiF1dO3dABqZ8niA=

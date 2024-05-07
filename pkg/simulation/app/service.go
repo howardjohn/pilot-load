@@ -1,12 +1,12 @@
 package app
 
 import (
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ServiceSpec struct {
@@ -35,6 +35,10 @@ func (s *Service) Cleanup(ctx model.Context) error {
 
 func (s *Service) getService() *v1.Service {
 	p := s.Spec
+	cip := ""
+	if s.Spec.ClusterType == model.Fake {
+		cip = util.GetIP()
+	}
 	ports := []v1.ServicePort{
 		{
 			Name:       "http",
@@ -54,8 +58,9 @@ func (s *Service) getService() *v1.Service {
 		},
 		Spec: v1.ServiceSpec{
 			// TODO port customization
-			Ports: ports,
-			Type:  "ClusterIP",
+			Ports:     ports,
+			Type:      "ClusterIP",
+			ClusterIP: cip,
 		},
 	}
 	if s.Spec.ClusterType != model.Real {

@@ -4,11 +4,12 @@ go 1.22.0
 
 // Uncomment to use fake go client that has no leaking or copies
 //replace k8s.io/client-go => github.com/howardjohn/k8s-client-go v0.0.0-20230824140157-c9da8fe0a2e8
+replace istio.io/istio => ../../../istio.io/istio
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cncf/udpa/go v0.0.0-20220112060539-c52dc94e7fbe
-	github.com/envoyproxy/go-control-plane v0.12.1-0.20240425230418-212e93054f1a
+	github.com/envoyproxy/go-control-plane v0.12.1-0.20240502154003-bc7bb4ca8b9d
 	github.com/felixge/fgprof v0.9.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.5.4

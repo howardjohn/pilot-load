@@ -4,7 +4,10 @@ jitter:
   config: "0s"
 namespaces:
 - name: mesh
-  replicas: 100
+  # 100 replicas: 30k pods, 2k services
+  # 666 replicas: 200k pods, 13.3k services
+  # replicas: 666
+  replicas: 1
   # 300 pods, 20 services
   applications:
   - name: big

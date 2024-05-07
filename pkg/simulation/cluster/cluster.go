@@ -34,12 +34,13 @@ type Cluster struct {
 	requestAuthentication *config.RequestAuthentication
 	authorizationPolicy   *config.AuthorizationPolicy
 	nodes                 []*Node
+	running               chan struct{}
 }
 
 var _ model.Simulation = &Cluster{}
 
 func NewCluster(s ClusterSpec) *Cluster {
-	cluster := &Cluster{Name: "primary", Spec: &s}
+	cluster := &Cluster{Name: "primary", Spec: &s, running: make(chan struct{})}
 
 	if s.Config.ClusterType == model.FakeNode {
 		needNodes := s.Config.PodCount() / 255
@@ -196,7 +197,12 @@ func (c *Cluster) Run(ctx model.Context) error {
 	}
 
 	log.Infof("cluster %q synced, starting cluster scaler", c.Name)
+	close(c.running)
 	return (&ClusterScaler{Cluster: c}).Run(ctx)
+}
+
+func (c *Cluster) Running() chan struct{} {
+	return c.running
 }
 
 func (c *Cluster) Cleanup(ctx model.Context) error {
