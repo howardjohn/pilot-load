@@ -4,7 +4,6 @@ go 1.22.0
 
 // Uncomment to use fake go client that has no leaking or copies
 //replace k8s.io/client-go => github.com/howardjohn/k8s-client-go v0.0.0-20230824140157-c9da8fe0a2e8
-replace istio.io/istio => ../../../istio.io/istio
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
@@ -23,7 +22,7 @@ require (
 	google.golang.org/protobuf v1.34.0
 	istio.io/api v1.22.0-alpha.1.0.20240502140243-ee871f771167
 	istio.io/client-go v1.22.0-alpha.1.0.20240502155741-72326b03a2fd
-	istio.io/istio v0.0.0-20240502172449-6296473510b7
+	istio.io/istio v0.0.0-20240508185051-9f7a6912dca5
 	k8s.io/api v0.30.0
 	k8s.io/apimachinery v0.30.0
 	k8s.io/client-go v0.30.0

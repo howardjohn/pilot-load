@@ -3,23 +3,27 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net"
+
+	"github.com/spf13/cobra"
+	"istio.io/istio/pilot/pkg/features"
+	kubelib "istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/log"
+	"k8s.io/apimachinery/pkg/watch"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/isolated"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
-	"github.com/spf13/cobra"
-	kubelib "istio.io/istio/pkg/kube"
-	"k8s.io/apimachinery/pkg/watch"
-	"net"
-
-	"istio.io/istio/pilot/pkg/features"
-	"istio.io/istio/pkg/log"
 )
+
+var shortCircuit = false
 
 func init() {
 	isolatedCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
+	isolatedCmd.PersistentFlags().BoolVarP(&shortCircuit, "shortCircuit", "s", shortCircuit, "exit once synced")
 }
 
 var isolatedCmd = WithProfiling(&cobra.Command{
@@ -61,7 +65,7 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 			Listener:       l,
 			MetricsHandler: ms.Handler,
 		})
-		if err := executeSimulations(args, sim,); err != nil {
+		if err := executeSimulations(args, sim); err != nil {
 			return fmt.Errorf("error executing: %v", err)
 		}
 		return nil
@@ -69,17 +73,18 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 })
 
 func executeSimulations(a model.Args, s *isolated.Isolated) error {
-	// Fork to let us run metrics separately
+	// Fork to let us run metrics separately and removing cleanup
 	ctx, cancel := context.WithCancel(context.Background())
 	go simulation.CaptureTermination(ctx, cancel)
 	defer cancel()
 	simulationContext := model.Context{Context: ctx, Args: a, Client: a.Client, Cancel: cancel}
 	if err := s.Run(simulationContext); err != nil {
 		log.Errorf("failed: %v, starting cleanup", err)
-		cleanupErr := s.Cleanup(simulationContext)
-		return fmt.Errorf("failed to run: %v; cleanup: %v", err, cleanupErr)
+		return fmt.Errorf("failed to run: %v", err)
 	}
 
-	<-ctx.Done()
-	return s.Cleanup(simulationContext)
+	if !shortCircuit {
+		<-ctx.Done()
+	}
+	return nil
 }

@@ -1,16 +1,18 @@
 package isolated
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"net"
+	"net/http"
+	"time"
+
 	xdstest "istio.io/istio/pilot/test/xds"
 	kubelib "istio.io/istio/pkg/kube"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/test"
 	"k8s.io/apimachinery/pkg/runtime"
-	"net"
-	"net/http"
-	"time"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type IsolatedSpec struct {
@@ -47,7 +49,9 @@ func NewCluster(s IsolatedSpec) *Isolated {
 func (c *Isolated) Run(ctx model.Context) error {
 	errCh := make(chan error, 2)
 	go func() {
-		errCh <- c.Cluster.Run(ctx)
+		if err := c.Cluster.Run(ctx); err != nil {
+			errCh <- err
+		}
 	}()
 	select {
 	case <-c.Cluster.Running():
@@ -58,12 +62,20 @@ func (c *Isolated) Run(ctx model.Context) error {
 		return nil
 	}
 	go func() {
-		errCh <- c.FakeDiscovery.Run(ctx)
+		if err := c.FakeDiscovery.Run(ctx); err != nil {
+			errCh <- err
+		}
 	}()
+	running := c.FakeDiscovery.Running()
 	select {
 	case err := <-errCh:
+		log.Infof("got error: %v", err)
 		return err
+	case <-running:
+		log.Infof("running complete")
+		return nil
 	case <-ctx.Done():
+		log.Infof("ctx complete")
 		return nil
 	}
 }
@@ -82,6 +94,7 @@ type FakeDiscovery struct {
 var _ model.Simulation = &FakeDiscovery{}
 
 func (f *FakeDiscovery) Run(ctx model.Context) error {
+	t0 := time.Now()
 	done := make(chan struct{})
 	defer func() {
 		close(done)
@@ -100,6 +113,7 @@ func (f *FakeDiscovery) Run(ctx model.Context) error {
 			return nil
 		})
 		close(f.Ready)
+		log.Infof("Istiod is ready (%v)", time.Since(t0))
 		<-ctx.Done()
 	})
 

@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"os"
 	"runtime/pprof"
+
+	"github.com/spf13/cobra"
 )
 
 func WithProfiling(c *cobra.Command) *cobra.Command {
@@ -36,4 +37,3 @@ func WithProfiling(c *cobra.Command) *cobra.Command {
 	}
 	return c
 }
-
