@@ -3,22 +3,15 @@ package security
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	pb "istio.io/api/security/v1alpha1"
-	"istio.io/istio/pkg/security"
-	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
 	pkiutil "istio.io/istio/security/pkg/pki/util"
-	"istio.io/istio/security/pkg/stsservice"
-	"istio.io/istio/security/pkg/stsservice/server"
-	"istio.io/istio/security/pkg/stsservice/tokenmanager/google"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 )
@@ -106,30 +99,6 @@ func (a *AuthOptions) GrpcOptions(serviceAccount, namespace string) []grpc.DialO
 		return []grpc.DialOption{grpc.WithInsecure()}
 	case AuthTypeMTLS:
 		panic(AuthTypeMTLS + " is not currently implemented")
-	case AuthTypeGoogle:
-		fetch := func() (map[string]string, error) {
-			t, err := GetServiceAccountToken(a.Client, a.TrustDomain, namespace, serviceAccount)
-			if err != nil {
-				return nil, err
-			}
-			params := security.StsRequestParameters{
-				Scope:            stsclient.Scope,
-				GrantType:        server.TokenExchangeGrantType,
-				SubjectToken:     strings.TrimSpace(t),
-				SubjectTokenType: server.SubjectTokenType,
-			}
-			et, err := a.tokenManager.ExchangeToken(params)
-			if err != nil {
-				return nil, err
-			}
-			respData := &stsservice.StsResponseParameters{}
-			if err := json.Unmarshal(et, respData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal access token response data: %v", err)
-			}
-			meta, err := a.tokenManager.GetMetadata(false, google.GCPAuthProvider, respData.AccessToken)
-			return meta, err
-		}
-		return []grpc.DialOption{insecureTls, grpc.WithPerRPCCredentials(grpcCredentials{fetch})}
 	case AuthTypeJWT:
 		fetch := func() (map[string]string, error) {
 			token, err := GetServiceAccountToken(a.Client, "istio-ca", namespace, serviceAccount)

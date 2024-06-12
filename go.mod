@@ -19,8 +19,8 @@ require (
 	golang.org/x/sync v0.7.0
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.34.2
-	istio.io/api v1.22.1
-	istio.io/client-go v1.22.1
+	istio.io/api v1.22.0-alpha.1.0.20240612140428-341dd53c476f
+	istio.io/client-go v1.22.0-alpha.1.0.20240612141229-fd83cdce6c7d
 	istio.io/istio v0.0.0-20240612185735-a7cbc39449c8
 	k8s.io/api v0.30.2
 	k8s.io/apimachinery v0.30.2

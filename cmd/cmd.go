@@ -79,9 +79,6 @@ func GetArgs() (model.Args, error) {
 	authOpts := &security.AuthOptions{
 		Type:          auth,
 		Client:        cl,
-		TrustDomain:   authTrustDomain,
-		ProjectNumber: authProjectNumber,
-		ClusterURL:    authClusterUrl,
 	}
 	args := model.Args{
 		PilotAddress: pilotAddress,
