@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,13 +8,11 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 var (
@@ -92,35 +89,6 @@ func GetArgs() (model.Args, error) {
 		Metadata:     xdsMetadata,
 		Client:       cl,
 		Auth:         authOpts,
-	}
-	args, err = setDefaultArgs(args)
-	if err != nil {
-		return model.Args{}, err
-	}
-	return args, nil
-}
-
-const CLOUDRUN_ADDR = "CLOUDRUN_ADDR"
-
-func setDefaultArgs(args model.Args) (model.Args, error) {
-	if err := args.Auth.AutoPopulate(); err != nil {
-		return model.Args{}, err
-	}
-	if _, f := xdsMetadata[CLOUDRUN_ADDR]; !f && args.Auth.Type == security.AuthTypeGoogle {
-		mwh, err := args.Client.Kube().AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.Background(), "istiod-asm-managed", metav1.GetOptions{})
-		if err != nil {
-			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: %v", err)
-		}
-		if len(mwh.Webhooks) == 0 {
-			return args, nil
-		}
-		wh := mwh.Webhooks[0]
-		if wh.ClientConfig.URL == nil {
-			return model.Args{}, fmt.Errorf("failed to default CLOUDRUN_ADDR: clientConfig is not a URL")
-		}
-		cloudRunAddr := util.GetComponentAfter(*wh.ClientConfig.URL, "ISTIO_META_CLOUDRUN_ADDR")
-		log.Infof("defaulted CLOUDRUNN_ADDR to %v", cloudRunAddr)
-		xdsMetadata[CLOUDRUN_ADDR] = cloudRunAddr
 	}
 	return args, nil
 }

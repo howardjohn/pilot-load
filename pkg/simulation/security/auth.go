@@ -9,13 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	pb "istio.io/api/security/v1alpha1"
-	"istio.io/istio/pkg/bootstrap/platform"
-	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/security"
 	"istio.io/istio/security/pkg/nodeagent/plugin/providers/google/stsclient"
 	pkiutil "istio.io/istio/security/pkg/pki/util"
@@ -29,12 +26,6 @@ import (
 type AuthOptions struct {
 	Type   AuthType
 	Client *kube.Client
-
-	// For google auth
-	TrustDomain   string
-	ProjectNumber string
-	ClusterURL    string
-	tokenManager  *google.Plugin
 }
 
 type AuthType string
@@ -45,14 +36,10 @@ const (
 	AuthTypeMTLS         AuthType = "mtls"
 	AuthTypeJWT          AuthType = "jwt"
 	AuthTypePlaintextJWT AuthType = "plaintext-jwt"
-	AuthTypeGoogle       AuthType = "google"
 )
 
 func DefaultAuthForAddress(addr string) AuthType {
-	host, port, _ := net.SplitHostPort(addr)
-	if strings.Contains(host, "googleapis.com") {
-		return AuthTypeGoogle
-	}
+	_, port, _ := net.SplitHostPort(addr)
 	switch port {
 	case "15010":
 		return AuthTypePlaintext
@@ -62,83 +49,7 @@ func DefaultAuthForAddress(addr string) AuthType {
 }
 
 func AuthTypeOptions() []AuthType {
-	return []AuthType{AuthTypePlaintext, AuthTypeMTLS, AuthTypeJWT, AuthTypePlaintextJWT, AuthTypeGoogle}
-}
-
-func parseClusterName(c string) (url, td, number string, rerr error) {
-	if !strings.HasPrefix(c, "gke_") {
-		return
-	}
-	parts := strings.Split(c, "_")
-	if len(parts) != 4 {
-		return
-	}
-	project := parts[1]
-	location := parts[2]
-	name := parts[3]
-	ctx := context.Background()
-	cloudresourcemanagerService, err := cloudresourcemanager.NewService(ctx)
-	if err != nil {
-		rerr = err
-		return
-	}
-	res, err := cloudresourcemanagerService.Projects.Get(project).Do()
-	if err != nil {
-		rerr = err
-		return
-	}
-	number = fmt.Sprint(res.ProjectNumber)
-	url = fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", project, location, name)
-	td = fmt.Sprintf("%s.svc.id.goog", project)
-	return
-}
-
-func (a *AuthOptions) AutoPopulate() error {
-	if a.Type != AuthTypeGoogle {
-		return nil
-	}
-	explicitlySet := a.ClusterURL != "" && a.ProjectNumber != "" && a.TrustDomain != ""
-	if !explicitlySet && platform.IsGCP() {
-		// Attempt to derive from in cluster
-		md := platform.NewGCP().Metadata()
-		if a.ClusterURL == "" {
-			a.ClusterURL = md[platform.GCPClusterURL]
-		}
-		if a.ProjectNumber == "" {
-			a.ProjectNumber = md[platform.GCPProjectNumber]
-		}
-		if a.TrustDomain == "" {
-			a.TrustDomain = fmt.Sprintf("%s.svc.id.goog", md[platform.GCPProject])
-		}
-	} else if !explicitlySet {
-		// Attempt to derive from cluster name
-		cn := a.Client.ClusterName
-		url, td, number, err := parseClusterName(cn)
-		if err != nil {
-			return err
-		}
-		if a.ClusterURL == "" {
-			a.ClusterURL = url
-		}
-		if a.ProjectNumber == "" {
-			a.ProjectNumber = number
-		}
-		if a.TrustDomain == "" {
-			a.TrustDomain = td
-		}
-	}
-	log.Infof("running with google auth settings: ClusterURL=%q, ProjectNumber=%q, TrustDomain=%q", a.ClusterURL, a.ProjectNumber, a.TrustDomain)
-	if !(a.ClusterURL != "" && a.ProjectNumber != "" && a.TrustDomain != "") {
-		return fmt.Errorf("missing google settings")
-	}
-	// Do not cache - code expects single tenant
-	tmp, err := google.CreateTokenManagerPlugin(nil, a.TrustDomain,
-		a.ProjectNumber, a.ClusterURL, false)
-	if err != nil {
-		return err
-	}
-	a.tokenManager = tmp
-	return nil
+	return []AuthType{AuthTypePlaintext, AuthTypeMTLS, AuthTypeJWT, AuthTypePlaintextJWT}
 }
 
 func (a *AuthOptions) Certificate(fetchRoot func() (string, error), addr, serviceAccount, namespace string) (Cert, error) {
