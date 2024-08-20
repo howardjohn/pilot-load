@@ -77,8 +77,8 @@ func GetArgs() (model.Args, error) {
 		auth = security.DefaultAuthForAddress(pilotAddress)
 	}
 	authOpts := &security.AuthOptions{
-		Type:          auth,
-		Client:        cl,
+		Type:   auth,
+		Client: cl,
 	}
 	args := model.Args{
 		PilotAddress: pilotAddress,

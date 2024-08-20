@@ -23,6 +23,11 @@ type Simulation interface {
 	Cleanup(ctx Context) error
 }
 
+type RunningSimulation interface {
+	Simulation
+	Running() chan struct{}
+}
+
 type ScalableSimulation interface {
 	Scale(ctx Context, delta int) error
 	ScaleTo(ctx Context, n int) error

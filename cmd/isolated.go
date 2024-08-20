@@ -19,11 +19,15 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 )
 
-var shortCircuit = false
+var (
+	shortCircuit  = false
+	reproduceFile = ""
+)
 
 func init() {
-	isolatedCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
+	isolatedCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file, for simulation")
 	isolatedCmd.PersistentFlags().BoolVarP(&shortCircuit, "shortCircuit", "s", shortCircuit, "exit once synced")
+	isolatedCmd.PersistentFlags().StringVarP(&reproduceFile, "raw-config", "r", reproduceFile, "config file, for direct Kubernetes YAML")
 }
 
 var isolatedCmd = WithProfiling(&cobra.Command{
@@ -47,24 +51,30 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 				Type: security.AuthTypePlaintext,
 			},
 		}
-		config, err := readConfigFile(configFile)
-		if err != nil {
-			return fmt.Errorf("failed to read config file: %v", err)
-		}
-		config = config.ApplyDefaults()
-		config.ClusterType = model.Fake
-
-		logConfig(config)
-		logClusterConfig(config)
-		log.Infof("Starting cluster, total size: %v pods", config.PodCount())
-
 		ms := monitoring.StartMonitoring(8765)
-		sim := isolated.NewCluster(isolated.IsolatedSpec{
-			Config:         config,
+		isolatedSpec := isolated.IsolatedSpec{
 			Fake:           fake,
 			Listener:       l,
 			MetricsHandler: ms.Handler,
-		})
+		}
+		if configFile != "" {
+			config, err := readConfigFile(configFile)
+			if err != nil {
+				return fmt.Errorf("failed to read config file: %v", err)
+			}
+			config = config.ApplyDefaults()
+			config.ClusterType = model.Fake
+
+			logConfig(config)
+			logClusterConfig(config)
+			log.Infof("Starting cluster, total size: %v pods", config.PodCount())
+			isolatedSpec.ClusterConfig = &config
+		} else {
+			isolatedSpec.ReproduceConfig = &model.ReproduceConfig{
+				ConfigFile: reproduceFile,
+			}
+		}
+		sim := isolated.NewCluster(isolatedSpec)
 		if err := executeSimulations(args, sim); err != nil {
 			return fmt.Errorf("error executing: %v", err)
 		}

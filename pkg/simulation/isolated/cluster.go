@@ -13,18 +13,20 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 )
 
 type IsolatedSpec struct {
-	Config         model.ClusterConfig
-	Fake           kubelib.Client
-	Listener       net.Listener
-	MetricsHandler http.Handler
+	ClusterConfig   *model.ClusterConfig
+	ReproduceConfig *model.ReproduceConfig
+	Fake            kubelib.Client
+	Listener        net.Listener
+	MetricsHandler  http.Handler
 }
 
 type Isolated struct {
 	Spec          *IsolatedSpec
-	Cluster       *cluster.Cluster
+	Simulation    model.RunningSimulation
 	FakeDiscovery *FakeDiscovery
 }
 
@@ -38,10 +40,17 @@ func NewCluster(s IsolatedSpec) *Isolated {
 		Ready:          make(chan struct{}),
 	}
 	is := &Isolated{Spec: &s, FakeDiscovery: fd}
-	c := cluster.NewCluster(cluster.ClusterSpec{
-		Config: s.Config,
-	})
-	is.Cluster = c
+	if s.ClusterConfig != nil {
+		is.Simulation = cluster.NewCluster(cluster.ClusterSpec{
+			Config: *s.ClusterConfig,
+		})
+	} else {
+		is.Simulation = reproduce.NewSimulation(reproduce.ReproduceSpec{
+			Delay:      0,
+			ConfigFile: s.ReproduceConfig.ConfigFile,
+			ConfigOnly: s.ReproduceConfig.ConfigOnly,
+		})
+	}
 
 	return is
 }
@@ -49,12 +58,12 @@ func NewCluster(s IsolatedSpec) *Isolated {
 func (c *Isolated) Run(ctx model.Context) error {
 	errCh := make(chan error, 2)
 	go func() {
-		if err := c.Cluster.Run(ctx); err != nil {
+		if err := c.Simulation.Run(ctx); err != nil {
 			errCh <- err
 		}
 	}()
 	select {
-	case <-c.Cluster.Running():
+	case <-c.Simulation.Running():
 		log.Infof("fake configuration setup, launching Istiod")
 	case err := <-errCh:
 		return err
@@ -81,7 +90,7 @@ func (c *Isolated) Run(ctx model.Context) error {
 }
 
 func (c *Isolated) Cleanup(ctx model.Context) error {
-	return c.Cluster.Cleanup(ctx)
+	return c.Simulation.Cleanup(ctx)
 }
 
 type FakeDiscovery struct {

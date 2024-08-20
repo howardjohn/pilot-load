@@ -45,14 +45,15 @@ type ApiDetails struct {
 }
 
 type ReproduceSimulation struct {
-	Spec ReproduceSpec
-	sims []model.Simulation
+	Spec    ReproduceSpec
+	sims    []model.Simulation
+	running chan struct{}
 }
 
 var _ model.Simulation = &ReproduceSimulation{}
 
 func NewSimulation(spec ReproduceSpec) *ReproduceSimulation {
-	return &ReproduceSimulation{Spec: spec}
+	return &ReproduceSimulation{Spec: spec, running: make(chan struct{})}
 }
 
 func toK8s(g config.GroupVersionKind) schema.GroupVersionKind {
@@ -177,11 +178,16 @@ func (i *ReproduceSimulation) Run(ctx model.Context) error {
 		}
 	}
 	log.Infof("All configs create (%d total)", total)
+	close(i.running)
 	return nil
 }
 
 func (i *ReproduceSimulation) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{Simulations: model.ReverseSimulations(i.sims)}.Cleanup(ctx)
+}
+
+func (i *ReproduceSimulation) Running() chan struct{} {
+	return i.running
 }
 
 func parseInputs(inputFile string) (map[schema.GroupVersionKind][]runtime.Object, error) {
