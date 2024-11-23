@@ -7,21 +7,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"google.golang.org/grpc/credentials"
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
 )
 
 type PodSpec struct {
@@ -74,7 +73,7 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
 	if p.Spec.ClusterType != model.Real {
-		if err := kube.ApplyFast(ctx.Client, pod); err != nil {
+		if err := kube.ApplyRealSSA(ctx.Client, pod); err != nil {
 			return fmt.Errorf("failed to apply pod: %v", err)
 		}
 		p.created = true
@@ -126,26 +125,8 @@ func (p *Pod) getPod() *v1.Pod {
 			"app":                     s.App,
 			"sidecar.istio.io/inject": "false",
 		}
-		cs := []v1.ContainerStatus{
-			{
-				Name: "app",
-				State: v1.ContainerState{
-					Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
-				},
-				Ready: true,
-				Image: "fake",
-			},
-		}
 		if p.Spec.AppType == model.SidecarType {
 			labels["sidecar.istio.io/inject"] = "true"
-			cs = append(cs, v1.ContainerStatus{
-				Name: "istio-proxy",
-				State: v1.ContainerState{
-					Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
-				},
-				Ready: true,
-				Image: "fake",
-			})
 		}
 		return &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -172,7 +153,6 @@ func (p *Pod) getPod() *v1.Pod {
 					Effect:   v1.TaintEffectNoSchedule,
 				}},
 			},
-			Status: v1.PodStatus{ContainerStatuses: cs},
 		}
 	}
 

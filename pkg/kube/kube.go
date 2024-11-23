@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -8,16 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"istio.io/istio/pkg/cluster"
-	"istio.io/istio/pkg/config"
-	"istio.io/istio/pkg/config/schema/gvk"
-	"istio.io/istio/pkg/config/schema/kubeclient"
-	"istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kubetypes"
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
-	"istio.io/istio/pkg/test/scopes"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,12 +16,25 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	"istio.io/istio/pkg/cluster"
+	"istio.io/istio/pkg/config"
+	"istio.io/istio/pkg/config/schema/gvk"
+	"istio.io/istio/pkg/config/schema/kubeclient"
+	kubetypes2 "istio.io/istio/pkg/config/schema/kubetypes"
+	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
+	"istio.io/istio/pkg/test/scopes"
 )
 
 type Client struct {
@@ -98,9 +102,45 @@ func ApplyFast[T controllers.Object](c *Client, o T) error {
 	return err
 }
 
+func ApplyRealSSA[T controllers.Object](c *Client, o T) error {
+	name := o.GetName()
+	ns := o.GetNamespace()
+	cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+	t := ptr.TypeName[T]()
+
+	buf := &bytes.Buffer{}
+	if err := kube.IstioCodec.LegacyCodec(kubetypes2.MustGVRFromType[T]().GroupVersion()).Encode(o, buf); err != nil {
+		return err
+	}
+	b := buf.Bytes()
+	opts := metav1.PatchOptions{
+		Force:        ptr.Of(true),
+		FieldManager: "pilot-load",
+	}
+	_, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts)
+	if err != nil {
+		return fmt.Errorf("failed to ssa %s/%s/%s: %v", t, name, ns, err)
+	}
+	scope.Debugf("fast ssa resource: %s/%s/%s", t, name, ns)
+	if hasStatus(c, o) {
+		scope.Debugf("fast ssa resource status: %s/%s.%s", t, name, ns)
+		if _, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts, "status"); err != nil {
+			return fmt.Errorf("ssa status %s/%s/%s: %v", t, name, ns, err)
+		}
+	}
+	return nil
+}
+
 func ApplyStatus[T controllers.Object](c *Client, o T) error {
-	return Apply[T](c, o)
-	// return internalApply(c, o, false)
+	name := o.GetName()
+	ns := o.GetNamespace()
+	cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+	t := ptr.TypeName[T]()
+	scope.Debugf("fast updating resource status: %s/%s.%s", t, name, ns)
+	if _, err := cl.(kubetypes.WriteStatusAPI[T]).UpdateStatus(context.TODO(), o, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("update status: %v", err)
+	}
+	return nil
 }
 
 // TypeIsConcrete checks if T is an interface or a concrete type
@@ -288,7 +328,7 @@ func updateStatus[T controllers.Object](cl API[T], o T) error {
 
 func update[T controllers.Object](cl API[T], o T) (T, error) {
 	backoff := wait.Backoff{Duration: time.Millisecond * 10, Factor: 2, Steps: 3}
-	scope.Debugf("updating resource status: %s/%s.%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
+	scope.Debugf("updating resource: %s/%s.%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
 
 	firstRun := true
 	var res T

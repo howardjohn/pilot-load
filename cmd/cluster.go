@@ -5,11 +5,11 @@ import (
 	"os"
 
 	"github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/spf13/cobra"
+
+	"istio.io/istio/pkg/log"
 )
 
 var (
@@ -22,7 +22,7 @@ func init() {
 	clusterCmd.PersistentFlags().StringVar(&clusterType, "cluster-type", clusterType, "cluster type. Can be one of real, fake, or fake-node,")
 }
 
-var clusterCmd = &cobra.Command{
+var clusterCmd = WithProfiling(&cobra.Command{
 	Use:   "cluster",
 	Short: "simulate a full cluster",
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -51,7 +51,7 @@ var clusterCmd = &cobra.Command{
 		log.Infof("Starting cluster, total size: %v pods", args.ClusterConfig.PodCount())
 		return simulation.Cluster(args)
 	},
-}
+})
 
 var defaultConfig = model.ClusterConfig{
 	Namespaces: []model.NamespaceConfig{{

@@ -3,20 +3,21 @@ package cluster
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"time"
-
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/log"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -211,8 +212,9 @@ func (c *Cluster) Cleanup(ctx model.Context) error {
 
 func (c *Cluster) watchPods(ctx model.Context) {
 	pods := kclient.New[*v1.Pod](ctx.Client)
-	q := controllers.NewQueue("pods",
-		controllers.WithReconciler(func(key types.NamespacedName) error {
+	q := NewQueue("pods",
+		WithWorkers(runtime.GOMAXPROCS(0)),
+		WithReconciler(func(key types.NamespacedName) error {
 			p := pods.Get(key.Name, key.Namespace)
 			if p == nil {
 				return nil
@@ -264,7 +266,7 @@ func (c *Cluster) watchPods(ctx model.Context) {
 			}
 			return nil
 		}),
-		controllers.WithMaxAttempts(5))
+		WithMaxAttempts(5))
 	pods.AddEventHandler(controllers.ObjectHandler(q.AddObject))
 	pods.Start(ctx.Done())
 	q.Run(ctx.Done())

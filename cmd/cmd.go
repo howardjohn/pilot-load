@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/spf13/cobra"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"istio.io/istio/pkg/log"
 )
 
 var (
@@ -22,10 +22,6 @@ var (
 	delta          = false
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	loggingOptions = defaultLogOptions()
-
-	authTrustDomain   = ""
-	authClusterUrl    = ""
-	authProjectNumber = ""
 
 	qps = 10000
 )
@@ -39,10 +35,6 @@ func init() {
 	rootCmd.PersistentFlags().StringToStringVarP(&xdsMetadata, "metadata", "m", xdsMetadata, "xds metadata")
 
 	rootCmd.PersistentFlags().BoolVar(&delta, "delta", delta, "use delta XDS")
-
-	rootCmd.PersistentFlags().StringVar(&authClusterUrl, "clusterURL", authClusterUrl, "cluster URL (for google auth)")
-	rootCmd.PersistentFlags().StringVar(&authTrustDomain, "trustDomain", authTrustDomain, "trust domain (for google auth)")
-	rootCmd.PersistentFlags().StringVar(&authProjectNumber, "projectNumber", authProjectNumber, "project number (for google auth)")
 }
 
 func defaultAddress() string {
