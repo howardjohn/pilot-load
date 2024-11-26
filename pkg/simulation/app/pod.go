@@ -123,6 +123,7 @@ func (p *Pod) getPod() *v1.Pod {
 	if p.Spec.ClusterType == model.FakeNode {
 		labels := map[string]string{
 			"app":                     s.App,
+			"owner":                   "pilot-load",
 			"sidecar.istio.io/inject": "false",
 		}
 		if p.Spec.AppType == model.SidecarType {

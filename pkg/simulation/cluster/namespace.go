@@ -141,5 +141,5 @@ func (n *Namespace) Run(ctx model.Context) error {
 }
 
 func (n *Namespace) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{Simulations: n.getSims()}.Cleanup(ctx)
+	return model.AggregateSimulation{Simulations: model.ReverseSimulations(n.getSims())}.Cleanup(ctx)
 }

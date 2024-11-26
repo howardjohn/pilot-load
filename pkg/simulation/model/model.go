@@ -317,6 +317,7 @@ func (a AggregateSimulation) Run(ctx Context) error {
 
 func (a AggregateSimulation) CleanupParallel(ctx Context) error {
 	g := errgroup.Group{}
+	g.SetLimit(100)
 	for _, s := range a.Simulations {
 		s := s
 		log.Debugf("cleaning simulation %T", s)
