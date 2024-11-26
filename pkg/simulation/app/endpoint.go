@@ -11,11 +11,10 @@ import (
 )
 
 type EndpointSpec struct {
-	Node      string
 	App       string
 	Namespace string
 	// Map of pod name to IP
-	IPs         map[string]string
+	Infos         map[string]podInfo
 	ClusterType model.ClusterType
 }
 
@@ -29,11 +28,11 @@ func NewEndpoint(s EndpointSpec) *Endpoint {
 	return &Endpoint{Spec: &s}
 }
 
-func (e *Endpoint) SetAddresses(ctx model.Context, ips map[string]string) error {
-	if reflect.DeepEqual(e.Spec.IPs, ips) {
+func (e *Endpoint) SetAddresses(ctx model.Context, infos map[string]podInfo) error {
+	if reflect.DeepEqual(e.Spec.Infos, infos) {
 		return nil
 	}
-	e.Spec.IPs = ips
+	e.Spec.Infos = infos
 	return e.Run(ctx)
 }
 
@@ -58,10 +57,10 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 		},
 	}
 	subset := v1.EndpointSubset{}
-	for pod, ip := range s.IPs {
+	for pod, i := range s.Infos {
 		addr := v1.EndpointAddress{
-			IP:       ip,
-			NodeName: &s.Node,
+			IP:       i.ip,
+			NodeName: &i.node,
 		}
 		if e.Spec.ClusterType != model.Real {
 			// We will make a selector-less service+endpoint if in a real cluster
@@ -80,7 +79,7 @@ func (e *Endpoint) getEndpoint() *v1.Endpoints {
 		Name: "https",
 		Port: 443,
 	}}
-	if len(s.IPs) > 0 {
+	if len(s.Infos) > 0 {
 		ep.Subsets = append(ep.Subsets, subset)
 	}
 	return ep

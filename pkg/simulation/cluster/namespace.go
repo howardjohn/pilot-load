@@ -94,7 +94,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 func (n *Namespace) createDeployment(args model.ApplicationConfig, ct model.ClusterType) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), util.GenUID()),
-		Node:      args.GetNode(),
+		Node:      args.GetNode,
 		Namespace: n.Spec.Name,
 		// TODO implement different service accounts
 		ServiceAccount: "default",

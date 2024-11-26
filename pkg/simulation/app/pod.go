@@ -144,6 +144,8 @@ func (p *Pod) getPod() *v1.Pod {
 					Name:  "app",
 					Image: "fake",
 				}},
+				// Schedule ourselves, kube scheduler is slow. TODO: make it optional?
+				NodeName: s.Node,
 				NodeSelector: map[string]string{
 					"pilot-load.istio.io/node": "fake",
 				},

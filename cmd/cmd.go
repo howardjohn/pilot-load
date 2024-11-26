@@ -23,7 +23,7 @@ var (
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	loggingOptions = defaultLogOptions()
 
-	qps = 10000
+	qps = 100000
 )
 
 func init() {

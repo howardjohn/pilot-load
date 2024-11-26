@@ -131,6 +131,29 @@ func ApplyRealSSA[T controllers.Object](c *Client, o T) error {
 	return nil
 }
 
+func ApplyStatusRealSSA[T controllers.Object](c *Client, o T) error {
+	name := o.GetName()
+	ns := o.GetNamespace()
+	cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+	t := ptr.TypeName[T]()
+
+	buf := &bytes.Buffer{}
+	if err := kube.IstioCodec.LegacyCodec(kubetypes2.MustGVRFromType[T]().GroupVersion()).Encode(o, buf); err != nil {
+		return err
+	}
+	b := buf.Bytes()
+	opts := metav1.PatchOptions{
+		Force:        ptr.Of(true),
+		FieldManager: "pilot-load",
+	}
+	_, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts, "status")
+	if err != nil {
+		return fmt.Errorf("failed to ssa %s/%s/%s: %v", t, name, ns, err)
+	}
+	scope.Debugf("fast ssa resource status: %s/%s/%s", t, name, ns)
+	return nil
+}
+
 func ApplyStatus[T controllers.Object](c *Client, o T) error {
 	name := o.GetName()
 	ns := o.GetNamespace()
@@ -212,23 +235,23 @@ func toGvr[T controllers.Object](o T) schema.GroupVersionResource {
 func Delete[T controllers.Object](c *Client, o T) error {
 	if !TypeIsConcrete[T]() {
 		cl, gvr := dynamicClient(c, o)
-		scope.Debugf("deleting resource: %s/%s/%s", gvr, o.GetName(), o.GetNamespace())
 		if err := cl.Delete(context.Background(), o.GetName(), metav1.DeleteOptions{GracePeriodSeconds: ptr.Of(int64(0))}); err != nil {
 			if errors.IsNotFound(err) {
 				return nil
 			}
 			return err
 		}
+		scope.Debugf("deleted resource: %s/%s/%s", gvr, o.GetName(), o.GetNamespace())
 		return nil
 	}
 	cl := kubeclient.GetWriteClient[T](c, o.GetNamespace()).(API[T])
-	scope.Debugf("deleting resource: %s/%s/%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
 	if err := cl.Delete(context.Background(), o.GetName(), metav1.DeleteOptions{GracePeriodSeconds: ptr.Of(int64(0))}); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
+	scope.Debugf("deleted resource: %s/%s/%s", ptr.TypeName[T](), o.GetName(), o.GetNamespace())
 	return nil
 }
 

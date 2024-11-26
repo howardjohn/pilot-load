@@ -237,6 +237,7 @@ func (c *Cluster) watchPods(ctx model.Context) {
 				// Not yet ready
 				return nil
 			}
+			p = p.DeepCopy()
 			p.Status.Phase = v1.PodRunning
 			p.Status.Conditions = nil
 			p.Status.Conditions = append(p.Status.Conditions, v1.PodCondition{
@@ -261,7 +262,8 @@ func (c *Cluster) watchPods(ctx model.Context) {
 					Image: c.Image,
 				}
 			}
-			if err := kube.ApplyStatus(ctx.Client, p); err != nil {
+			p.Spec = v1.PodSpec{}
+			if err := kube.ApplyStatusRealSSA(ctx.Client, p); err != nil {
 				return fmt.Errorf("apply status: %v", err)
 			}
 			return nil

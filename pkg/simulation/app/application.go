@@ -12,7 +12,7 @@ import (
 
 type ApplicationSpec struct {
 	App            string
-	Node           string
+	Node           func() string
 	Namespace      string
 	ServiceAccount string
 	Instances      int
@@ -164,10 +164,9 @@ func NewApplication(s ApplicationSpec) *Application {
 
 	if s.ClusterType != model.FakeNode {
 		w.endpoint = NewEndpoint(EndpointSpec{
-			Node:        s.Node,
 			App:         s.App,
 			Namespace:   s.Namespace,
-			IPs:         w.getIps(),
+			Infos:         w.getPodInfo(),
 			ClusterType: s.ClusterType,
 		})
 	}
@@ -237,7 +236,7 @@ func (w *Application) makePod() *Pod {
 	s := w.Spec
 	return NewPod(PodSpec{
 		ServiceAccount: s.ServiceAccount,
-		Node:           s.Node,
+		Node:           s.Node(),
 		App:            s.App,
 		Namespace:      s.Namespace,
 		AppType:        s.Type,
@@ -331,7 +330,7 @@ func (w *Application) Refresh(ctx model.Context) error {
 	}
 
 	if w.endpoint != nil {
-		if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
+		if err := w.endpoint.SetAddresses(ctx, w.getPodInfo()); err != nil {
 			return fmt.Errorf("endpoints: %v", err)
 		}
 	}
@@ -373,16 +372,21 @@ func (w *Application) ScaleTo(ctx model.Context, n int) error {
 		}
 	}
 
-	if err := w.endpoint.SetAddresses(ctx, w.getIps()); err != nil {
+	if err := w.endpoint.SetAddresses(ctx, w.getPodInfo()); err != nil {
 		return fmt.Errorf("endpoints: %v", err)
 	}
 	return nil
 }
 
-func (w Application) getIps() map[string]string {
-	ret := map[string]string{}
+type podInfo struct {
+	ip string
+	node string
+}
+
+func (w Application) getPodInfo() map[string]podInfo {
+	ret := map[string]podInfo{}
 	for _, p := range w.pods {
-		ret[p.Name()] = p.Spec.IP
+		ret[p.Name()] = podInfo{p.Spec.IP, p.Spec.Node}
 	}
 	return ret
 }
