@@ -2,8 +2,6 @@ package cluster
 
 import (
 	"errors"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"time"
 
 	"istio.io/istio/pkg/log"
@@ -16,6 +14,8 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type NodeSpec struct {
@@ -30,7 +30,7 @@ type Node struct {
 	Spec  *NodeSpec
 	uid   types.UID
 	start time.Time
-	xds     *xds.Simulation
+	xds   *xds.Simulation
 }
 
 var _ model.Simulation = &Node{}
@@ -70,7 +70,7 @@ func (n *Node) Run(ctx model.Context) (err error) {
 		n.xds = &xds.Simulation{
 			Labels:    nil,
 			Namespace: "istio-system",
-			Name:      "ztunnel-"+n.Spec.Name,
+			Name:      "ztunnel-" + n.Spec.Name,
 			IP:        util.GetIP(),
 			AppType:   model.ZtunnelType,
 			// TODO: multicluster

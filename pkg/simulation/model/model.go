@@ -110,6 +110,7 @@ type ApplicationConfig struct {
 	Instances int                    `json:"instances,omitempty"`
 	Gateways  GatewayConfig          `json:"gateways,omitempty"`
 	Istio     IstioApplicationConfig `json:"istio,omitempty"`
+	Labels    map[string]string      `json:"labels,omitempty"`
 	GetNode   func() string          `json:"-"`
 }
 

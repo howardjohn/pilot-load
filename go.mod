@@ -17,6 +17,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/lthibault/jitterbug v2.0.0+incompatible
 	github.com/spf13/cobra v1.8.1
+	go.uber.org/atomic v1.11.0
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/sync v0.9.0
 	google.golang.org/grpc v1.68.0
@@ -132,7 +133,6 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.32.0 // indirect
 	go.opentelemetry.io/otel/trace v1.32.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.29.0 // indirect

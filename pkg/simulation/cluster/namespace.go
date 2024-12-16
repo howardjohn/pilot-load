@@ -103,6 +103,7 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig, ct model.Clus
 		GatewayConfig:  args.Gateways,
 		ClusterType:    ct,
 		Istio:          args.Istio,
+		Labels:         args.Labels,
 	})
 }
 

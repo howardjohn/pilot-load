@@ -5,11 +5,11 @@ import (
 	"os"
 
 	"github.com/ghodss/yaml"
+	"github.com/spf13/cobra"
+	"istio.io/istio/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/spf13/cobra"
-
-	"istio.io/istio/pkg/log"
 )
 
 var (

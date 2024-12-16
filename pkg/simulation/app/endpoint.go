@@ -14,7 +14,7 @@ type EndpointSpec struct {
 	App       string
 	Namespace string
 	// Map of pod name to IP
-	Infos         map[string]podInfo
+	Infos       map[string]podInfo
 	ClusterType model.ClusterType
 }
 

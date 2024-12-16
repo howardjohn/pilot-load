@@ -6,18 +6,18 @@ import (
 	"runtime"
 	"time"
 
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -56,7 +56,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 				Region:      "region",
 				Zone:        "zone",
 				ClusterType: s.Config.ClusterType,
-				Ztunnel: node.Ztunnel != nil,
+				Ztunnel:     node.Ztunnel != nil,
 			}))
 		}
 	}

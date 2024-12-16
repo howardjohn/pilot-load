@@ -13,6 +13,7 @@ import (
 type ServiceSpec struct {
 	App         string
 	Namespace   string
+	Labels      map[string]string
 	ClusterType model.ClusterType
 }
 
@@ -56,6 +57,7 @@ func (s *Service) getService() *v1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.App,
 			Namespace: p.Namespace,
+			Labels:    s.Spec.Labels,
 		},
 		Spec: v1.ServiceSpec{
 			// TODO port customization

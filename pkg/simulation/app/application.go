@@ -166,7 +166,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		w.endpoint = NewEndpoint(EndpointSpec{
 			App:         s.App,
 			Namespace:   s.Namespace,
-			Infos:         w.getPodInfo(),
+			Infos:       w.getPodInfo(),
 			ClusterType: s.ClusterType,
 		})
 	}
@@ -174,6 +174,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		App:         s.App,
 		Namespace:   s.Namespace,
 		ClusterType: s.ClusterType,
+		Labels:      s.Labels,
 	})
 
 	if s.Type == model.GatewayType {
@@ -379,7 +380,7 @@ func (w *Application) ScaleTo(ctx model.Context, n int) error {
 }
 
 type podInfo struct {
-	ip string
+	ip   string
 	node string
 }
 
