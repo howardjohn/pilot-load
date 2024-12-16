@@ -86,6 +86,9 @@ func DialDelta(url string, opts *Config) (ADSClient, error) {
 			ClusterNode.Key:  ClusterNode,
 		},
 	}
+	if opts.NodeType == "ztunnel" {
+		c.initialWatches = []string{v3.AddressType, v3.WorkloadAuthorizationType}
+	}
 	go c.handleRecv()
 	return c, nil
 }

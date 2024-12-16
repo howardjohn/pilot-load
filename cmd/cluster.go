@@ -14,7 +14,7 @@ import (
 
 var (
 	configFile  = ""
-	clusterType = "fake"
+	clusterType = "fake-node"
 )
 
 func init() {

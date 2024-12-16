@@ -44,7 +44,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 		cluster = "Kubernetes"
 	}
 	meta := clone(ctx.Args.Metadata)
-	meta["ISTIO_VERSION"] = "1.20.0-pilot-load"
+	meta["ISTIO_VERSION"] = "1.24.0-pilot-load"
 	meta["CLUSTER_ID"] = cluster
 	meta["LABELS"] = x.Labels
 	meta["NAMESPACE"] = x.Namespace

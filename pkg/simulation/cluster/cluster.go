@@ -56,6 +56,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 				Region:      "region",
 				Zone:        "zone",
 				ClusterType: s.Config.ClusterType,
+				Ztunnel: node.Ztunnel != nil,
 			}))
 		}
 	}

@@ -25,4 +25,4 @@ namespaces:
 nodes:
 - name: node
   count: 160
-  ambient: true
+  ztunnel: {}

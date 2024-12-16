@@ -90,6 +90,8 @@ const (
 
 	ExternalType AppType = "external"
 
+	ZtunnelType AppType = "ztunnel"
+
 	VMType AppType = "vm"
 )
 
@@ -146,10 +148,12 @@ type ClusterConfig struct {
 }
 
 type NodeConfig struct {
-	Name    string `json:"name,omitempty"`
-	Ambient bool   `json:"ambient,omitempty"`
-	Count   int    `json:"count,omitempty"`
+	Name    string             `json:"name,omitempty"`
+	Ztunnel *NodeZtunnelConfig `json:"ztunnel,omitempty"`
+	Count   int                `json:"count,omitempty"`
 }
+
+type NodeZtunnelConfig struct{}
 
 func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 	cpy := c

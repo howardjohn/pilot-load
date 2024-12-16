@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"errors"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"time"
 
 	"istio.io/istio/pkg/log"
@@ -21,12 +23,14 @@ type NodeSpec struct {
 	Region      string
 	Zone        string
 	ClusterType model.ClusterType
+	Ztunnel     bool
 }
 
 type Node struct {
 	Spec  *NodeSpec
 	uid   types.UID
 	start time.Time
+	xds     *xds.Simulation
 }
 
 var _ model.Simulation = &Node{}
@@ -57,11 +61,25 @@ func (n *Node) Run(ctx model.Context) (err error) {
 					tc = time.After(time.Second * 1)
 					log.Warnf("lease update for %v failed: %v", n.Spec.Name, err)
 				} else {
-					tc = time.After(time.Second * 10)
+					tc = time.After(time.Second * 20)
 				}
 			}
 		}
 	}()
+	if n.Spec.Ztunnel {
+		n.xds = &xds.Simulation{
+			Labels:    nil,
+			Namespace: "istio-system",
+			Name:      "ztunnel-"+n.Spec.Name,
+			IP:        util.GetIP(),
+			AppType:   model.ZtunnelType,
+			// TODO: multicluster
+			Cluster:  "Kubernetes",
+			GrpcOpts: ctx.Args.Auth.GrpcOptions("ztunnel", "istio-system"),
+			Delta:    true,
+		}
+		return n.xds.Run(ctx)
+	}
 	return nil
 }
 
@@ -69,7 +87,12 @@ func (n *Node) Cleanup(ctx model.Context) error {
 	if n.Spec.ClusterType == model.Real {
 		return nil
 	}
+	var xdsErr error
+	if n.xds != nil {
+		xdsErr = n.xds.Cleanup(ctx)
+	}
 	return errors.Join(
+		xdsErr,
 		kube.Delete(ctx.Client, n.getNode()),
 		kube.Delete(ctx.Client, n.getLease()),
 	)
