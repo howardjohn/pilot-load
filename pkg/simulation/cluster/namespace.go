@@ -14,6 +14,7 @@ type NamespaceSpec struct {
 	Deployments []model.ApplicationConfig
 	ClusterType model.ClusterType
 	Istio       model.IstioNSConfig
+	StableNames bool
 }
 
 type Namespace struct {
@@ -83,17 +84,18 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		})
 	}
 
-	for _, d := range s.Deployments {
+	for idx, d := range s.Deployments {
 		for r := 0; r < d.Replicas; r++ {
-			ns.deployments = append(ns.deployments, ns.createDeployment(d, s.ClusterType))
+			suffix := util.GenUIDOrStableIdentifier(s.StableNames, idx, r)
+			ns.deployments = append(ns.deployments, ns.createDeployment(d, suffix, s.ClusterType))
 		}
 	}
 	return ns
 }
 
-func (n *Namespace) createDeployment(args model.ApplicationConfig, ct model.ClusterType) *app.Application {
+func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string, ct model.ClusterType) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
-		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), util.GenUID()),
+		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), suffix),
 		Node:      args.GetNode,
 		Namespace: n.Spec.Name,
 		// TODO implement different service accounts

@@ -98,7 +98,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 		})
 	}
 
-	for _, ns := range s.Config.Namespaces {
+	for nsId, ns := range s.Config.Namespaces {
 		for r := 0; r < ns.Replicas; r++ {
 			deployments := ns.Applications
 			for i, d := range ns.Applications {
@@ -107,13 +107,14 @@ func NewCluster(s ClusterSpec) *Cluster {
 			}
 			name := util.StringDefault(ns.Name, "namespace")
 			if ns.Replicas > 1 {
-				name = fmt.Sprintf("%s-%s", name, util.GenUID())
+				name = fmt.Sprintf("%s-%s", name, util.GenUIDOrStableIdentifier(s.Config.StableNames, nsId, r))
 			}
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
 				Name:        name,
 				Deployments: deployments,
 				ClusterType: s.Config.ClusterType,
 				Istio:       ns.Istio,
+				StableNames: s.Config.StableNames,
 			}))
 		}
 	}
@@ -225,7 +226,7 @@ func (c *Cluster) watchPods(ctx model.Context) {
 				return nil
 			}
 			if p.DeletionTimestamp != nil {
-				if err := pods.Delete(p.Name, p.Namespace); err != nil {
+				if err := pods.Delete(p.Name, p.Namespace); controllers.IgnoreNotFound(err) != nil {
 					return fmt.Errorf("delete: %v", err)
 				}
 				return nil

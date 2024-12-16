@@ -139,10 +139,12 @@ var (
 // A cluster consists of various namespaces
 type ClusterConfig struct {
 	// Time between each namespace creation at startup
-	GracePeriod  Duration               `json:"gracePeriod,omitempty"`
-	Jitter       ClusterJitterConfig    `json:"jitter,omitempty"`
-	Namespaces   []NamespaceConfig      `json:"namespaces,omitempty"`
-	Nodes        []NodeConfig           `json:"nodes,omitempty"`
+	GracePeriod Duration            `json:"gracePeriod,omitempty"`
+	Jitter      ClusterJitterConfig `json:"jitter,omitempty"`
+	Namespaces  []NamespaceConfig   `json:"namespaces,omitempty"`
+	Nodes       []NodeConfig        `json:"nodes,omitempty"`
+	// If true, consistent names will be used across iterations.
+	StableNames  bool                   `json:"stableNames,omitempty"`
 	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
 	ClusterType  ClusterType            `json:"-"`
 	Istio        IstioRootNSConfig      `json:"istio,omitempty"`

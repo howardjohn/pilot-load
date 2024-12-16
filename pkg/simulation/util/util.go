@@ -58,6 +58,13 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+func GenUIDOrStableIdentifier(stable bool, index int, replica int) string {
+	if !stable {
+		return GenUID()
+	}
+	return fmt.Sprintf("%d-%d", index, replica)
+}
+
 func GenUID() string {
 	length := 8
 	var b strings.Builder
