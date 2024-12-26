@@ -43,6 +43,9 @@ type deltaClient struct {
 	conn           *grpc.ClientConn
 	client         discovery.AggregatedDiscoveryService_DeltaAggregatedResourcesClient
 
+	// Updates includes the type of the last update received from the server.
+	updates chan string
+
 	mu        sync.Mutex
 	resources map[string]sets.String
 	tree      map[ResourceKey]*ResourceNode
@@ -85,6 +88,7 @@ func DialDelta(url string, opts *Config) (ADSClient, error) {
 			ListenerNode.Key: ListenerNode,
 			ClusterNode.Key:  ClusterNode,
 		},
+		updates: make(chan string, 100),
 	}
 	if opts.NodeType == "ztunnel" {
 		c.initialWatches = []string{v3.AddressType, v3.WorkloadAuthorizationType}
@@ -100,6 +104,7 @@ func (d *deltaClient) handleRecv() {
 		if err != nil {
 			scope.Infof("Connection closed: %v", err)
 			d.Close()
+			d.updates <- "close"
 			return
 		}
 
@@ -147,7 +152,7 @@ func (d *deltaClient) handleRecv() {
 				TypeUrl: msg.TypeUrl,
 			}
 			if d.tree[key] == nil {
-				scope.Warnf("Ignoring removing unmatched resource %s, %v", key, d.dumpTree())
+				scope.Warnf("Ignoring removing unmatched resource %s", key)
 				continue
 			}
 			node := d.tree[key]
@@ -279,7 +284,7 @@ func (d *deltaClient) Responses() Responses {
 }
 
 func (d *deltaClient) Updates() chan string {
-	return nil
+	return d.updates
 }
 
 func (d *deltaClient) send(dr *discovery.DeltaDiscoveryRequest, reason string) error {
