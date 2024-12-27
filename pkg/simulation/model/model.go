@@ -144,10 +144,10 @@ type ClusterConfig struct {
 	Namespaces  []NamespaceConfig   `json:"namespaces,omitempty"`
 	Nodes       []NodeConfig        `json:"nodes,omitempty"`
 	// If true, consistent names will be used across iterations.
-	StableNames  bool                   `json:"stableNames,omitempty"`
-	NodeMetadata map[string]interface{} `json:"nodeMetadata,omitempty"`
-	ClusterType  ClusterType            `json:"-"`
-	Istio        IstioRootNSConfig      `json:"istio,omitempty"`
+	StableNames  bool              `json:"stableNames,omitempty"`
+	NodeMetadata map[string]string    `json:"nodeMetadata,omitempty"`
+	ClusterType  ClusterType       `json:"-"`
+	Istio        IstioRootNSConfig `json:"istio,omitempty"`
 }
 
 type NodeConfig struct {

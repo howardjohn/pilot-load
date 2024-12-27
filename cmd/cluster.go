@@ -45,6 +45,9 @@ var clusterCmd = WithProfiling(&cobra.Command{
 		default:
 			return fmt.Errorf("unknown cluster type %q", clusterType)
 		}
+		if len(config.NodeMetadata) > 0 {
+			args.Metadata = config.NodeMetadata
+		}
 		args.ClusterConfig = config
 		logConfig(args.ClusterConfig)
 		logClusterConfig(args.ClusterConfig)
