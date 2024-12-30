@@ -14,6 +14,7 @@ import (
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
+
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 	"istio.io/istio/pkg/util/sets"
 )
@@ -109,9 +110,10 @@ func (d *deltaClient) handleRecv() {
 		}
 
 		requests := map[string][]string{}
-		resources := sets.New[string]()
 
 		d.mu.Lock()
+		resources := d.resources[msg.TypeUrl]
+		origLen := len(d.resources[msg.TypeUrl])
 		for _, resp := range msg.Resources {
 			key := ResourceKey{
 				Name:    resp.Name,
@@ -159,11 +161,9 @@ func (d *deltaClient) handleRecv() {
 			d.deleteNode(node, removals)
 		}
 
-		origLen := len(d.resources[msg.TypeUrl])
-		newAdd := d.resources[msg.TypeUrl].Union(resources)
 		addedLen := len(newAdd) - origLen
 		removedLen := len(msg.RemovedResources)
-		d.resources[msg.TypeUrl] = newAdd.Difference(sets.New(msg.RemovedResources...))
+		d.resources[msg.TypeUrl] = resources.DeleteAll(msg.RemovedResources...)
 		d.mu.Unlock()
 		scope.WithLabels("type", msg.TypeUrl, "added", addedLen, "removed", removedLen, "removed refs", len(removals)).Debugf("got message")
 		if dumpScope.DebugEnabled() {
