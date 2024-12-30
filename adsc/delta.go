@@ -2,11 +2,9 @@ package adsc
 
 import (
 	"fmt"
-	"istio.io/istio/pkg/slices"
 	"math"
 	"strings"
 	"sync"
-	"unique"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -15,8 +13,10 @@ import (
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
+	"unique"
 
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
+	"istio.io/istio/pkg/slices"
 	"istio.io/istio/pkg/util/sets"
 )
 
@@ -35,12 +35,14 @@ func (k ResourceKey) String() string {
 type ResourceNode struct {
 	Key ResourceKey
 
-	Parents  map[*ResourceNode]struct{}
-	Children map[*ResourceNode]struct{}
+	Parents  sets.Set[*ResourceNode]
+	Children sets.Set[*ResourceNode]
 }
 
-type IString = unique.Handle[string]
-type IStringSet = sets.Set[IString]
+type (
+	IString    = unique.Handle[string]
+	IStringSet = sets.Set[IString]
+)
 
 type deltaClient struct {
 	initialWatches []string
@@ -61,14 +63,14 @@ var _ ADSClient = &deltaClient{}
 func DialDelta(url string, opts *Config) (ADSClient, error) {
 	ListenerNode := &ResourceNode{
 		Key:      ResourceKey{TypeUrl: intern(v3.ListenerType)},
-		Parents:  map[*ResourceNode]struct{}{},
-		Children: map[*ResourceNode]struct{}{},
+		Parents:  sets.New[*ResourceNode](),
+		Children: sets.New[*ResourceNode](),
 	}
 
 	ClusterNode := &ResourceNode{
 		Key:      ResourceKey{TypeUrl: intern(v3.ClusterType)},
-		Parents:  map[*ResourceNode]struct{}{},
-		Children: map[*ResourceNode]struct{}{},
+		Parents:  sets.New[*ResourceNode](),
+		Children: sets.New[*ResourceNode](),
 	}
 	nodeID := fmt.Sprintf("%s~%s~%s.%s~%s.svc.cluster.local", opts.NodeType, opts.IP,
 		opts.Workload, opts.Namespace, opts.Namespace)
@@ -128,11 +130,11 @@ func (d *deltaClient) handleRecv() {
 				Name:    name,
 				TypeUrl: typeUrl,
 			}
-			if d.tree[key] == nil && isWildcardTypeURL(typeUrl.Value()) {
+			if d.tree[key] == nil && hasChildTypes(typeUrl.Value()) {
 				d.tree[key] = &ResourceNode{
 					Key:      key,
-					Parents:  map[*ResourceNode]struct{}{},
-					Children: map[*ResourceNode]struct{}{},
+					Parents:  sets.New[*ResourceNode](),
+					Children: sets.New[*ResourceNode](),
 				}
 				switch msg.TypeUrl {
 				case v3.ListenerType:
@@ -141,7 +143,7 @@ func (d *deltaClient) handleRecv() {
 					relate(d.tree[ResourceKey{TypeUrl: intern(v3.ClusterType)}], d.tree[key])
 				}
 
-			} else if d.tree[key] == nil {
+			} else if !isWildcardTypeURL(typeUrl.Value()) && d.tree[key] == nil {
 				scope.Warnf("Ignoring unmatched resource %s", key)
 				continue
 			}
@@ -312,8 +314,8 @@ func (d *deltaClient) getNode(key ResourceKey) (*ResourceNode, bool) {
 	if d.tree[key] == nil {
 		d.tree[key] = &ResourceNode{
 			Key:      key,
-			Parents:  map[*ResourceNode]struct{}{},
-			Children: map[*ResourceNode]struct{}{},
+			Parents:  sets.New[*ResourceNode](),
+			Children: sets.New[*ResourceNode](),
 		}
 		found = false
 	}
@@ -359,6 +361,23 @@ func dumpNode(sb *strings.Builder, node *ResourceNode, indent string) {
 			id = indent + "**"
 		}
 		dumpNode(sb, c, id)
+	}
+}
+
+func hasChildTypes(typeURL string) bool {
+	switch typeURL {
+	case v3.SecretType, v3.EndpointType, v3.RouteType, v3.ExtensionConfigurationType:
+		// By XDS spec, these are not wildcard
+		return false
+	case v3.WorkloadAuthorizationType, v3.AddressType, v3.WorkloadType:
+		// These do not have children
+		return false
+	case v3.ClusterType, v3.ListenerType:
+		// By XDS spec, these are wildcard
+		return true
+	default:
+		// All of our internal types use wildcard semantics
+		return true
 	}
 }
 
