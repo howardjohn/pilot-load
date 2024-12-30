@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"istio.io/istio/pkg/kube/kubetypes"
 	"math/rand"
 	"runtime"
 	"time"
@@ -213,7 +214,9 @@ func (c *Cluster) Cleanup(ctx model.Context) error {
 }
 
 func (c *Cluster) watchPods(ctx model.Context) {
-	pods := kclient.New[*v1.Pod](ctx.Client)
+	pods := kclient.NewFiltered[*v1.Pod](ctx.Client, kubetypes.Filter{
+		ObjectTransform: StripPodUnusedFields,
+	})
 	q := NewQueue("pods",
 		WithWorkers(runtime.GOMAXPROCS(0)),
 		WithReconciler(func(key types.NamespacedName) error {
@@ -299,4 +302,37 @@ func (c *Cluster) getIstioResources() []model.Simulation {
 	}
 
 	return sims
+}
+func StripPodUnusedFields(obj any) (any, error) {
+	t, ok := obj.(metav1.ObjectMetaAccessor)
+	if !ok {
+		// shouldn't happen
+		return obj, nil
+	}
+	t.GetObjectMeta().SetManagedFields(nil)
+	t.GetObjectMeta().SetAnnotations(nil)
+	t.GetObjectMeta().SetLabels(nil)
+	// only container ports can be used
+	if pod := obj.(*v1.Pod); pod != nil {
+		containers := []v1.Container{}
+		for _, c := range pod.Spec.Containers {
+			containers = append(containers, v1.Container{
+				Name:  c.Name,
+				Image: c.Image,
+			})
+		}
+		oldSpec := pod.Spec
+		newSpec := v1.PodSpec{
+			NodeSelector:       oldSpec.NodeSelector,
+			Containers:         containers,
+			ServiceAccountName: oldSpec.ServiceAccountName,
+			NodeName:           oldSpec.NodeName,
+		}
+		pod.Spec = newSpec
+		pod.Status.Conditions = nil
+		pod.Status.InitContainerStatuses = nil
+		pod.Status.ContainerStatuses = nil
+	}
+
+	return obj, nil
 }
