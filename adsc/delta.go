@@ -2,10 +2,11 @@ package adsc
 
 import (
 	"fmt"
+	"istio.io/istio/pkg/slices"
 	"math"
-	"sort"
 	"strings"
 	"sync"
+	"unique"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -20,15 +21,15 @@ import (
 )
 
 type ResourceKey struct {
-	Name    string
-	TypeUrl string
+	Name    IString
+	TypeUrl IString
 }
 
 func (k ResourceKey) String() string {
 	if k == (ResourceKey{}) {
 		return "<wildcard>"
 	}
-	return strings.TrimPrefix(k.TypeUrl, "type.googleapis.com/envoy.config.") + "/" + k.Name
+	return strings.TrimPrefix(k.TypeUrl.Value(), "type.googleapis.com/envoy.config.") + "/" + k.Name.Value()
 }
 
 type ResourceNode struct {
@@ -37,6 +38,9 @@ type ResourceNode struct {
 	Parents  map[*ResourceNode]struct{}
 	Children map[*ResourceNode]struct{}
 }
+
+type IString = unique.Handle[string]
+type IStringSet = sets.Set[IString]
 
 type deltaClient struct {
 	initialWatches []string
@@ -48,7 +52,7 @@ type deltaClient struct {
 	updates chan string
 
 	mu        sync.Mutex
-	resources map[string]sets.String
+	resources map[IString]IStringSet
 	tree      map[ResourceKey]*ResourceNode
 }
 
@@ -56,13 +60,13 @@ var _ ADSClient = &deltaClient{}
 
 func DialDelta(url string, opts *Config) (ADSClient, error) {
 	ListenerNode := &ResourceNode{
-		Key:      ResourceKey{TypeUrl: v3.ListenerType},
+		Key:      ResourceKey{TypeUrl: intern(v3.ListenerType)},
 		Parents:  map[*ResourceNode]struct{}{},
 		Children: map[*ResourceNode]struct{}{},
 	}
 
 	ClusterNode := &ResourceNode{
-		Key:      ResourceKey{TypeUrl: v3.ClusterType},
+		Key:      ResourceKey{TypeUrl: intern(v3.ClusterType)},
 		Parents:  map[*ResourceNode]struct{}{},
 		Children: map[*ResourceNode]struct{}{},
 	}
@@ -84,7 +88,7 @@ func DialDelta(url string, opts *Config) (ADSClient, error) {
 		node:           makeNode(nodeID, opts.Meta),
 		conn:           conn,
 		client:         xdsClient,
-		resources:      map[string]sets.String{},
+		resources:      map[IString]IStringSet{},
 		tree: map[ResourceKey]*ResourceNode{
 			ListenerNode.Key: ListenerNode,
 			ClusterNode.Key:  ClusterNode,
@@ -109,17 +113,22 @@ func (d *deltaClient) handleRecv() {
 			return
 		}
 
-		requests := map[string][]string{}
+		requests := map[IString][]IString{}
 
 		d.mu.Lock()
-		resources := d.resources[msg.TypeUrl]
-		origLen := len(d.resources[msg.TypeUrl])
+		typeUrl := intern(msg.TypeUrl)
+		resources := d.resources[typeUrl]
+		if resources == nil {
+			resources = sets.NewWithLength[IString](len(msg.Resources))
+		}
+		origLen := len(d.resources[typeUrl])
 		for _, resp := range msg.Resources {
+			name := intern(resp.Name)
 			key := ResourceKey{
-				Name:    resp.Name,
-				TypeUrl: msg.TypeUrl,
+				Name:    name,
+				TypeUrl: typeUrl,
 			}
-			if d.tree[key] == nil && isWildcardTypeURL(msg.TypeUrl) {
+			if d.tree[key] == nil && isWildcardTypeURL(typeUrl.Value()) {
 				d.tree[key] = &ResourceNode{
 					Key:      key,
 					Parents:  map[*ResourceNode]struct{}{},
@@ -127,9 +136,9 @@ func (d *deltaClient) handleRecv() {
 				}
 				switch msg.TypeUrl {
 				case v3.ListenerType:
-					relate(d.tree[ResourceKey{TypeUrl: v3.ListenerType}], d.tree[key])
+					relate(d.tree[ResourceKey{TypeUrl: intern(v3.ListenerType)}], d.tree[key])
 				case v3.ClusterType:
-					relate(d.tree[ResourceKey{TypeUrl: v3.ClusterType}], d.tree[key])
+					relate(d.tree[ResourceKey{TypeUrl: intern(v3.ClusterType)}], d.tree[key])
 				}
 
 			} else if d.tree[key] == nil {
@@ -137,7 +146,7 @@ func (d *deltaClient) handleRecv() {
 				continue
 			}
 			node := d.tree[key]
-			resources = resources.Insert(resp.Name)
+			resources = resources.Insert(name)
 			referenced := extractReferencedKeys(resp)
 			for _, rkey := range referenced {
 				child, f := d.getNode(rkey)
@@ -147,11 +156,12 @@ func (d *deltaClient) handleRecv() {
 				relate(node, child)
 			}
 		}
-		removals := map[string][]string{}
+		removals := map[IString][]IString{}
 		for _, resp := range msg.RemovedResources {
+			name := intern(resp)
 			key := ResourceKey{
-				Name:    resp,
-				TypeUrl: msg.TypeUrl,
+				Name:    name,
+				TypeUrl: typeUrl,
 			}
 			if d.tree[key] == nil {
 				scope.Warnf("Ignoring removing unmatched resource %s", key)
@@ -161,9 +171,12 @@ func (d *deltaClient) handleRecv() {
 			d.deleteNode(node, removals)
 		}
 
-		addedLen := len(newAdd) - origLen
+		addedLen := len(resources) - origLen
 		removedLen := len(msg.RemovedResources)
-		d.resources[msg.TypeUrl] = resources.DeleteAll(msg.RemovedResources...)
+		for _, m := range msg.RemovedResources {
+			resources.Delete(intern(m))
+		}
+		d.resources[typeUrl] = resources
 		d.mu.Unlock()
 		scope.WithLabels("type", msg.TypeUrl, "added", addedLen, "removed", removedLen, "removed refs", len(removals)).Debugf("got message")
 		if dumpScope.DebugEnabled() {
@@ -182,9 +195,13 @@ func (d *deltaClient) handleRecv() {
 				continue
 			}
 			if err := d.send(&discovery.DeltaDiscoveryRequest{
-				TypeUrl:                  k,
-				ResourceNamesSubscribe:   requests[k],
-				ResourceNamesUnsubscribe: removals[k],
+				TypeUrl: k.Value(),
+				ResourceNamesSubscribe: slices.Map(requests[k], func(e IString) string {
+					return e.Value()
+				}),
+				ResourceNamesUnsubscribe: slices.Map(removals[k], func(e IString) string {
+					return e.Value()
+				}),
 			}, ReasonRequest); err != nil {
 				scope.Errorf("error sending request: %v", err)
 			}
@@ -199,15 +216,13 @@ func (d *deltaClient) handleRecv() {
 	}
 }
 
-func keysOfMaps(ms ...map[string][]string) []string {
-	res := []string{}
+func keysOfMaps(ms ...map[IString][]IString) []IString {
+	res := []IString{}
 	for _, m := range ms {
 		for k := range m {
 			res = append(res, k)
 		}
 	}
-	// TODO sort in XDS ordering?
-	sort.Strings(res)
 	return res
 }
 
@@ -224,8 +239,8 @@ func extractReferencedKeys(resp *discovery.Resource) []ResourceKey {
 			}
 		}
 		key := ResourceKey{
-			Name:    o.Name,
-			TypeUrl: v3.EndpointType,
+			Name:    intern(o.Name),
+			TypeUrl: intern(v3.EndpointType),
 		}
 		res = append(res, key)
 	case v3.ListenerType:
@@ -238,8 +253,8 @@ func extractReferencedKeys(resp *discovery.Resource) []ResourceKey {
 					_ = f.GetTypedConfig().UnmarshalTo(hcm)
 					if r := hcm.GetRds().GetRouteConfigName(); r != "" {
 						key := ResourceKey{
-							Name:    r,
-							TypeUrl: v3.RouteType,
+							Name:    intern(r),
+							TypeUrl: intern(v3.RouteType),
 						}
 						res = append(res, key)
 					}
@@ -319,7 +334,7 @@ func (d *deltaClient) dumpTree() string {
 	return sb.String()
 }
 
-func (d *deltaClient) deleteNode(node *ResourceNode, removals map[string][]string) {
+func (d *deltaClient) deleteNode(node *ResourceNode, removals map[IString][]IString) {
 	delete(d.tree, node.Key)
 	for p := range node.Parents {
 		delete(p.Children, node)
@@ -359,4 +374,8 @@ func isWildcardTypeURL(typeURL string) bool {
 		// All of our internal types use wildcard semantics
 		return true
 	}
+}
+
+func intern(s string) unique.Handle[string] {
+	return unique.Make(s)
 }
