@@ -166,7 +166,7 @@ func (d *deltaClient) handleRecv() {
 				TypeUrl: typeUrl,
 			}
 			if d.tree[key] == nil {
-				scope.Warnf("Ignoring removing unmatched resource %s", key)
+				scope.Debugf("Ignoring removing unmatched resource %s", key)
 				continue
 			}
 			node := d.tree[key]
