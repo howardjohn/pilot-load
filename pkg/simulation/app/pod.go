@@ -6,7 +6,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"istio.io/istio/pkg/sleep"
 	"net/http"
+	"time"
 
 	"google.golang.org/grpc/credentials"
 	"istio.io/istio/pkg/log"
@@ -73,10 +75,20 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
 	if p.Spec.ClusterType != model.Real {
-		if err := kube.ApplyRealSSA(ctx.Client, pod); err != nil {
-			return fmt.Errorf("failed to apply pod: %v", err)
+		var terr error
+		for range 10 {
+			if err := kube.ApplyRealSSA(ctx.Client, pod); err != nil {
+				// Sometimes there is a race with SA being created in the namespace...
+				sleep.UntilContext(ctx, time.Millisecond*500)
+				terr = fmt.Errorf("failed to apply pod: %v", err)
+			} else {
+				p.created = true
+				break
+			}
 		}
-		p.created = true
+		if !p.created {
+			return terr
+		}
 	}
 
 	if p.Spec.AppType.HasProxy() {
