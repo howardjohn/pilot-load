@@ -141,14 +141,19 @@ func (p *Pod) getPod() *v1.Pod {
 		if p.Spec.AppType == model.SidecarType {
 			labels["sidecar.istio.io/inject"] = "true"
 		}
+
+		annotations := map[string]string{
+			"prometheus.io/scrape": "false",
+		}
+		if p.Spec.AppType == model.AmbientType {
+			annotations["ambient.istio.io/redirection"] = "enabled"
+		}
 		return &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      p.Name(),
-				Namespace: s.Namespace,
-				Labels:    labels,
-				Annotations: map[string]string{
-					"prometheus.io/scrape": "false",
-				},
+				Name:        p.Name(),
+				Namespace:   s.Namespace,
+				Labels:      labels,
+				Annotations: annotations,
 			},
 			Spec: v1.PodSpec{
 				TerminationGracePeriodSeconds: ptr.Of(int64(0)),
@@ -171,6 +176,7 @@ func (p *Pod) getPod() *v1.Pod {
 		}
 	}
 
+	var annotations map[string]string
 	labels := map[string]string{
 		"app": s.App,
 	}
@@ -178,13 +184,16 @@ func (p *Pod) getPod() *v1.Pod {
 		labels["security.istio.io/tlsMode"] = "istio"
 	}
 	if p.Spec.AppType == model.AmbientType {
-		labels["ambient-type"] = "workload"
+		annotations = map[string]string{
+			"ambient.istio.io/redirection": "enabled",
+		}
 	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      p.Name(),
-			Namespace: s.Namespace,
-			Labels:    labels,
+			Name:        p.Name(),
+			Namespace:   s.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: v1.PodSpec{
 			TerminationGracePeriodSeconds: ptr.Of(int64(0)),

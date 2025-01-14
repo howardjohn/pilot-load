@@ -79,10 +79,11 @@ func NewClient(kubeconfig string, qps int) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Finalize(ns *v1.Namespace) error {
+func (c *Client) Finalize(ns *v1.Namespace) {
 	scope.Debugf("finalizing namespace: %v", ns.Name)
-	_, err := c.Kube().CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
-	return err
+	_, _ = c.Kube().CoreV1().Namespaces().Finalize(context.TODO(), ns, metav1.UpdateOptions{})
+	_ = c.Kube().CoreV1().ConfigMaps(ns.Name).Delete(context.TODO(), "istio-ca-root-cert", metav1.DeleteOptions{})
+	_ = c.Kube().CoreV1().ConfigMaps(ns.Name).Delete(context.TODO(), "kube-root-ca.crt", metav1.DeleteOptions{})
 }
 
 var scope = log.RegisterScope("kube", "")
