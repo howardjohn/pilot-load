@@ -12,14 +12,10 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
-var (
-	configFile  = ""
-	clusterType = "fake-node"
-)
+var configFile = ""
 
 func init() {
 	clusterCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, "config file")
-	clusterCmd.PersistentFlags().StringVar(&clusterType, "cluster-type", clusterType, "cluster type. Can be one of real, fake, or fake-node,")
 }
 
 var clusterCmd = WithProfiling(&cobra.Command{
@@ -35,16 +31,7 @@ var clusterCmd = WithProfiling(&cobra.Command{
 			return fmt.Errorf("failed to read config file: %v", err)
 		}
 		config = config.ApplyDefaults()
-		switch clusterType {
-		case "fake":
-			config.ClusterType = model.Fake
-		case "fake-node":
-			config.ClusterType = model.FakeNode
-		case "real":
-			config.ClusterType = model.Real
-		default:
-			return fmt.Errorf("unknown cluster type %q", clusterType)
-		}
+
 		if len(config.NodeMetadata) > 0 {
 			args.Metadata = config.NodeMetadata
 		}

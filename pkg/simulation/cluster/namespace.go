@@ -12,7 +12,6 @@ import (
 type NamespaceSpec struct {
 	Name        string
 	Deployments []model.ApplicationConfig
-	ClusterType model.ClusterType
 	Istio       model.IstioNSConfig
 	StableNames bool
 }
@@ -38,13 +37,12 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
 		Name: s.Name,
 	})
-	if s.ClusterType == model.Fake {
-		ns.sa = map[string]*app.ServiceAccount{
-			"default": app.NewServiceAccount(app.ServiceAccountSpec{
-				Namespace: ns.Spec.Name,
-				Name:      "default",
-			}),
-		}
+	// Explicitly make a service account, sometimes its too slow to make one...
+	ns.sa = map[string]*app.ServiceAccount{
+		"default": app.NewServiceAccount(app.ServiceAccountSpec{
+			Namespace: ns.Spec.Name,
+			Name:      "default",
+		}),
 	}
 
 	if s.Istio.Default || s.Istio.EnvoyFilter != nil {
@@ -87,13 +85,13 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	for idx, d := range s.Deployments {
 		for r := 0; r < d.Replicas; r++ {
 			suffix := util.GenUIDOrStableIdentifier(s.StableNames, idx, r)
-			ns.deployments = append(ns.deployments, ns.createDeployment(d, suffix, s.ClusterType))
+			ns.deployments = append(ns.deployments, ns.createDeployment(d, suffix))
 		}
 	}
 	return ns
 }
 
-func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string, ct model.ClusterType) *app.Application {
+func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), suffix),
 		Node:      args.GetNode,
@@ -103,7 +101,6 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string
 		Instances:      args.Instances,
 		Type:           args.Type,
 		GatewayConfig:  args.Gateways,
-		ClusterType:    ct,
 		Istio:          args.Istio,
 		Labels:         args.Labels,
 	})

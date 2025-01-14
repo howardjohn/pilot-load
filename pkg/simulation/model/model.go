@@ -127,14 +127,6 @@ type GatewayConfig struct {
 	Replicas int    `json:"replicas,omitempty"`
 }
 
-type ClusterType string
-
-var (
-	Fake     ClusterType = "Fake"
-	FakeNode ClusterType = "FakeNode"
-	Real     ClusterType = "Real"
-)
-
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
 type ClusterConfig struct {
@@ -146,7 +138,6 @@ type ClusterConfig struct {
 	// If true, consistent names will be used across iterations.
 	StableNames  bool              `json:"stableNames,omitempty"`
 	NodeMetadata map[string]string `json:"nodeMetadata,omitempty"`
-	ClusterType  ClusterType       `json:"-"`
 	Istio        IstioRootNSConfig `json:"istio,omitempty"`
 }
 

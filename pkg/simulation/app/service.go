@@ -7,14 +7,12 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type ServiceSpec struct {
-	App         string
-	Namespace   string
-	Labels      map[string]string
-	ClusterType model.ClusterType
+	App       string
+	Namespace string
+	Labels    map[string]string
 }
 
 type Service struct {
@@ -37,10 +35,6 @@ func (s *Service) Cleanup(ctx model.Context) error {
 
 func (s *Service) getService() *v1.Service {
 	p := s.Spec
-	cip := ""
-	if s.Spec.ClusterType == model.Fake {
-		cip = util.GetIP()
-	}
 	ports := []v1.ServicePort{
 		{
 			Name:       "http",
@@ -61,15 +55,12 @@ func (s *Service) getService() *v1.Service {
 		},
 		Spec: v1.ServiceSpec{
 			// TODO port customization
-			Ports:     ports,
-			Type:      "ClusterIP",
-			ClusterIP: cip,
+			Ports: ports,
+			Type:  "ClusterIP",
 		},
 	}
-	if s.Spec.ClusterType != model.Real {
-		svc.Spec.Selector = map[string]string{
-			"app": p.App,
-		}
+	svc.Spec.Selector = map[string]string{
+		"app": p.App,
 	}
 	return svc
 }

@@ -19,11 +19,10 @@ import (
 )
 
 type NodeSpec struct {
-	Name        string
-	Region      string
-	Zone        string
-	ClusterType model.ClusterType
-	Ztunnel     bool
+	Name    string
+	Region  string
+	Zone    string
+	Ztunnel bool
 }
 
 type Node struct {
@@ -40,9 +39,6 @@ func NewNode(s NodeSpec) *Node {
 }
 
 func (n *Node) Run(ctx model.Context) (err error) {
-	if n.Spec.ClusterType == model.Real {
-		return nil
-	}
 	nm, err := kube.ApplyRes(ctx.Client, n.getNode())
 	if err != nil {
 		return err
@@ -84,9 +80,6 @@ func (n *Node) Run(ctx model.Context) (err error) {
 }
 
 func (n *Node) Cleanup(ctx model.Context) error {
-	if n.Spec.ClusterType == model.Real {
-		return nil
-	}
 	var xdsErr error
 	if n.xds != nil {
 		xdsErr = n.xds.Cleanup(ctx)
@@ -116,45 +109,43 @@ func (n *Node) getNode() *v1.Node {
 			},
 		},
 	}
-	if n.Spec.ClusterType == model.FakeNode {
-		node.Spec = v1.NodeSpec{
-			Taints: []v1.Taint{{
-				Key:    "pilot-load.istio.io/node",
-				Value:  "fake",
-				Effect: v1.TaintEffectNoSchedule,
-			}},
-		}
-		node.Status = v1.NodeStatus{
-			Capacity: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewQuantity(32, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(256*1024*1024*1024, resource.BinarySI),
-				v1.ResourcePods:   *resource.NewQuantity(255, resource.DecimalSI),
+	node.Spec = v1.NodeSpec{
+		Taints: []v1.Taint{{
+			Key:    "pilot-load.istio.io/node",
+			Value:  "fake",
+			Effect: v1.TaintEffectNoSchedule,
+		}},
+	}
+	node.Status = v1.NodeStatus{
+		Capacity: v1.ResourceList{
+			v1.ResourceCPU:    *resource.NewQuantity(32, resource.DecimalSI),
+			v1.ResourceMemory: *resource.NewQuantity(256*1024*1024*1024, resource.BinarySI),
+			v1.ResourcePods:   *resource.NewQuantity(255, resource.DecimalSI),
+		},
+		Allocatable: v1.ResourceList{
+			v1.ResourceCPU:    *resource.NewQuantity(32, resource.DecimalSI),
+			v1.ResourceMemory: *resource.NewQuantity(256*1024*1024*1024, resource.BinarySI),
+			v1.ResourcePods:   *resource.NewQuantity(255, resource.DecimalSI),
+		},
+		Phase: v1.NodeRunning,
+		Conditions: []v1.NodeCondition{
+			{
+				Type:               v1.NodeReady,
+				Reason:             "KubeletReady",
+				Message:            "kubelet is posting ready status",
+				Status:             v1.ConditionTrue,
+				LastHeartbeatTime:  metav1.NewTime(time.Now()),
+				LastTransitionTime: metav1.NewTime(n.start),
 			},
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewQuantity(32, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(256*1024*1024*1024, resource.BinarySI),
-				v1.ResourcePods:   *resource.NewQuantity(255, resource.DecimalSI),
-			},
-			Phase: v1.NodeRunning,
-			Conditions: []v1.NodeCondition{
-				{
-					Type:               v1.NodeReady,
-					Reason:             "KubeletReady",
-					Message:            "kubelet is posting ready status",
-					Status:             v1.ConditionTrue,
-					LastHeartbeatTime:  metav1.NewTime(time.Now()),
-					LastTransitionTime: metav1.NewTime(n.start),
-				},
-			},
-			Addresses:       nil,
-			DaemonEndpoints: v1.NodeDaemonEndpoints{},
-			NodeInfo: v1.NodeSystemInfo{
-				KubeletVersion:   "fake",
-				KubeProxyVersion: "fake",
-				OperatingSystem:  "linux",
-				Architecture:     "amd64",
-			},
-		}
+		},
+		Addresses:       nil,
+		DaemonEndpoints: v1.NodeDaemonEndpoints{},
+		NodeInfo: v1.NodeSystemInfo{
+			KubeletVersion:   "fake",
+			KubeProxyVersion: "fake",
+			OperatingSystem:  "linux",
+			Architecture:     "amd64",
+		},
 	}
 	return node
 }

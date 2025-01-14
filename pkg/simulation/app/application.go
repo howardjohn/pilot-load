@@ -1,8 +1,6 @@
 package app
 
 import (
-	"fmt"
-
 	"istio.io/istio/pkg/log"
 	"k8s.io/apimachinery/pkg/util/rand"
 
@@ -20,14 +18,11 @@ type ApplicationSpec struct {
 	GatewayConfig  model.GatewayConfig
 	Istio          model.IstioApplicationConfig
 	Labels         map[string]string
-	ClusterType    model.ClusterType
 }
 
 type Application struct {
 	Spec                  *ApplicationSpec
-	endpoint              *Endpoint
 	pods                  []*Pod
-	deployment            *Deployment
 	service               *Service
 	virtualService        *config.VirtualService
 	gateways              []*config.Gateway
@@ -148,33 +143,15 @@ func NewApplication(s ApplicationSpec) *Application {
 		})
 	}
 
-	// Currently we never use Deployment since its pretty slow
-	//	w.deployment = NewDeployment(DeploymentSpec{
-	//		ServiceAccount: s.ServiceAccount,
-	//		Replicas:       s.Instances,
-	//		Node:           s.Node,
-	//		App:            s.App,
-	//		Namespace:      s.Namespace,
-	//		type:           s.type,
-	//		ClusterType:    s.ClusterType,
-	//	})
+	// Currently we never use Deployment since its pretty slow - create Pods manually instead
 	for i := 0; i < s.Instances; i++ {
 		w.pods = append(w.pods, w.makePod())
 	}
 
-	if s.ClusterType != model.FakeNode {
-		w.endpoint = NewEndpoint(EndpointSpec{
-			App:         s.App,
-			Namespace:   s.Namespace,
-			Infos:       w.getPodInfo(),
-			ClusterType: s.ClusterType,
-		})
-	}
 	w.service = NewService(ServiceSpec{
-		App:         s.App,
-		Namespace:   s.Namespace,
-		ClusterType: s.ClusterType,
-		Labels:      s.Labels,
+		App:       s.App,
+		Namespace: s.Namespace,
+		Labels:    s.Labels,
 	})
 
 	if s.Type == model.GatewayType {
@@ -241,7 +218,6 @@ func (w *Application) makePod() *Pod {
 		App:            s.App,
 		Namespace:      s.Namespace,
 		AppType:        s.Type,
-		ClusterType:    s.ClusterType,
 	})
 }
 
@@ -294,12 +270,6 @@ func (w *Application) getSims() []model.Simulation {
 	for _, p := range w.pods {
 		sims = append(sims, p)
 	}
-	if w.endpoint != nil {
-		sims = append(sims, w.endpoint)
-	}
-	if w.deployment != nil {
-		sims = append(sims, w.deployment)
-	}
 	return sims
 }
 
@@ -328,12 +298,6 @@ func (w *Application) Refresh(ctx model.Context) error {
 	w.pods[i] = newPod
 	if err := newPod.Run(ctx); err != nil {
 		return err
-	}
-
-	if w.endpoint != nil {
-		if err := w.endpoint.SetAddresses(ctx, w.getPodInfo()); err != nil {
-			return fmt.Errorf("endpoints: %v", err)
-		}
 	}
 
 	if err := removed.Cleanup(ctx); err != nil {
@@ -373,21 +337,5 @@ func (w *Application) ScaleTo(ctx model.Context, n int) error {
 		}
 	}
 
-	if err := w.endpoint.SetAddresses(ctx, w.getPodInfo()); err != nil {
-		return fmt.Errorf("endpoints: %v", err)
-	}
 	return nil
-}
-
-type podInfo struct {
-	ip   string
-	node string
-}
-
-func (w Application) getPodInfo() map[string]podInfo {
-	ret := map[string]podInfo{}
-	for _, p := range w.pods {
-		ret[p.Name()] = podInfo{p.Spec.IP, p.Spec.Node}
-	}
-	return ret
 }

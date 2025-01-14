@@ -49,6 +49,7 @@ func (x *Simulation) Run(ctx model.Context) error {
 	meta["LABELS"] = x.Labels
 	meta["NAMESPACE"] = x.Namespace
 	meta["SERVICE_ACCOUNT"] = x.ServiceAccount
+	meta["PROXY_CONFIG"] = map[string]string{}
 	for k, v := range x.Metadata {
 		meta[k] = v
 	}
