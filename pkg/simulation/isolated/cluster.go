@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	xdstest "istio.io/istio/pilot/test/xds"
 	kubelib "istio.io/istio/pkg/kube"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/test"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 )
 
 type IsolatedSpec struct {
@@ -108,23 +108,25 @@ func (f *FakeDiscovery) Run(ctx model.Context) error {
 	defer func() {
 		close(done)
 	}()
-	go test.Wrap(func(t test.Failer) {
-		ds := xdstest.NewFakeDiscoveryServer(t, xdstest.FakeOptions{
-			DebounceTime: time.Millisecond * 50,
-			KubeClientBuilder: func(objects ...runtime.Object) kubelib.Client {
-				return f.Fake
-			},
-			ListenerBuilder: func() (net.Listener, error) {
-				return f.Listener, nil
-			},
+	go func() {
+		_ = test.Wrap(func(t test.Failer) {
+			ds := xdstest.NewFakeDiscoveryServer(t, xdstest.FakeOptions{
+				DebounceTime: time.Millisecond * 50,
+				KubeClientBuilder: func(objects ...runtime.Object) kubelib.Client {
+					return f.Fake
+				},
+				ListenerBuilder: func() (net.Listener, error) {
+					return f.Listener, nil
+				},
+			})
+			ds.Discovery.InitDebug(f.MetricsHandler.(*http.ServeMux), false, func() map[string]string {
+				return nil
+			})
+			close(f.Ready)
+			log.Infof("Istiod is ready (%v)", time.Since(t0))
+			<-ctx.Done()
 		})
-		ds.Discovery.InitDebug(f.MetricsHandler.(*http.ServeMux), false, func() map[string]string {
-			return nil
-		})
-		close(f.Ready)
-		log.Infof("Istiod is ready (%v)", time.Since(t0))
-		<-ctx.Done()
-	})
+	}()
 
 	// run forever, until we are canceled
 	<-ctx.Done()

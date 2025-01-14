@@ -30,7 +30,7 @@ func WithProfiling(c *cobra.Command) *cobra.Command {
 				return err
 			}
 			defer func() {
-				pprof.WriteHeapProfile(f)
+				_ = pprof.WriteHeapProfile(f)
 			}()
 		}
 		return orig(cmd, args)

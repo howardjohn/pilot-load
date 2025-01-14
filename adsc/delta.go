@@ -7,17 +7,12 @@ import (
 	"sync"
 	"unique"
 
-	"istio.io/istio/pkg/util/protomarshal"
-
-	"unique"
-
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"google.golang.org/grpc"
-
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 	"istio.io/istio/pkg/slices"
 	"istio.io/istio/pkg/util/protomarshal"
@@ -238,6 +233,7 @@ func extractReferencedKeys(resp *discovery.Resource) []ResourceKey {
 	case v3.ClusterType:
 		o := &cluster.Cluster{}
 		_ = resp.Resource.UnmarshalTo(o)
+		// nolint
 		switch v := o.GetClusterDiscoveryType().(type) {
 		case *cluster.Cluster_Type:
 			if v.Type != cluster.Cluster_EDS {

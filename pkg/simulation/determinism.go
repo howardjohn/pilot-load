@@ -5,22 +5,18 @@ import (
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	kubelib "istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 
-	kubelib "istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/log"
-
-	kubelib "istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/log"
+	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type DeterministicSimulation struct{}
@@ -90,8 +86,6 @@ func (d DeterministicSimulation) checkPod(ctx model.Context, pod *v1.Pod, addres
 	resps := make([]*adsc.Responses, len(addresses))
 	wg := sync.WaitGroup{}
 	for i, addr := range addresses {
-		addr := addr
-		i := i
 		wg.Add(1)
 		go func() {
 			res, err := adsc.Fetch(addr, &adsc.Config{

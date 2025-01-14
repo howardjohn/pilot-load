@@ -3,13 +3,12 @@ package kube
 import (
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
-
 	"istio.io/api/meta/v1alpha1"
 	networkingclientv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/istio/pkg/config/schema/gvk"
 	"istio.io/istio/pkg/kube"
 	"istio.io/istio/pkg/kube/controllers"
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestCreate(t *testing.T) {

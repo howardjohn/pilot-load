@@ -18,12 +18,11 @@ import (
 	"fmt"
 
 	"go.uber.org/atomic"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
-
 	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/kube/controllers"
 	istiolog "istio.io/istio/pkg/log"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 )
 
 type ReconcilerFn func(key types.NamespacedName) error

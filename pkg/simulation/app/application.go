@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/istio/pkg/log"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"istio.io/istio/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ApplicationSpec struct {

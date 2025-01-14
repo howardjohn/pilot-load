@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+	"istio.io/istio/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"golang.org/x/sync/errgroup"
-
-	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -285,7 +285,6 @@ var _ Simulation = AggregateSimulation{}
 func (a AggregateSimulation) RunParallel(ctx Context) error {
 	g := errgroup.Group{}
 	for _, s := range a.Simulations {
-		s := s
 		log.Debugf("running simulation in parallel %T", s)
 		g.Go(func() error {
 			if err := s.Run(ctx); err != nil {
@@ -317,7 +316,6 @@ func (a AggregateSimulation) CleanupParallel(ctx Context) error {
 	g := errgroup.Group{}
 	g.SetLimit(100)
 	for _, s := range a.Simulations {
-		s := s
 		log.Debugf("cleaning simulation %T", s)
 		g.Go(func() error {
 			if err := s.Cleanup(ctx); err != nil {

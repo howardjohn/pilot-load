@@ -11,10 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"istio.io/istio/pkg/util/protomarshal"
-
-	"istio.io/istio/pkg/util/protomarshal"
-
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -24,11 +20,9 @@ import (
 	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
-	"github.com/golang/protobuf/jsonpb"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
-
+	"google.golang.org/protobuf/types/known/structpb"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/util/protomarshal"
 	"istio.io/istio/pkg/util/sets"
@@ -38,8 +32,6 @@ var (
 	scope     = log.RegisterScope("adsc", "")
 	dumpScope = log.RegisterScope("dump", "")
 )
-
-var marshal = &jsonpb.Marshaler{OrigName: true, Indent: "  "}
 
 // Config for the ADS connection.
 type Config struct {
@@ -265,21 +257,24 @@ func (a *ADSC) handleRecv() {
 		resp := map[string]proto.Message{}
 		for _, rsc := range msg.Resources {
 			valBytes := rsc.Value
-			if rsc.TypeUrl == resource.ListenerType {
+			switch rsc.TypeUrl {
+			case resource.ListenerType:
 				ll := &listener.Listener{}
 				_ = proto.Unmarshal(valBytes, ll)
 				listeners = append(listeners, ll)
 				if a.store {
 					resp[ll.Name] = ll
 				}
-			} else if rsc.TypeUrl == resource.ClusterType {
+
+			case resource.ClusterType:
 				ll := &cluster.Cluster{}
 				_ = proto.Unmarshal(valBytes, ll)
 				clusters = append(clusters, ll)
 				if a.store {
 					resp[ll.Name] = ll
 				}
-			} else if rsc.TypeUrl == resource.EndpointType {
+
+			case resource.EndpointType:
 				ll := &endpoint.ClusterLoadAssignment{}
 				_ = proto.Unmarshal(valBytes, ll)
 				eds = append(eds, ll)
@@ -287,7 +282,8 @@ func (a *ADSC) handleRecv() {
 				if a.store {
 					resp[ll.ClusterName] = ll
 				}
-			} else if rsc.TypeUrl == resource.RouteType {
+
+			case resource.RouteType:
 				ll := &route.RouteConfiguration{}
 				_ = proto.Unmarshal(valBytes, ll)
 				routes = append(routes, ll)
@@ -295,7 +291,8 @@ func (a *ADSC) handleRecv() {
 				if a.store {
 					resp[ll.Name] = ll
 				}
-			} else if rsc.TypeUrl == resource.SecretType {
+
+			case resource.SecretType:
 				ll := &tls.Secret{}
 				_ = proto.Unmarshal(valBytes, ll)
 				secrets = append(secrets, ll)
@@ -303,7 +300,8 @@ func (a *ADSC) handleRecv() {
 				if a.store {
 					resp[ll.Name] = ll
 				}
-			} else if rsc.TypeUrl == resource.ExtensionConfigType {
+
+			case resource.ExtensionConfigType:
 				ll := &core.TypedExtensionConfig{}
 				_ = proto.Unmarshal(valBytes, ll)
 				ecds = append(ecds, ll)
@@ -311,7 +309,6 @@ func (a *ADSC) handleRecv() {
 				if a.store {
 					resp[ll.Name] = ll
 				}
-
 			}
 		}
 
@@ -486,6 +483,7 @@ type Endpoint struct {
 func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 	cn := []string{}
 	for _, c := range ll {
+		// nolint
 		switch v := c.ClusterDiscoveryType.(type) {
 		case *cluster.Cluster_Type:
 			if v.Type != cluster.Cluster_EDS {

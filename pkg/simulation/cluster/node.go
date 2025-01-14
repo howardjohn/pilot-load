@@ -4,21 +4,18 @@ import (
 	"errors"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
-
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type NodeSpec struct {
@@ -105,8 +102,8 @@ func (n *Node) getNode() *v1.Node {
 				"kubernetes.io/hostname":        s.Name,
 				// Avoid kube-system daemonset getting scheduled
 				// Works at least for kind
-				//"kubernetes.io/arch":            "amd64",
-				//"kubernetes.io/os":              "linux",
+				// "kubernetes.io/arch":            "amd64",
+				// "kubernetes.io/os":              "linux",
 				"kubernetes.io/role":       "agent",
 				"pilot-load.istio.io/node": "fake",
 			},

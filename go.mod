@@ -2,9 +2,6 @@ module github.com/howardjohn/pilot-load
 
 go 1.23.0
 
-// Uncomment to use fake go client that has no leaking or copies
-//replace k8s.io/client-go => github.com/howardjohn/k8s-client-go v0.0.0-20230824140157-c9da8fe0a2e8
-
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cncf/udpa/go v0.0.0-20220112060539-c52dc94e7fbe
@@ -15,7 +12,6 @@ require (
 	github.com/lthibault/jitterbug v2.0.0+incompatible
 	github.com/spf13/cobra v1.8.1
 	go.uber.org/atomic v1.11.0
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/sync v0.10.0
 	google.golang.org/grpc v1.69.4
 	google.golang.org/protobuf v1.36.2
@@ -133,6 +129,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
@@ -146,7 +143,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.32.0 // indirect
 	k8s.io/apiserver v0.32.0 // indirect
@@ -158,16 +154,3 @@ require (
 	sigs.k8s.io/mcs-api v0.1.1-0.20240624222831-d7001fe1d21c // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 )
-
-replace github.com/spf13/viper => github.com/istio/viper v1.3.3-0.20190515210538-2789fed3109c
-
-// Old version had no license
-replace github.com/chzyer/logex => github.com/chzyer/logex v1.1.11-0.20170329064859-445be9e134b2
-
-// Avoid pulling in incompatible libraries
-replace github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
-
-replace github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
-
-// Client-go does not handle different versions of mergo due to some breaking changes - use the matching version
-replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.5

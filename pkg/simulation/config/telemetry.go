@@ -3,14 +3,14 @@ package config
 import (
 	"math/rand"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	telemetryv1alpha1 "istio.io/api/telemetry/v1alpha1"
 	typev1beta1 "istio.io/api/type/v1beta1"
 	"istio.io/client-go/pkg/apis/telemetry/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type TelemetrySpec struct {

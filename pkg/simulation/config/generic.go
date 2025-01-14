@@ -1,10 +1,10 @@
 package config
 
 import (
+	"istio.io/istio/pkg/kube/controllers"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-
-	"istio.io/istio/pkg/kube/controllers"
 )
 
 type Generic[T controllers.Object] struct {

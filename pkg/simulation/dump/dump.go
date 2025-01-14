@@ -19,18 +19,18 @@ import (
 	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
-	"github.com/howardjohn/pilot-load/adsc"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/security"
-	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"istio.io/istio/pilot/pkg/util/protoconv"
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/maps"
 	"istio.io/istio/pkg/util/protomarshal"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 )
 
 type DumpSpec struct {
@@ -131,8 +131,8 @@ func (i *DumpSimulation) write(resp *adsc.Responses, cert security.Cert) error {
 
 	writeBytes(bootstrap(i.Spec.OutputDir), i.Spec.OutputDir, "config.yaml")
 
-	writeResponse(secretResponse(i.Spec.OutputDir, cert), i.Spec.OutputDir, "sds/default.yaml")
-	writeResponse(secretRootResponse(i.Spec.OutputDir, cert), i.Spec.OutputDir, "sds/ROOTCA.yaml")
+	writeResponse(secretResponse(cert), i.Spec.OutputDir, "sds/default.yaml")
+	writeResponse(secretRootResponse(cert), i.Spec.OutputDir, "sds/ROOTCA.yaml")
 
 	return nil
 }
@@ -220,7 +220,7 @@ func secretXdsResponse(path string, response []*tls.Secret) *discovery.Discovery
 	return out
 }
 
-func secretResponse(path string, cert security.Cert) *discovery.DiscoveryResponse {
+func secretResponse(cert security.Cert) *discovery.DiscoveryResponse {
 	out := &discovery.DiscoveryResponse{
 		TypeUrl:     v3.SecretType,
 		VersionInfo: "0",
@@ -248,7 +248,7 @@ func secretResponse(path string, cert security.Cert) *discovery.DiscoveryRespons
 	return out
 }
 
-func secretRootResponse(path string, cert security.Cert) *discovery.DiscoveryResponse {
+func secretRootResponse(cert security.Cert) *discovery.DiscoveryResponse {
 	out := &discovery.DiscoveryResponse{
 		TypeUrl:     v3.SecretType,
 		VersionInfo: "0",
@@ -381,6 +381,7 @@ func sanitizeListenerAds(path string, response []*listener.Listener) {
 				switch f.Name {
 				case wellknown.HTTPConnectionManager:
 					h := SilentlyUnmarshalAny[hcm.HttpConnectionManager](f.GetTypedConfig())
+					// nolint
 					switch r := h.GetRouteSpecifier().(type) {
 					case *hcm.HttpConnectionManager_Rds:
 						routeName := r.Rds.RouteConfigName
