@@ -6,15 +6,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ghodss/yaml"
-	"istio.io/istio/pkg/log"
+	"sigs.k8s.io/yaml"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"istio.io/istio/pkg/log"
+
+	"istio.io/istio/pkg/log"
 )
 
 type PodStartupSimulation struct {
@@ -173,8 +175,7 @@ scheduled: time until first container starts
 init: time between first container start and init container completion
 ready: time until kubelet said it marked it Ready after main container started
 full ready: time until it was actually observed as Ready after main container started
-complete: time until it was actually observed as Ready
-`)
+complete: time until it was actually observed as Ready\n`)
 			wg.Wait()
 			return nil
 		case report := <-c:

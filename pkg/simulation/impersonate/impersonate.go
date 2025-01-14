@@ -3,11 +3,6 @@ package impersonate
 import (
 	"time"
 
-	"istio.io/istio/pkg/config"
-	kubelib "istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
@@ -15,6 +10,12 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+
+	"istio.io/istio/pkg/config"
+	kubelib "istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
 )
 
 type ImpersonateSpec struct {

@@ -7,13 +7,13 @@ import (
 	"net"
 	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+
 	pb "istio.io/api/security/v1alpha1"
 	pkiutil "istio.io/istio/security/pkg/pki/util"
-
-	"github.com/howardjohn/pilot-load/pkg/kube"
 )
 
 type AuthOptions struct {

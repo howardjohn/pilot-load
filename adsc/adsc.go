@@ -11,6 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"istio.io/istio/pkg/util/protomarshal"
+
+	"istio.io/istio/pkg/util/protomarshal"
+
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -24,7 +28,9 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+
 	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/util/protomarshal"
 	"istio.io/istio/pkg/util/sets"
 )
 
@@ -178,7 +184,7 @@ func Dial(url string, opts *Config) (ADSClient, error) {
 		opts.Workload, opts.Namespace, opts.Namespace)
 	adsc.node = makeNode(adsc.nodeID, adsc.Metadata)
 	if dumpScope.DebugEnabled() {
-		n, _ := marshal.MarshalToString(adsc.node)
+		n, _ := protomarshal.ToJSONWithIndent(adsc.node, "  ")
 		dumpScope.Debugf("constructed node: %v", n)
 	}
 	err := adsc.Run()
@@ -400,7 +406,7 @@ func (a *ADSC) handleLDS(ll []*listener.Listener) {
 
 	if dumpScope.DebugEnabled() {
 		for i, l := range ll {
-			b, err := marshal.MarshalToString(l)
+			b, err := protomarshal.ToJSONWithIndent(l, "  ")
 			if err != nil {
 				dumpScope.Errorf("Error in LDS: %v", err)
 			}
@@ -495,7 +501,7 @@ func (a *ADSC) handleCDS(ll []*cluster.Cluster) {
 
 	if dumpScope.DebugEnabled() {
 		for i, c := range ll {
-			b, err := marshal.MarshalToString(c)
+			b, err := protomarshal.ToJSONWithIndent(c, "  ")
 			if err != nil {
 				dumpScope.Errorf("Error in CDS: %v", err)
 			}
@@ -531,8 +537,7 @@ func makeNode(id string, metadata interface{}) *core.Node {
 	}
 
 	meta := &structpb.Struct{}
-	err = jsonpb.UnmarshalString(string(js), meta)
-	if err != nil {
+	if err := protomarshal.ApplyJSON(string(js), meta); err != nil {
 		panic("invalid metadata " + err.Error())
 	}
 
@@ -544,7 +549,7 @@ func makeNode(id string, metadata interface{}) *core.Node {
 func (a *ADSC) handleEDS(eds []*endpoint.ClusterLoadAssignment) {
 	if dumpScope.DebugEnabled() {
 		for i, e := range eds {
-			b, err := marshal.MarshalToString(e)
+			b, err := protomarshal.ToJSONWithIndent(e, "  ")
 			if err != nil {
 				dumpScope.Errorf("Error in EDS: %v", err)
 			}
@@ -571,7 +576,7 @@ func (a *ADSC) handleRDS(configurations []*route.RouteConfiguration) {
 
 	if dumpScope.DebugEnabled() {
 		for i, r := range configurations {
-			b, err := marshal.MarshalToString(r)
+			b, err := protomarshal.ToJSONWithIndent(r, "  ")
 			if err != nil {
 				dumpScope.Errorf("Error in RDS: %v", err)
 			}
@@ -595,7 +600,7 @@ func (a *ADSC) handleSDS(configurations []*tls.Secret) {
 
 	if dumpScope.DebugEnabled() {
 		for i, r := range configurations {
-			b, err := marshal.MarshalToString(r)
+			b, err := protomarshal.ToJSONWithIndent(r, "  ")
 			if err != nil {
 				dumpScope.Errorf("Error in SDS: %v", err)
 			}
@@ -619,7 +624,7 @@ func (a *ADSC) handleECDS(configurations []*core.TypedExtensionConfig) {
 
 	if dumpScope.DebugEnabled() {
 		for i, r := range configurations {
-			b, err := marshal.MarshalToString(r)
+			b, err := protomarshal.ToJSONWithIndent(r, "  ")
 			if err != nil {
 				dumpScope.Errorf("Error in ECDS: %v", err)
 			}

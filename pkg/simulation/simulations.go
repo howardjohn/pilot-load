@@ -7,8 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/dump"
 	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
@@ -17,6 +15,8 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+
+	"istio.io/istio/pkg/log"
 )
 
 // Load testing api-server

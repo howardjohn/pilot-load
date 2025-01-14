@@ -3,10 +3,9 @@ package xds
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"google.golang.org/grpc"
 )
 
 type Simulation struct {

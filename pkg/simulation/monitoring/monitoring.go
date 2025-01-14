@@ -7,6 +7,7 @@ import (
 	"net/http/pprof"
 
 	"github.com/felixge/fgprof"
+
 	"istio.io/istio/pkg/monitoring"
 )
 

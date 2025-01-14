@@ -54,10 +54,6 @@ func ContextSleep(ctx context.Context, dur time.Duration) {
 	}
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 func GenUIDOrStableIdentifier(stable bool, index int, replica int) string {
 	if !stable {
 		return GenUID()

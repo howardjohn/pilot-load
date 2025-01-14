@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/spf13/cobra"
 )
 
 var impersonateConfig = model.ImpersonateConfig{

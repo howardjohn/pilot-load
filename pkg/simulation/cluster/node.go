@@ -4,18 +4,21 @@ import (
 	"errors"
 	"time"
 
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
+
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
 )
 
 type NodeSpec struct {

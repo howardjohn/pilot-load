@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/spf13/cobra"
-	"istio.io/istio/pilot/pkg/features"
-	kubelib "istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/log"
-	"k8s.io/apimachinery/pkg/watch"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/isolated"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/watch"
+
+	"istio.io/istio/pilot/pkg/features"
+	kubelib "istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/log"
 )
 
 var (

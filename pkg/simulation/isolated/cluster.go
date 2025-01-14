@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
+	"k8s.io/apimachinery/pkg/runtime"
+
 	xdstest "istio.io/istio/pilot/test/xds"
 	kubelib "istio.io/istio/pkg/kube"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/test"
-	"k8s.io/apimachinery/pkg/runtime"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 )
 
 type IsolatedSpec struct {

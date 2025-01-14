@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/kube"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	pb "istio.io/api/security/v1alpha1"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
+
+	pb "istio.io/api/security/v1alpha1"
 )
 
 // map of SAN to jwt token. Used to avoid repetitive calls

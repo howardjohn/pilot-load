@@ -5,18 +5,23 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"unique"
+
+	"istio.io/istio/pkg/util/protomarshal"
+
+	"unique"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/grpc"
+
 	v3 "istio.io/istio/pilot/pkg/xds/v3"
 	"istio.io/istio/pkg/slices"
+	"istio.io/istio/pkg/util/protomarshal"
 	"istio.io/istio/pkg/util/sets"
-	"unique"
 )
 
 type ResourceKey struct {
@@ -181,7 +186,7 @@ func (d *deltaClient) handleRecv() {
 		d.mu.Unlock()
 		scope.WithLabels("type", msg.TypeUrl, "added", addedLen, "removed", removedLen, "removed refs", len(removals)).Debugf("got message")
 		if dumpScope.DebugEnabled() {
-			s, _ := (&jsonpb.Marshaler{}).MarshalToString(msg)
+			s, _ := protomarshal.ToJSON(msg)
 			dumpScope.Debug(s)
 		}
 		if dumpScope.InfoEnabled() {

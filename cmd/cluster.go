@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
-
+	"sigs.k8s.io/yaml"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/spf13/cobra"
+
+	"istio.io/istio/pkg/log"
 )
 
 var configFile = ""

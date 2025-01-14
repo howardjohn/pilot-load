@@ -5,10 +5,11 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lthibault/jitterbug"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/lthibault/jitterbug"
+
+
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterScaler struct {
