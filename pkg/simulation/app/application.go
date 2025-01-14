@@ -24,6 +24,7 @@ type Application struct {
 	Spec                  *ApplicationSpec
 	pods                  []*Pod
 	service               *Service
+	kgateways             *config.KubeGateway
 	virtualService        *config.VirtualService
 	gateways              []*config.Gateway
 	secrets               []*config.Secret
@@ -152,6 +153,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		App:       s.App,
 		Namespace: s.Namespace,
 		Labels:    s.Labels,
+		Waypoint:  s.Type == model.WaypointType,
 	})
 
 	if s.Type == model.GatewayType {
@@ -167,6 +169,14 @@ func NewApplication(s ApplicationSpec) *Application {
 				Name:      gw.Name(),
 			}))
 		}
+	}
+
+	if s.Type == model.WaypointType {
+		gw := config.NewKubeGateway(config.KubeGatewaySpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+		})
+		w.kgateways = gw
 	}
 
 	return w
@@ -226,6 +236,9 @@ func (w *Application) getSims() []model.Simulation {
 
 	if w.service != nil {
 		sims = append(sims, w.service)
+	}
+	if w.kgateways != nil {
+		sims = append(sims, w.kgateways)
 	}
 	if w.sidecar != nil {
 		sims = append(sims, w.sidecar)

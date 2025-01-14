@@ -19,7 +19,7 @@ var (
 	pilotAddress   = defaultAddress()
 	xdsMetadata    = map[string]string{}
 	auth           = string(security.AuthTypeDefault)
-	delta          = false
+	delta          = true
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	loggingOptions = defaultLogOptions()
 

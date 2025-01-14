@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
@@ -14,6 +15,7 @@ type NamespaceSpec struct {
 	Deployments []model.ApplicationConfig
 	Istio       model.IstioNSConfig
 	StableNames bool
+	Waypoint    string
 }
 
 type Namespace struct {
@@ -34,8 +36,21 @@ var _ model.Simulation = &Namespace{}
 func NewNamespace(s NamespaceSpec) *Namespace {
 	ns := &Namespace{Spec: &s}
 
+	nsLabels := map[string]string{
+		"istio-injection": "enabled",
+	}
+	if s.Waypoint != "" {
+		ns, name, ok := strings.Cut(s.Waypoint, "/")
+		if ok {
+			nsLabels["istio.io/use-waypoint"] = name + "-static"
+			nsLabels["istio.io/use-waypoint-namespace"] = ns
+		} else {
+			nsLabels["istio.io/use-waypoint"] = s.Waypoint + "-static"
+		}
+	}
 	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
-		Name: s.Name,
+		Name:   s.Name,
+		Labels: nsLabels,
 	})
 	// Explicitly make a service account, sometimes its too slow to make one...
 	ns.sa = map[string]*app.ServiceAccount{
@@ -83,15 +98,18 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	}
 
 	for idx, d := range s.Deployments {
-		for r := 0; r < d.Replicas; r++ {
+		for r := range d.Replicas {
 			suffix := util.GenUIDOrStableIdentifier(s.StableNames, idx, r)
-			ns.deployments = append(ns.deployments, ns.createDeployment(d, suffix))
+			if d.Type == model.WaypointType {
+				suffix = "static"
+			}
+			ns.deployments = append(ns.deployments, ns.createApplication(d, suffix))
 		}
 	}
 	return ns
 }
 
-func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string) *app.Application {
+func (n *Namespace) createApplication(args model.ApplicationConfig, suffix string) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), suffix),
 		Node:      args.GetNode,

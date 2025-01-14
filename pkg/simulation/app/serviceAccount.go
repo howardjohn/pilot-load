@@ -2,6 +2,7 @@ package app
 
 import (
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
@@ -24,7 +25,14 @@ func NewServiceAccount(s ServiceAccountSpec) *ServiceAccount {
 }
 
 func (s *ServiceAccount) Run(ctx model.Context) (err error) {
-	return kube.Apply(ctx.Client, s.getServiceAccount())
+	return IgnoreExists(kube.Apply(ctx.Client, s.getServiceAccount()))
+}
+
+func IgnoreExists(err error) error {
+	if errors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
 }
 
 func (s *ServiceAccount) Cleanup(ctx model.Context) error {

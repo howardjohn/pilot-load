@@ -1,26 +1,22 @@
 stableNames: true
 nodeMetadata: {}
-gracePeriod: 1s
 jitter:
-  workloads: "10s"
+  workloads: "2s"
   config: "0s"
 namespaces:
   - name: mesh
-    # 100 replicas: 5k pods, 100 services, 20 nodes
-    # 200 replicas: 10k pods, 200 services, 40 nodes
-    replicas: 1
-    # 50 pods, 1 services
+    # 100 namespaces == 1k services 10k pods
+    replicas: 100
+    waypoint: waypoint
     applications:
       - name: waypoint
-        replicas: 1
-        instances: 1
+        instances: 2 # HA
         type: waypoint
       - name: app
-        replicas: 1
-        instances: 1
+        replicas: 10
+        instances: 10
         type: ambient
-        waypoint: waypoint
 nodes:
   - name: node
-    count: 1
-#    ztunnel: {}
+    count: 50
+    ztunnel: {}

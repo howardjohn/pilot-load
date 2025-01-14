@@ -76,23 +76,18 @@ type AppType string
 type APIScope string
 
 func (p AppType) HasProxy() bool {
-	return p == SidecarType || p == GatewayType
+	return p == SidecarType || p == GatewayType || p == WaypointType
 }
 
 const (
-	SidecarType AppType = "sidecar"
-
-	PlainType AppType = "plain"
-
-	AmbientType AppType = "ambient"
-
-	GatewayType AppType = "router"
-
+	PlainType    AppType = "plain"
+	SidecarType  AppType = "sidecar"
+	AmbientType  AppType = "ambient"
+	WaypointType AppType = "waypoint"
+	GatewayType  AppType = "router"
 	ExternalType AppType = "external"
-
-	ZtunnelType AppType = "ztunnel"
-
-	VMType AppType = "vm"
+	ZtunnelType  AppType = "ztunnel"
+	VMType       AppType = "vm"
 )
 
 const (
@@ -119,6 +114,7 @@ type NamespaceConfig struct {
 	Replicas     int                 `json:"replicas,omitempty"`
 	Applications []ApplicationConfig `json:"applications,omitempty"`
 	Istio        IstioNSConfig       `json:"istio,omitempty"`
+	Waypoint     string              `json:"waypoint,omitempty"`
 }
 
 type GatewayConfig struct {

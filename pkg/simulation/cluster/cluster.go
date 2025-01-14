@@ -112,6 +112,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 				Deployments: deployments,
 				Istio:       ns.Istio,
 				StableNames: s.Config.StableNames,
+				Waypoint:    ns.Waypoint,
 			}))
 		}
 	}

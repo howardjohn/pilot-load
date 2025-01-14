@@ -128,6 +128,10 @@ func (p *Pod) getPod() *v1.Pod {
 	if p.Spec.AppType == model.SidecarType {
 		labels["sidecar.istio.io/inject"] = "true"
 	}
+	if p.Spec.AppType == model.WaypointType {
+		// Make sure we don't mark the waypoint as having a waypoint
+		labels["gateway.istio.io/managed"] = "istio.io-mesh-controller"
+	}
 
 	annotations := map[string]string{
 		"prometheus.io/scrape": "false",

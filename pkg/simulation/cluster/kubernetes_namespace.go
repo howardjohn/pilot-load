@@ -9,9 +9,8 @@ import (
 )
 
 type KubernetesNamespaceSpec struct {
-	Name string
-	// If true, will treat this as a real cluster and not attempt to force cleanup
-	RealCluster bool
+	Name   string
+	Labels map[string]string
 }
 
 type KubernetesNamespace struct {
@@ -32,9 +31,6 @@ func (n *KubernetesNamespace) Cleanup(ctx model.Context) error {
 	if err := kube.Delete(ctx.Client, n.getKubernetesNamespace()); err != nil {
 		return err
 	}
-	if !n.Spec.RealCluster {
-		ctx.Client.Finalize(n.getKubernetesNamespace())
-	}
 	return nil
 }
 
@@ -42,10 +38,8 @@ func (n *KubernetesNamespace) getKubernetesNamespace() *v1.Namespace {
 	s := n.Spec
 	return &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: s.Name,
-			Labels: map[string]string{
-				"istio-injection": "enabled",
-			},
+			Name:   s.Name,
+			Labels: s.Labels,
 		},
 		Status: v1.NamespaceStatus{Phase: v1.NamespaceActive},
 	}
