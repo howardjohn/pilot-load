@@ -2,13 +2,13 @@ package cluster
 
 import (
 	"fmt"
-	"istio.io/istio/pkg/kube/kubetypes"
 	"math/rand"
 	"runtime"
 	"time"
 
 	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/kube/kubetypes"
 	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -303,6 +303,7 @@ func (c *Cluster) getIstioResources() []model.Simulation {
 
 	return sims
 }
+
 func StripPodUnusedFields(obj any) (any, error) {
 	t, ok := obj.(metav1.ObjectMetaAccessor)
 	if !ok {
