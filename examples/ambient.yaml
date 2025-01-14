@@ -7,22 +7,22 @@ namespaces:
   # 100 replicas: 30k pods, 2k services
   # 666 replicas: 200k pods, 13.3k services
   # replicas: 666
-  replicas: 100
+  replicas: 1
   # 300 pods, 20 services
   applications:
   - name: big
     replicas: 1
-    instances: 200
-    type: plain # No sidecar needed
+    instances: 2
+    type: ambient # No sidecar needed
   - name: med
-    replicas: 9
-    instances: 10
-    type: plain # No sidecar needed
-  - name: small
-    replicas: 10
+    replicas: 1
     instances: 1
-    type: plain # No sidecar needed
+    type: ambient # No sidecar needed
+  - name: small
+    replicas: 1
+    instances: 1
+    type: ambient # No sidecar needed
 nodes:
 - name: node
-  count: 160
+  count: 2
   ztunnel: {}
