@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -23,19 +22,11 @@ func AddError(e1, e2 error) error {
 
 var chars = []rune("abcdefghijklmnopqrstuvwxyz")
 
-func StringPointer(s string) *string {
-	return &s
-}
-
 func StringDefault(s string, def string) string {
 	if s != "" {
 		return s
 	}
 	return def
-}
-
-func BoolPointer(b bool) *bool {
-	return &b
 }
 
 func IsDone(ctx context.Context) bool {
@@ -88,14 +79,4 @@ func GetIP() string {
 	v0 := byte((v >> 24) & 0xFF)
 	nextIp = net.IPv4(v0, v1, v2, v3)
 	return ret
-}
-
-func GetComponentAfter(url, component string) string {
-	pattern := fmt.Sprintf(`(?i)%s\/(.+)`, component)
-	re := regexp.MustCompile(pattern)
-	match := re.FindStringSubmatch(url)
-	if match == nil {
-		return ""
-	}
-	return match[1]
 }
