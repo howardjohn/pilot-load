@@ -1,20 +1,21 @@
 package app
 
 import (
+	"istio.io/istio/pkg/maps"
+	"istio.io/istio/pkg/ptr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type ServiceSpec struct {
-	App         string
-	Namespace   string
-	Labels      map[string]string
-	ClusterType model.ClusterType
+	App       string
+	Namespace string
+	Waypoint  bool
+	Labels    map[string]string
 }
 
 type Service struct {
@@ -37,10 +38,6 @@ func (s *Service) Cleanup(ctx model.Context) error {
 
 func (s *Service) getService() *v1.Service {
 	p := s.Spec
-	cip := ""
-	if s.Spec.ClusterType == model.Fake {
-		cip = util.GetIP()
-	}
 	ports := []v1.ServicePort{
 		{
 			Name:       "http",
@@ -53,23 +50,36 @@ func (s *Service) getService() *v1.Service {
 			TargetPort: intstr.FromInt(443),
 		},
 	}
+	lbls := s.Spec.Labels
+	if s.Spec.Waypoint {
+		lbls = maps.Clone(lbls)
+		if lbls == nil {
+			lbls = map[string]string{}
+		}
+		// Make sure we don't mark the waypoint as having a waypoint
+		lbls["gateway.istio.io/managed"] = "istio.io-mesh-controller"
+		ports = []v1.ServicePort{
+			{
+				Name:        "mesh",
+				AppProtocol: ptr.Of("all"),
+				Port:        15008,
+			},
+		}
+	}
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      p.App,
 			Namespace: p.Namespace,
-			Labels:    s.Spec.Labels,
+			Labels:    lbls,
 		},
 		Spec: v1.ServiceSpec{
 			// TODO port customization
-			Ports:     ports,
-			Type:      "ClusterIP",
-			ClusterIP: cip,
+			Ports: ports,
+			Type:  "ClusterIP",
 		},
 	}
-	if s.Spec.ClusterType != model.Real {
-		svc.Spec.Selector = map[string]string{
-			"app": p.App,
-		}
+	svc.Spec.Selector = map[string]string{
+		"app": p.App,
 	}
 	return svc
 }

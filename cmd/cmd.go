@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"sigs.k8s.io/yaml"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -19,7 +19,7 @@ var (
 	pilotAddress   = defaultAddress()
 	xdsMetadata    = map[string]string{}
 	auth           = string(security.AuthTypeDefault)
-	delta          = false
+	delta          = true
 	kubeconfig     = os.Getenv("KUBECONFIG")
 	loggingOptions = defaultLogOptions()
 

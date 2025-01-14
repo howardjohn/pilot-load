@@ -76,23 +76,18 @@ type AppType string
 type APIScope string
 
 func (p AppType) HasProxy() bool {
-	return p == SidecarType || p == GatewayType
+	return p == SidecarType || p == GatewayType || p == WaypointType
 }
 
 const (
-	SidecarType AppType = "sidecar"
-
-	PlainType AppType = "plain"
-
-	AmbientType AppType = "ambient"
-
-	GatewayType AppType = "router"
-
+	PlainType    AppType = "plain"
+	SidecarType  AppType = "sidecar"
+	AmbientType  AppType = "ambient"
+	WaypointType AppType = "waypoint"
+	GatewayType  AppType = "router"
 	ExternalType AppType = "external"
-
-	ZtunnelType AppType = "ztunnel"
-
-	VMType AppType = "vm"
+	ZtunnelType  AppType = "ztunnel"
+	VMType       AppType = "vm"
 )
 
 const (
@@ -119,6 +114,7 @@ type NamespaceConfig struct {
 	Replicas     int                 `json:"replicas,omitempty"`
 	Applications []ApplicationConfig `json:"applications,omitempty"`
 	Istio        IstioNSConfig       `json:"istio,omitempty"`
+	Waypoint     string              `json:"waypoint,omitempty"`
 }
 
 type GatewayConfig struct {
@@ -126,14 +122,6 @@ type GatewayConfig struct {
 	Name     string `json:"name,omitempty"`
 	Replicas int    `json:"replicas,omitempty"`
 }
-
-type ClusterType string
-
-var (
-	Fake     ClusterType = "Fake"
-	FakeNode ClusterType = "FakeNode"
-	Real     ClusterType = "Real"
-)
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
 // A cluster consists of various namespaces
@@ -146,7 +134,6 @@ type ClusterConfig struct {
 	// If true, consistent names will be used across iterations.
 	StableNames  bool              `json:"stableNames,omitempty"`
 	NodeMetadata map[string]string `json:"nodeMetadata,omitempty"`
-	ClusterType  ClusterType       `json:"-"`
 	Istio        IstioRootNSConfig `json:"istio,omitempty"`
 }
 
@@ -294,7 +281,6 @@ var _ Simulation = AggregateSimulation{}
 func (a AggregateSimulation) RunParallel(ctx Context) error {
 	g := errgroup.Group{}
 	for _, s := range a.Simulations {
-		s := s
 		log.Debugf("running simulation in parallel %T", s)
 		g.Go(func() error {
 			if err := s.Run(ctx); err != nil {
@@ -326,7 +312,6 @@ func (a AggregateSimulation) CleanupParallel(ctx Context) error {
 	g := errgroup.Group{}
 	g.SetLimit(100)
 	for _, s := range a.Simulations {
-		s := s
 		log.Debugf("cleaning simulation %T", s)
 		g.Go(func() error {
 			if err := s.Cleanup(ctx); err != nil {

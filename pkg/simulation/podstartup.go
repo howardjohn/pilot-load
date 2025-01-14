@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -20,8 +20,6 @@ import (
 type PodStartupSimulation struct {
 	Config model.StartupConfig
 }
-
-var grace = int64(0)
 
 func (a *PodStartupSimulation) createPod() (*v1.Pod, error) {
 	p := &v1.Pod{}
@@ -173,8 +171,7 @@ scheduled: time until first container starts
 init: time between first container start and init container completion
 ready: time until kubelet said it marked it Ready after main container started
 full ready: time until it was actually observed as Ready after main container started
-complete: time until it was actually observed as Ready
-`)
+complete: time until it was actually observed as Ready\n`)
 			wg.Wait()
 			return nil
 		case report := <-c:

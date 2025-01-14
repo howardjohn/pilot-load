@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
@@ -12,9 +13,9 @@ import (
 type NamespaceSpec struct {
 	Name        string
 	Deployments []model.ApplicationConfig
-	ClusterType model.ClusterType
 	Istio       model.IstioNSConfig
 	StableNames bool
+	Waypoint    string
 }
 
 type Namespace struct {
@@ -35,16 +36,28 @@ var _ model.Simulation = &Namespace{}
 func NewNamespace(s NamespaceSpec) *Namespace {
 	ns := &Namespace{Spec: &s}
 
-	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
-		Name: s.Name,
-	})
-	if s.ClusterType == model.Fake {
-		ns.sa = map[string]*app.ServiceAccount{
-			"default": app.NewServiceAccount(app.ServiceAccountSpec{
-				Namespace: ns.Spec.Name,
-				Name:      "default",
-			}),
+	nsLabels := map[string]string{
+		"istio-injection": "enabled",
+	}
+	if s.Waypoint != "" {
+		ns, name, ok := strings.Cut(s.Waypoint, "/")
+		if ok {
+			nsLabels["istio.io/use-waypoint"] = name + "-static"
+			nsLabels["istio.io/use-waypoint-namespace"] = ns
+		} else {
+			nsLabels["istio.io/use-waypoint"] = s.Waypoint + "-static"
 		}
+	}
+	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
+		Name:   s.Name,
+		Labels: nsLabels,
+	})
+	// Explicitly make a service account, sometimes its too slow to make one...
+	ns.sa = map[string]*app.ServiceAccount{
+		"default": app.NewServiceAccount(app.ServiceAccountSpec{
+			Namespace: ns.Spec.Name,
+			Name:      "default",
+		}),
 	}
 
 	if s.Istio.Default || s.Istio.EnvoyFilter != nil {
@@ -85,15 +98,18 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	}
 
 	for idx, d := range s.Deployments {
-		for r := 0; r < d.Replicas; r++ {
+		for r := range d.Replicas {
 			suffix := util.GenUIDOrStableIdentifier(s.StableNames, idx, r)
-			ns.deployments = append(ns.deployments, ns.createDeployment(d, suffix, s.ClusterType))
+			if d.Type == model.WaypointType {
+				suffix = "static"
+			}
+			ns.deployments = append(ns.deployments, ns.createApplication(d, suffix))
 		}
 	}
 	return ns
 }
 
-func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string, ct model.ClusterType) *app.Application {
+func (n *Namespace) createApplication(args model.ApplicationConfig, suffix string) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), suffix),
 		Node:      args.GetNode,
@@ -103,7 +119,6 @@ func (n *Namespace) createDeployment(args model.ApplicationConfig, suffix string
 		Instances:      args.Instances,
 		Type:           args.Type,
 		GatewayConfig:  args.Gateways,
-		ClusterType:    ct,
 		Istio:          args.Istio,
 		Labels:         args.Labels,
 	})

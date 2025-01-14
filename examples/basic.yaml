@@ -1,38 +1,14 @@
 nodeMetadata: {}
-istio:
-  default: true # create all applicable istio resources for root namespace
+#istio:
+#  default: true # create all applicable istio resources for root namespace
 jitter:
   workloads: "10s"
   config: "0s"
 namespaces:
 - name: mesh
   replicas: 1
-  istio:
-    sidecar: {} # create sidecar istio resource for each replica of 'mesh' namespace
   applications:
   - name: big
     replicas: 1
-    instances: 2
-    istio:
-      # create virtualService istio resource for each replica of 'big' application with referencing 'main' gateway
-      virtualService:
-        gateways: [main]
-      sidecar: {} # create sidecar istio resource for each replica of 'big' application
-  - name: small
-    replicas: 2
     instances: 1
-    istio:
-      # create virtualService istio resource for each replica of 'small' application with referencing 'main' gateway
-      virtualService:
-        gateways: [ main ]
-      destinationRule: {} # create destinationRule istio resource for each replica of 'small' application
-- name: gateway
-  replicas: 1
-  applications:
-  - name: ingress
-    replicas: 1
-    instances: 1
-    type: router
-    gateways: # create istio gateway for 'ingress' application
-      name: main
-      enabled: true
+    type: sidecar

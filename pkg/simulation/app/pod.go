@@ -1,23 +1,16 @@
 package app
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"google.golang.org/grpc/credentials"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/ptr"
 	"istio.io/istio/pkg/sleep"
-	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -33,7 +26,6 @@ type PodSpec struct {
 	UID            string
 	IP             string
 	AppType        model.AppType
-	ClusterType    model.ClusterType
 }
 
 type Pod struct {
@@ -74,7 +66,7 @@ var _ credentials.PerRPCCredentials = &GrpcCredentials{}
 func (p *Pod) Run(ctx model.Context) (err error) {
 	pod := p.getPod()
 
-	if p.Spec.ClusterType != model.Real {
+	{
 		var terr error
 		for range 10 {
 			if err := kube.ApplyRealSSA(ctx.Client, pod); err != nil {
@@ -92,10 +84,6 @@ func (p *Pod) Run(ctx model.Context) (err error) {
 	}
 
 	if p.Spec.AppType.HasProxy() {
-		if err := sendInjectionRequest(ctx.Args.InjectAddress, pod); err != nil {
-			return err
-		}
-
 		p.xds = &xds.Simulation{
 			Labels:    pod.Labels,
 			Namespace: pod.Namespace,
@@ -132,63 +120,26 @@ func (p *Pod) Name() string {
 
 func (p *Pod) getPod() *v1.Pod {
 	s := p.Spec
-	if p.Spec.ClusterType == model.FakeNode {
-		labels := map[string]string{
-			"app":                     s.App,
-			"owner":                   "pilot-load",
-			"sidecar.istio.io/inject": "false",
-		}
-		if p.Spec.AppType == model.SidecarType {
-			labels["sidecar.istio.io/inject"] = "true"
-		}
-
-		annotations := map[string]string{
-			"prometheus.io/scrape": "false",
-		}
-		if p.Spec.AppType == model.AmbientType {
-			annotations["ambient.istio.io/redirection"] = "enabled"
-		}
-		return &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        p.Name(),
-				Namespace:   s.Namespace,
-				Labels:      labels,
-				Annotations: annotations,
-			},
-			Spec: v1.PodSpec{
-				TerminationGracePeriodSeconds: ptr.Of(int64(0)),
-				ServiceAccountName:            s.ServiceAccount,
-				Containers: []v1.Container{{
-					Name:  "app",
-					Image: "fake",
-				}},
-				// Schedule ourselves, kube scheduler is slow. TODO: make it optional?
-				NodeName: s.Node,
-				NodeSelector: map[string]string{
-					"pilot-load.istio.io/node": "fake",
-				},
-				Tolerations: []v1.Toleration{{
-					Key:      "pilot-load.istio.io/node",
-					Operator: v1.TolerationOpExists,
-					Effect:   v1.TaintEffectNoSchedule,
-				}},
-			},
-		}
-	}
-
-	var annotations map[string]string
 	labels := map[string]string{
-		"app": s.App,
+		"app":                     s.App,
+		"owner":                   "pilot-load",
+		"sidecar.istio.io/inject": "false",
 	}
 	if p.Spec.AppType == model.SidecarType {
-		labels["security.istio.io/tlsMode"] = "istio"
+		labels["sidecar.istio.io/inject"] = "true"
+	}
+	if p.Spec.AppType == model.WaypointType {
+		// Make sure we don't mark the waypoint as having a waypoint
+		labels["gateway.istio.io/managed"] = "istio.io-mesh-controller"
+	}
+
+	annotations := map[string]string{
+		"prometheus.io/scrape": "false",
 	}
 	if p.Spec.AppType == model.AmbientType {
-		annotations = map[string]string{
-			"ambient.istio.io/redirection": "enabled",
-		}
+		annotations["ambient.istio.io/redirection"] = "enabled"
 	}
-	pod := &v1.Pod{
+	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        p.Name(),
 			Namespace:   s.Namespace,
@@ -198,84 +149,20 @@ func (p *Pod) getPod() *v1.Pod {
 		Spec: v1.PodSpec{
 			TerminationGracePeriodSeconds: ptr.Of(int64(0)),
 			ServiceAccountName:            s.ServiceAccount,
-			InitContainers: []v1.Container{{
-				Name:  "istio-init",
-				Image: "istio/proxyv2",
-			}},
 			Containers: []v1.Container{{
 				Name:  "app",
-				Image: "app",
-			}, {
-				Name:  "istio-proxy",
-				Image: "istio/proxyv2",
+				Image: "fake",
 			}},
+			// Schedule ourselves, kube scheduler is slow. TODO: make it optional?
 			NodeName: s.Node,
-		},
-		Status: v1.PodStatus{
-			Phase: v1.PodRunning,
-			Conditions: []v1.PodCondition{
-				{
-					Type:               v1.PodReady,
-					Status:             v1.ConditionTrue,
-					LastTransitionTime: metav1.Now(),
-				},
+			NodeSelector: map[string]string{
+				"pilot-load.istio.io/node": "fake",
 			},
-			PodIP:  s.IP,
-			PodIPs: []v1.PodIP{{IP: s.IP}},
+			Tolerations: []v1.Toleration{{
+				Key:      "pilot-load.istio.io/node",
+				Operator: v1.TolerationOpExists,
+				Effect:   v1.TaintEffectNoSchedule,
+			}},
 		},
 	}
-	if p.Spec.AppType == model.AmbientType {
-		pod.Spec.InitContainers = nil
-		pod.Spec.Containers = pod.Spec.Containers[0:1]
-	}
-	return pod
-}
-
-var client = http.Client{
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	},
-}
-
-func sendInjectionRequest(address string, pod *v1.Pod) error {
-	if address == "" {
-		return nil
-	}
-	jbytes, err := json.Marshal(pod)
-	if err != nil {
-		return err
-	}
-	request := &v1beta1.AdmissionRequest{
-		UID:                types.UID(util.GenUID()),
-		Kind:               metav1.GroupVersionKind{Version: "v1", Kind: "Pod"},
-		Resource:           metav1.GroupVersionResource{Version: "v1", Resource: "pods"},
-		RequestKind:        &metav1.GroupVersionKind{Version: "v1", Kind: "Pod"},
-		RequestResource:    &metav1.GroupVersionResource{Version: "v1", Resource: "pods"},
-		RequestSubResource: "",
-		Name:               pod.Name,
-		Namespace:          pod.Namespace,
-		Operation:          v1beta1.Create,
-		Object:             runtime.RawExtension{Raw: jbytes},
-		DryRun:             util.BoolPointer(false),
-		Options:            runtime.RawExtension{},
-	}
-	requestBytes, err := json.Marshal(&v1beta1.AdmissionReview{Request: request})
-	if err != nil {
-		return err
-	}
-	log.Infof("%v", string(requestBytes))
-	req, err := http.NewRequest(http.MethodPost, address, bytes.NewReader(requestBytes))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("got bad response to injection: %v", resp.StatusCode)
-	}
-	return nil
 }

@@ -63,7 +63,6 @@ var isolatedCmd = WithProfiling(&cobra.Command{
 				return fmt.Errorf("failed to read config file: %v", err)
 			}
 			config = config.ApplyDefaults()
-			config.ClusterType = model.Fake
 
 			logConfig(config)
 			logClusterConfig(config)

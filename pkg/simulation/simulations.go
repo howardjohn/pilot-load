@@ -19,14 +19,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
-// Load testing api-server
-func ApiServer(a model.Args) error {
-	if err := ExecuteSimulations(a, &ApiServerSimulation{}); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
-
 // Load testing pod startup
 func PodStartup(a model.Args) error {
 	if err := ExecuteSimulations(a, &PodStartupSimulation{a.StartupConfig}); err != nil {
@@ -53,14 +45,6 @@ func Reproduce(a model.Args) error {
 		ConfigFile: a.ReproduceConfig.ConfigFile,
 		ConfigOnly: a.ReproduceConfig.ConfigOnly,
 	})
-	if err := ExecuteSimulations(a, sim); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
-
-func Determinism(a model.Args) error {
-	sim := &DeterministicSimulation{}
 	if err := ExecuteSimulations(a, sim); err != nil {
 		return fmt.Errorf("error executing: %v", err)
 	}

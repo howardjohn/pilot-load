@@ -8,7 +8,6 @@ import (
 	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/istio/pkg/kube/kclient"
 	"istio.io/istio/pkg/log"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -75,7 +74,7 @@ func (i *ImpersonateSimulation) Run(ctx model.Context) error {
 	return nil
 }
 
-func newSimulation(ctx model.Context, pod *corev1.Pod) *xds.Simulation {
+func newSimulation(ctx model.Context, pod *v1.Pod) *xds.Simulation {
 	return &xds.Simulation{
 		Labels:    pod.Labels,
 		Namespace: pod.Namespace,
@@ -88,7 +87,7 @@ func newSimulation(ctx model.Context, pod *corev1.Pod) *xds.Simulation {
 	}
 }
 
-func (i *ImpersonateSimulation) add(ctx model.Context, pod *corev1.Pod) {
+func (i *ImpersonateSimulation) add(ctx model.Context, pod *v1.Pod) {
 	key := config.NamespacedName(pod)
 	if _, f := i.knownPods[key]; f {
 		// Pod already found, no updates. In theory we could replace it but too complex

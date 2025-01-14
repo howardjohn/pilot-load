@@ -56,6 +56,3 @@ deploy:
 	kubectl apply -f install
 
 all: install docker push deploy
-
-proto:
-	protoc --go_out=plugins=grpc:${GOPATH}/src xds.proto -Iprotoslim

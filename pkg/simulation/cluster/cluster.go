@@ -44,20 +44,17 @@ var _ model.Simulation = &Cluster{}
 func NewCluster(s ClusterSpec) *Cluster {
 	cluster := &Cluster{Name: "primary", Spec: &s, running: make(chan struct{})}
 
-	if s.Config.ClusterType == model.FakeNode {
-		needNodes := s.Config.PodCount() / 255
-		if s.Config.NodeCount() < needNodes {
-			log.Fatalf("have %d nodes, but need %d for %d pods", s.Config.NodeCount(), needNodes, s.Config.PodCount())
-		}
+	needNodes := s.Config.PodCount() / 255
+	if s.Config.NodeCount() < needNodes {
+		log.Fatalf("have %d nodes, but need %d for %d pods", s.Config.NodeCount(), needNodes, s.Config.PodCount())
 	}
 	for _, node := range s.Config.Nodes {
 		for r := 0; r < node.Count; r++ {
 			cluster.nodes = append(cluster.nodes, NewNode(NodeSpec{
-				Name:        fmt.Sprintf("%s-%s", node.Name, util.GenUID()),
-				Region:      "region",
-				Zone:        "zone",
-				ClusterType: s.Config.ClusterType,
-				Ztunnel:     node.Ztunnel != nil,
+				Name:    fmt.Sprintf("%s-%s", node.Name, util.GenUID()),
+				Region:  "region",
+				Zone:    "zone",
+				Ztunnel: node.Ztunnel != nil,
 			}))
 		}
 	}
@@ -113,9 +110,9 @@ func NewCluster(s ClusterSpec) *Cluster {
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
 				Name:        name,
 				Deployments: deployments,
-				ClusterType: s.Config.ClusterType,
 				Istio:       ns.Istio,
 				StableNames: s.Config.StableNames,
+				Waypoint:    ns.Waypoint,
 			}))
 		}
 	}
@@ -170,10 +167,9 @@ func (c *Cluster) getSims() []model.Simulation {
 }
 
 func (c *Cluster) Run(ctx model.Context) error {
-	if c.Spec.Config.ClusterType == model.FakeNode {
-		// Act as kubelet
-		go c.watchPods(ctx)
-	}
+	// Act as kubelet
+	// TODO: make a leader election mechanism for multi-instance
+	go c.watchPods(ctx)
 	nodes := []model.Simulation{}
 	for _, ns := range c.nodes {
 		nodes = append(nodes, ns)
