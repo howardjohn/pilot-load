@@ -1,0 +1,30 @@
+jitter:
+  workloads: "10s"
+  config: "200ms"
+namespaces:
+  # 100 Routes total
+  - name: mesh
+    replicas: 50
+    applications:
+    - name: app
+      replicas: 100
+      instances: 1
+      type: plain
+      istio:
+        # Create a route for that app
+        httpRoutes:
+          gateways: [gateway/main]
+  - name: gateway
+    replicas: 1
+    applications:
+    - name: ingress
+      replicas: 1
+      instances: 10 # 10 gateway pods
+      type: router
+      gateways: # create Kubernetes gateway for 'ingress' application
+        name: main
+        kubernetes: true
+        enabled: true
+nodes:
+- name: node
+  count: 20

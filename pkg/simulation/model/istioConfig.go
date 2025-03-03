@@ -26,6 +26,7 @@ type IstioApplicationConfig struct {
 	EnvoyFilter           *EnvoyFilterConfig           `json:"envoyFilter,omitempty"`
 	Sidecar               *SidecarConfig               `json:"sidecar,omitempty"`
 	VirtualService        *VirtualServiceConfig        `json:"virtualService,omitempty"`
+	HttpRoutes            *HTTPRouteConfig             `json:"httpRoutes,omitempty"`
 	Telemetry             *TelemetryConfig             `json:"telemetry,omitempty"`
 	PeerAuthentication    *PeerAuthenticationConfig    `json:"peerAuthentication,omitempty"`
 	RequestAuthentication *RequestAuthenticationConfig `json:"requestAuthentication,omitempty"`
@@ -48,6 +49,12 @@ type SidecarConfig struct {
 }
 
 type VirtualServiceConfig struct {
+	// Defaults to parent name. Setting allows a stable identifier
+	Name     string   `json:"name,omitempty"`
+	Gateways []string `json:"gateways,omitempty"`
+}
+
+type HTTPRouteConfig struct {
 	// Defaults to parent name. Setting allows a stable identifier
 	Name     string   `json:"name,omitempty"`
 	Gateways []string `json:"gateways,omitempty"`

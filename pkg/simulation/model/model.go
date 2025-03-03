@@ -119,8 +119,9 @@ type NamespaceConfig struct {
 
 type GatewayConfig struct {
 	// Defaults to parent name. Setting allows a stable identifier
-	Name     string `json:"name,omitempty"`
-	Replicas int    `json:"replicas,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Replicas   int    `json:"replicas,omitempty"`
+	Kubernetes bool   `json:"kubernetes,omitempty"`
 }
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster

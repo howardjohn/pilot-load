@@ -24,8 +24,9 @@ type Application struct {
 	Spec                  *ApplicationSpec
 	pods                  []*Pod
 	service               *Service
-	kgateways             *config.KubeGateway
+	kgateways             []*config.KubeGateway
 	virtualService        *config.VirtualService
+	httpRoute             *config.HTTPRoute
 	gateways              []*config.Gateway
 	secrets               []*config.Secret
 	destRule              *config.DestinationRule
@@ -60,6 +61,14 @@ func NewApplication(s ApplicationSpec) *Application {
 			Namespace: s.Namespace,
 			Gateways:  gateways,
 			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
+		})
+	}
+	if s.Istio.HttpRoutes != nil {
+		gateways := s.Istio.HttpRoutes.Gateways
+		w.httpRoute = config.NewHTTPRoute(config.HTTPRouteSpec{
+			App:       s.App,
+			Namespace: s.Namespace,
+			Gateways:  gateways,
 		})
 	}
 	if s.Istio.Default || s.Istio.DestinationRule != nil {
@@ -157,16 +166,27 @@ func NewApplication(s ApplicationSpec) *Application {
 	})
 
 	if s.Type == model.GatewayType {
-		for i := 0; i < s.GatewayConfig.Replicas; i++ {
-			gw := config.NewGateway(config.GatewaySpec{
-				Name:      s.GatewayConfig.Name,
-				App:       s.App,
-				Namespace: s.Namespace,
-			})
-			w.gateways = append(w.gateways, gw)
+		for range s.GatewayConfig.Replicas {
+			name := s.GatewayConfig.Name
+			if s.GatewayConfig.Kubernetes {
+				name = s.App
+				gw := config.NewKubeGateway(config.KubeGatewaySpec{
+					Name:      s.GatewayConfig.Name,
+					App:       s.App,
+					Namespace: s.Namespace,
+				})
+				w.kgateways = append(w.kgateways, gw)
+			} else {
+				gw := config.NewGateway(config.GatewaySpec{
+					Name:      s.GatewayConfig.Name,
+					App:       s.App,
+					Namespace: s.Namespace,
+				})
+				w.gateways = append(w.gateways, gw)
+			}
 			w.secrets = append(w.secrets, config.NewSecret(config.SecretSpec{
 				Namespace: s.Namespace,
-				Name:      gw.Name(),
+				Name:      name,
 			}))
 		}
 	}
@@ -175,8 +195,9 @@ func NewApplication(s ApplicationSpec) *Application {
 		gw := config.NewKubeGateway(config.KubeGatewaySpec{
 			App:       s.App,
 			Namespace: s.Namespace,
+			Waypoint:  true,
 		})
-		w.kgateways = gw
+		w.kgateways = append(w.kgateways, gw)
 	}
 
 	return w
@@ -186,6 +207,9 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	sims := []model.RefreshableSimulation{}
 	if w.virtualService != nil {
 		sims = append(sims, w.virtualService)
+	}
+	if w.httpRoute != nil {
+		sims = append(sims, w.httpRoute)
 	}
 	if w.destRule != nil {
 		sims = append(sims, w.destRule)
@@ -237,9 +261,6 @@ func (w *Application) getSims() []model.Simulation {
 	if w.service != nil {
 		sims = append(sims, w.service)
 	}
-	if w.kgateways != nil {
-		sims = append(sims, w.kgateways)
-	}
 	if w.sidecar != nil {
 		sims = append(sims, w.sidecar)
 	}
@@ -271,8 +292,15 @@ func (w *Application) getSims() []model.Simulation {
 	if w.virtualService != nil {
 		sims = append(sims, w.virtualService)
 	}
+
+	if w.httpRoute != nil {
+		sims = append(sims, w.httpRoute)
+	}
 	if w.destRule != nil {
 		sims = append(sims, w.destRule)
+	}
+	for _, gw := range w.kgateways {
+		sims = append(sims, gw)
 	}
 	for _, gw := range w.gateways {
 		sims = append(sims, gw)
