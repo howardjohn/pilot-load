@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"istio.io/istio/pkg/ptr"
@@ -51,13 +52,18 @@ func (v *HTTPRoute) Refresh(ctx model.Context) error {
 func (v *HTTPRoute) getHTTPRoute() *gateway.HTTPRoute {
 	s := v.Spec
 	routes := []gateway.HTTPRouteRule{{
+		Matches: []gateway.HTTPRouteMatch{{
+			Path: &gateway.HTTPPathMatch{
+				Value: ptr.Of(fmt.Sprintf("/%d", v.Spec.Weight)),
+			},
+		}},
 		BackendRefs: []gateway.HTTPBackendRef{{
 			BackendRef: gateway.BackendRef{
 				BackendObjectReference: gateway.BackendObjectReference{
 					Name: gateway.ObjectName(s.App),
 					Port: ptr.Of(gateway.PortNumber(80)),
 				},
-				Weight:  ptr.Of(int32(s.Weight)),
+				//Weight:  ptr.Of(int32(s.Weight)),
 			},
 		}},
 	}}
