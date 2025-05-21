@@ -52,6 +52,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		w.configs = append(w.configs, config.NewTemplated(config.TemplatedSpec{
 			Template: s.TemplateDefinitions.Get(tmpl.Name),
 			Config:   cfg,
+			Refresh: tmpl.Refresh,
 		}))
 	}
 

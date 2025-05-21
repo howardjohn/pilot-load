@@ -47,6 +47,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		ns.configs = append(ns.configs, config.NewTemplated(config.TemplatedSpec{
 			Template: s.TemplateDefinitions.Get(tmpl.Name),
 			Config:   cfg,
+			Refresh:  tmpl.Refresh,
 		}))
 	}
 

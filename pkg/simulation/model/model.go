@@ -41,6 +41,18 @@ type RefreshableSimulation interface {
 	Refresh(ctx Context) (string, error)
 }
 
+func IsRefreshable(s RefreshableSimulation) bool {
+	if t, ok := s.(MaybeRefreshableSimulation); ok {
+		return t.IsRefreshable()
+	}
+	return true
+}
+
+type MaybeRefreshableSimulation interface {
+	// IsRefreshable indicates whether we can refresh the config
+	IsRefreshable() bool
+}
+
 type Duration time.Duration
 
 func (d Duration) MarshalJSON() ([]byte, error) {
@@ -103,8 +115,9 @@ type ApplicationConfig struct {
 }
 
 type ConfigTemplate struct {
-	Name   string         `json:"name,omitempty"`
-	Config map[string]any `json:"config,omitempty"`
+	Name    string         `json:"name,omitempty"`
+	Config  map[string]any `json:"config,omitempty"`
+	Refresh *bool          `json:"refresh,omitempty"`
 }
 
 func (r *ConfigTemplate) UnmarshalJSON(data []byte) error {

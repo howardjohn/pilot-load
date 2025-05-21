@@ -88,7 +88,11 @@ func (c *Cluster) GetRefreshableConfig() []model.RefreshableSimulation {
 	var cfgs []model.RefreshableSimulation
 	for _, ns := range c.namespaces {
 		for _, w := range ns.deployments {
-			cfgs = append(cfgs, w.GetConfigs()...)
+			for _, cfg := range w.GetConfigs() {
+				if model.IsRefreshable(cfg) {
+					cfgs = append(cfgs, cfg)
+				}
+			}
 		}
 	}
 	return cfgs

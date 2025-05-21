@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"strings"
 	"text/template"
-
-	"istio.io/istio/pkg/kube/controllers"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/reader"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/istio/pkg/kube/controllers"
 )
 
 // Template inputs
@@ -23,17 +23,29 @@ const (
 type TemplatedSpec struct {
 	Template *template.Template
 	Config   map[string]any
+	Refresh *bool
 }
 
 type Templated struct {
 	Spec *TemplatedSpec
+	Refreshable bool
 }
 
 var _ model.Simulation = &Templated{}
 
 func NewTemplated(s TemplatedSpec) *Templated {
 	s.Config[RandNumber] = rand.Intn(10000) + 1
-	return &Templated{Spec: &s}
+	res := &Templated{Spec: &s}
+	if s.Refresh != nil {
+		res.Refreshable = *s.Refresh
+	} else {
+		res.Refreshable, _ = res.getDefaultRefresh()
+	}
+	return res
+}
+
+func (v *Templated) IsRefreshable() bool {
+	return v.Refreshable
 }
 
 func (v *Templated) Refresh(ctx model.Context) (string, error) {
@@ -42,7 +54,8 @@ func (v *Templated) Refresh(ctx model.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := obj.GetNamespace() + "/" + obj.GetName()
+	k := obj.GetObjectKind().GroupVersionKind().Kind
+	name := k + "/" + obj.GetNamespace() + "/" + obj.GetName()
 	return name, kube.ApplyRealSSA(ctx.Client, obj)
 }
 
@@ -60,6 +73,20 @@ func (v *Templated) Cleanup(ctx model.Context) error {
 		return err
 	}
 	return kube.Delete(ctx.Client, obj)
+}
+
+func (v *Templated) getDefaultRefresh() (bool, error) {
+	var b bytes.Buffer
+	if err := v.Spec.Template.Execute(&b, v.Spec.Config); err != nil {
+		return false, err
+	}
+	if strings.Contains(b.String(), "#refresh=false") {
+		return false, nil
+	}
+	if strings.Contains(b.String(), "#refresh=true") {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (v *Templated) getTemplated() (controllers.Object, error) {
