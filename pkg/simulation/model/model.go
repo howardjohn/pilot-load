@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"text/template"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"istio.io/istio/pkg/log"
-
+	"github.com/Masterminds/sprig"
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"golang.org/x/sync/errgroup"
+
+	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -35,7 +37,8 @@ type ScalableSimulation interface {
 
 type RefreshableSimulation interface {
 	// Refresh will make a change to the simulation. This may mean removing and recreating a pod, changing config, etc
-	Refresh(ctx Context) error
+	// The returned string gives info about what was refreshed
+	Refresh(ctx Context) (string, error)
 }
 
 type Duration time.Duration
@@ -99,21 +102,39 @@ const (
 )
 
 type ApplicationConfig struct {
-	Name      string                 `json:"name,omitempty"`
-	Type      AppType                `json:"type,omitempty"`
-	Replicas  int                    `json:"replicas,omitempty"`
-	Instances int                    `json:"instances,omitempty"`
-	Gateways  GatewayConfig          `json:"gateways,omitempty"`
-	Istio     IstioApplicationConfig `json:"istio,omitempty"`
-	Labels    map[string]string      `json:"labels,omitempty"`
-	GetNode   func() string          `json:"-"`
+	Name      string            `json:"name,omitempty"`
+	Type      AppType           `json:"type,omitempty"`
+	Replicas  int               `json:"replicas,omitempty"`
+	Instances int               `json:"instances,omitempty"`
+	Gateways  GatewayConfig     `json:"gateways,omitempty"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	Templates []ConfigTemplate  `json:"templates,omitempty"`
+	GetNode   func() string     `json:"-"`
+}
+
+type ConfigTemplate struct {
+	Name   string         `json:"name,omitempty"`
+	Config map[string]any `json:"config,omitempty"`
+}
+
+func (r *ConfigTemplate) UnmarshalJSON(data []byte) error {
+	// First, try to unmarshal as a string
+	var stringValue string
+	if err := json.Unmarshal(data, &stringValue); err == nil {
+		// If it worked, set the name and return
+		r.Name = stringValue
+		return nil
+	}
+
+	// If that didn't work, try to unmarshal as an object
+	type ConfigTemplateAlias ConfigTemplate // Create alias to avoid infinite recursion
+	return json.Unmarshal(data, (*ConfigTemplateAlias)(r))
 }
 
 type NamespaceConfig struct {
 	Name         string              `json:"name,omitempty"`
 	Replicas     int                 `json:"replicas,omitempty"`
 	Applications []ApplicationConfig `json:"applications,omitempty"`
-	Istio        IstioNSConfig       `json:"istio,omitempty"`
 	Waypoint     string              `json:"waypoint,omitempty"`
 }
 
@@ -133,9 +154,37 @@ type ClusterConfig struct {
 	Namespaces  []NamespaceConfig   `json:"namespaces,omitempty"`
 	Nodes       []NodeConfig        `json:"nodes,omitempty"`
 	// If true, consistent names will be used across iterations.
-	StableNames  bool              `json:"stableNames,omitempty"`
-	NodeMetadata map[string]string `json:"nodeMetadata,omitempty"`
-	Istio        IstioRootNSConfig `json:"istio,omitempty"`
+	StableNames  bool                `json:"stableNames,omitempty"`
+	NodeMetadata map[string]string   `json:"nodeMetadata,omitempty"`
+	Templates    TemplateDefinitions `json:"templates,omitempty"`
+}
+
+type TemplateDefinitions struct {
+	Inner map[string]*template.Template `json:"-"`
+}
+
+func (t *TemplateDefinitions) UnmarshalJSON(b []byte) error {
+	raw := make(map[string]string)
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	t.Inner = make(map[string]*template.Template)
+	for k, v := range raw {
+		p, err := template.New(k).Funcs(sprig.TxtFuncMap()).Parse(v)
+		if err != nil {
+			return err
+		}
+		t.Inner[k] = p
+	}
+	return nil
+}
+
+func (t *TemplateDefinitions) Get(name string) *template.Template {
+	tt, ok := t.Inner[name]
+	if !ok {
+		panic("unknown template name: " + name)
+	}
+	return tt
 }
 
 type NodeConfig struct {

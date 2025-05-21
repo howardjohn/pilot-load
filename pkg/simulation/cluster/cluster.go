@@ -6,19 +6,19 @@ import (
 	"runtime"
 	"time"
 
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/kube/kubetypes"
-	"istio.io/istio/pkg/log"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -59,43 +59,6 @@ func NewCluster(s ClusterSpec) *Cluster {
 		}
 	}
 
-	if s.Config.Istio.Default || s.Config.Istio.EnvoyFilter != nil {
-		cluster.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.Sidecar != nil {
-		cluster.sidecar = config.NewSidecar(config.SidecarSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.Telemetry != nil {
-		cluster.telemetry = config.NewTelemetry(config.TelemetrySpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.RequestAuthentication != nil {
-		cluster.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.PeerAuthentication != nil {
-		cluster.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.AuthorizationPolicy != nil {
-		cluster.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-
 	for nsId, ns := range s.Config.Namespaces {
 		for r := 0; r < ns.Replicas; r++ {
 			deployments := ns.Applications
@@ -108,11 +71,11 @@ func NewCluster(s ClusterSpec) *Cluster {
 				name = fmt.Sprintf("%s-%s", name, util.GenUIDOrStableIdentifier(s.Config.StableNames, nsId, r))
 			}
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
-				Name:        name,
-				Deployments: deployments,
-				Istio:       ns.Istio,
-				StableNames: s.Config.StableNames,
-				Waypoint:    ns.Waypoint,
+				Name:                name,
+				Deployments:         deployments,
+				TemplateDefinitions: s.Config.Templates,
+				StableNames:         s.Config.StableNames,
+				Waypoint:            ns.Waypoint,
 			}))
 		}
 	}

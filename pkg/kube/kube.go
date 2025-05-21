@@ -9,17 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"istio.io/istio/pkg/cluster"
-	"istio.io/istio/pkg/config"
-	"istio.io/istio/pkg/config/schema/gvk"
-	"istio.io/istio/pkg/config/schema/kubeclient"
-	kubetypes2 "istio.io/istio/pkg/config/schema/kubetypes"
-	"istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kubetypes"
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
-	"istio.io/istio/pkg/test/scopes"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,6 +23,18 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+
+	"istio.io/istio/pkg/cluster"
+	"istio.io/istio/pkg/config"
+	"istio.io/istio/pkg/config/schema/gvk"
+	"istio.io/istio/pkg/config/schema/kubeclient"
+	kubetypes2 "istio.io/istio/pkg/config/schema/kubetypes"
+	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
+	"istio.io/istio/pkg/test/scopes"
 )
 
 type Client struct {
@@ -105,26 +106,43 @@ func ApplyFast[T controllers.Object](c *Client, o T) error {
 func ApplyRealSSA[T controllers.Object](c *Client, o T) error {
 	name := o.GetName()
 	ns := o.GetNamespace()
-	cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+	var patcher func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) error
+	if !TypeIsConcrete[T]() {
+		cl, _ := dynamicClient(c, o)
+		patcher = func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) error {
+			_, err := cl.Patch(ctx, name, pt, data, opts)
+			return err
+		}
+	} else {
+		cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+		patcher = func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) error {
+			_, err := cl.Patch(ctx, name, pt, data, opts)
+			return err
+		}
+	}
 	t := ptr.TypeName[T]()
 
 	buf := &bytes.Buffer{}
-	if err := kube.IstioCodec.LegacyCodec(kubetypes2.MustGVRFromType[T]().GroupVersion()).Encode(o, buf); err != nil {
-		return err
+	gv := o.GetObjectKind().GroupVersionKind().GroupVersion()
+	if gv.Group == "" || gv.Version == "" {
+		gv = kubetypes2.MustGVRFromType[T]().GroupVersion()
+	}
+	if err := kube.IstioCodec.LegacyCodec(gv).Encode(o, buf); err != nil {
+		return fmt.Errorf("encode: %v", err)
 	}
 	b := buf.Bytes()
 	opts := metav1.PatchOptions{
 		Force:        ptr.Of(true),
 		FieldManager: "pilot-load",
 	}
-	_, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts)
+	err := patcher(context.TODO(), name, types.ApplyPatchType, b, opts)
 	if err != nil {
 		return fmt.Errorf("failed to ssa %s/%s/%s: %v", t, name, ns, err)
 	}
 	scope.Debugf("fast ssa resource: %s/%s/%s", t, name, ns)
 	if hasStatus(c, o) {
 		scope.Debugf("fast ssa resource status: %s/%s.%s", t, name, ns)
-		if _, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts, "status"); err != nil {
+		if err := patcher(context.TODO(), name, types.ApplyPatchType, b, opts, "status"); err != nil {
 			return fmt.Errorf("ssa status %s/%s/%s: %v", t, name, ns, err)
 		}
 	}

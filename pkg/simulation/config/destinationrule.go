@@ -1,12 +1,14 @@
 package config
 
 import (
-	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
-	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"fmt"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
 type DestinationRuleSpec struct {
@@ -34,9 +36,9 @@ func (v *DestinationRule) Cleanup(ctx model.Context) error {
 	return kube.Delete(ctx.Client, v.getDestinationRule())
 }
 
-func (v *DestinationRule) Refresh(ctx model.Context) error {
+func (v *DestinationRule) Refresh(ctx model.Context) (string, error) {
 	v.Spec.LbPolicyIndex = (v.Spec.LbPolicyIndex + 1) % 3
-	return v.Run(ctx)
+	return fmt.Sprintf("%s/%s", v.Spec.Namespace, v.Spec.App), v.Run(ctx)
 }
 
 func (v *DestinationRule) getDestinationRule() *v1alpha3.DestinationRule {

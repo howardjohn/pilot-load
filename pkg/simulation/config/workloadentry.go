@@ -3,13 +3,13 @@ package config
 import (
 	"math/rand"
 
-	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
-	"istio.io/client-go/pkg/apis/networking/v1alpha3"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
 type WorkloadEntrySpec struct {
@@ -28,9 +28,9 @@ func NewWorkloadEntry(s WorkloadEntrySpec) *WorkloadEntry {
 	return &WorkloadEntry{Spec: &s}
 }
 
-func (v *WorkloadEntry) Refresh(ctx model.Context) error {
+func (v *WorkloadEntry) Refresh(ctx model.Context) (string, error) {
 	v.Spec.Weight = rand.Intn(100)
-	return v.Run(ctx)
+	return v.Spec.Namespace + "/" + v.Spec.App, v.Run(ctx)
 }
 
 func (v *WorkloadEntry) Run(ctx model.Context) (err error) {

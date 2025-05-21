@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lthibault/jitterbug"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/lthibault/jitterbug"
+
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterScaler struct {
@@ -50,9 +50,10 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 					continue
 				}
 				wl := wls[rand.Intn(len(wls))]
-				log.Infof("refresh workload %s", wl.Spec.App)
-				if err := wl.Refresh(ctx); err != nil {
-					log.Errorf("failed to jitter workload: %v", err)
+				if info, err := wl.Refresh(ctx); err != nil {
+					log.Errorf("failed to jitter workloads: %v", err)
+				} else {
+					log.Infof("refreshed workload %s (%T)", info, wl)
 				}
 			case <-configJitterT:
 				cfgs := s.Cluster.GetRefreshableConfig()
@@ -61,9 +62,10 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 					continue
 				}
 				cfg := cfgs[rand.Intn(len(cfgs))]
-				log.Infof("refresh config %T", cfg)
-				if err := cfg.Refresh(ctx); err != nil {
+				if info, err := cfg.Refresh(ctx); err != nil {
 					log.Errorf("failed to jitter configs: %v", err)
+				} else {
+					log.Infof("refreshed config %s (%T)", info, cfg)
 				}
 			case <-secretsJitterT:
 				secrets := s.Cluster.GetRefreshableSecrets()
@@ -72,9 +74,10 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 					continue
 				}
 				cfg := secrets[rand.Intn(len(secrets))]
-				log.Infof("refresh secret %T", cfg)
-				if err := cfg.Refresh(ctx); err != nil {
+				if info, err := cfg.Refresh(ctx); err != nil {
 					log.Errorf("failed to jitter secret: %v", err)
+				} else {
+					log.Infof("refreshed secret %s (%T)", info, cfg)
 				}
 			}
 		}

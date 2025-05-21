@@ -3,13 +3,15 @@ package cmd
 import (
 	"fmt"
 	"os"
-
-	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
-	"sigs.k8s.io/yaml"
+	"text/template"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/templates"
+	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
+
+	"istio.io/istio/pkg/log"
 )
 
 var configFile = ""
@@ -60,6 +62,16 @@ func readConfigFile(filename string) (model.ClusterConfig, error) {
 	config := model.ClusterConfig{}
 	if err := yaml.Unmarshal(bytes, &config); err != nil {
 		return config, fmt.Errorf("failed to unmarshall configFile: %v", err)
+	}
+	if config.Templates.Inner == nil {
+		config.Templates.Inner = map[string]*template.Template{}
+	}
+	for k, v := range templates.LoadBuiltin() {
+		if _, f := config.Templates.Inner[k]; f {
+			log.Warnf("warning: overriding default template %q", k)
+			continue
+		}
+		config.Templates.Inner[k] = v
 	}
 	return config, err
 }

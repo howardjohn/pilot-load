@@ -1,11 +1,12 @@
 package config
 
 import (
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"fmt"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type SecretSpec struct {
@@ -31,9 +32,9 @@ func (s *Secret) Run(ctx model.Context) (err error) {
 	return kube.Apply(ctx.Client, s.getSecret())
 }
 
-func (s *Secret) Refresh(ctx model.Context) error {
+func (s *Secret) Refresh(ctx model.Context) (string, error) {
 	s.index = (s.index + 1) % len(crts)
-	return s.Run(ctx)
+	return fmt.Sprintf("%s/%s", s.Spec.Namespace, s.Spec.Name), s.Run(ctx)
 }
 
 func (s *Secret) Cleanup(ctx model.Context) error {

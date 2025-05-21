@@ -11,11 +11,11 @@ import (
 )
 
 type NamespaceSpec struct {
-	Name        string
-	Deployments []model.ApplicationConfig
-	Istio       model.IstioNSConfig
-	StableNames bool
-	Waypoint    string
+	Name                string
+	TemplateDefinitions model.TemplateDefinitions
+	Deployments         []model.ApplicationConfig
+	StableNames         bool
+	Waypoint            string
 }
 
 type Namespace struct {
@@ -60,43 +60,6 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}),
 	}
 
-	if s.Istio.Default || s.Istio.EnvoyFilter != nil {
-		ns.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
-			Namespace: ns.Spec.Name,
-			APIScope:  model.Namespace,
-		})
-	}
-	if s.Istio.Default || s.Istio.Sidecar != nil {
-		ns.sidecar = config.NewSidecar(config.SidecarSpec{
-			Namespace: ns.Spec.Name,
-			APIScope:  model.Namespace,
-		})
-	}
-	if s.Istio.Default || s.Istio.Telemetry != nil {
-		ns.telemetry = config.NewTelemetry(config.TelemetrySpec{
-			Namespace: ns.Spec.Name,
-			APIScope:  model.Namespace,
-		})
-	}
-	if s.Istio.Default || s.Istio.RequestAuthentication != nil {
-		ns.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
-			Namespace: ns.Spec.Name,
-			APIScope:  model.Namespace,
-		})
-	}
-	if s.Istio.Default || s.Istio.PeerAuthentication != nil {
-		ns.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
-			Namespace: ns.Spec.Name,
-			APIScope:  model.Namespace,
-		})
-	}
-	if s.Istio.Default || s.Istio.AuthorizationPolicy != nil {
-		ns.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
-			Namespace: ns.Spec.Name,
-			APIScope:  model.Namespace,
-		})
-	}
-
 	for idx, d := range s.Deployments {
 		for r := range d.Replicas {
 			suffix := util.GenUIDOrStableIdentifier(s.StableNames, idx, r)
@@ -115,12 +78,13 @@ func (n *Namespace) createApplication(args model.ApplicationConfig, suffix strin
 		Node:      args.GetNode,
 		Namespace: n.Spec.Name,
 		// TODO implement different service accounts
-		ServiceAccount: "default",
-		Instances:      args.Instances,
-		Type:           args.Type,
-		GatewayConfig:  args.Gateways,
-		Istio:          args.Istio,
-		Labels:         args.Labels,
+		ServiceAccount:      "default",
+		Instances:           args.Instances,
+		Type:                args.Type,
+		GatewayConfig:       args.Gateways,
+		Templates:           args.Templates,
+		TemplateDefinitions: n.Spec.TemplateDefinitions,
+		Labels:              args.Labels,
 	})
 }
 
