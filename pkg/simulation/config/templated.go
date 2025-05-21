@@ -6,11 +6,11 @@ import (
 	"math/rand"
 	"text/template"
 
+	"istio.io/istio/pkg/kube/controllers"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/reader"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-
-	"istio.io/istio/pkg/kube/controllers"
 )
 
 // Template inputs

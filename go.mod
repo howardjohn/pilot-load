@@ -6,6 +6,7 @@ toolchain go1.24.3
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cncf/udpa/go v0.0.0-20220112060539-c52dc94e7fbe
 	github.com/envoyproxy/go-control-plane v0.13.5-0.20250416141339-b5bc3390bc94
@@ -34,7 +35,6 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
-	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/alecholmes/xfccparser v0.4.0 // indirect
 	github.com/alecthomas/participle/v2 v2.1.4 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect

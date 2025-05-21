@@ -3,13 +3,13 @@ package config
 import (
 	"fmt"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/istio/pkg/config/constants"
+	"istio.io/istio/pkg/ptr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gateway "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"istio.io/istio/pkg/config/constants"
-	"istio.io/istio/pkg/ptr"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type KubeGatewaySpec struct {

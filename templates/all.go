@@ -7,7 +7,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-
 	"istio.io/istio/pkg/log"
 )
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"istio.io/istio/pkg/maps"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -14,21 +16,17 @@ type NamespaceSpec struct {
 	Name                string
 	TemplateDefinitions model.TemplateDefinitions
 	Deployments         []model.ApplicationConfig
+	Templates           []model.ConfigTemplate
 	StableNames         bool
 	Waypoint            string
 }
 
 type Namespace struct {
-	Spec                  *NamespaceSpec
-	ns                    *KubernetesNamespace
-	sa                    map[string]*app.ServiceAccount
-	envoyFilter           *config.EnvoyFilter
-	sidecar               *config.Sidecar
-	telemetry             *config.Telemetry
-	peerAuthentication    *config.PeerAuthentication
-	requestAuthentication *config.RequestAuthentication
-	authorizationPolicy   *config.AuthorizationPolicy
-	deployments           []*app.Application
+	Spec        *NamespaceSpec
+	ns          *KubernetesNamespace
+	sa          map[string]*app.ServiceAccount
+	deployments []*app.Application
+	configs     []*config.Templated
 }
 
 var _ model.Simulation = &Namespace{}
@@ -39,6 +37,19 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	nsLabels := map[string]string{
 		"istio-injection": "enabled",
 	}
+
+	for _, tmpl := range s.Templates {
+		cfg := maps.Clone(tmpl.Config)
+		if cfg == nil {
+			cfg = map[string]any{}
+		}
+		cfg[config.Namespace] = s.Name
+		ns.configs = append(ns.configs, config.NewTemplated(config.TemplatedSpec{
+			Template: s.TemplateDefinitions.Get(tmpl.Name),
+			Config:   cfg,
+		}))
+	}
+
 	if s.Waypoint != "" {
 		ns, name, ok := strings.Cut(s.Waypoint, "/")
 		if ok {
@@ -90,25 +101,10 @@ func (n *Namespace) createApplication(args model.ApplicationConfig, suffix strin
 
 func (n *Namespace) getSims() []model.Simulation {
 	sims := []model.Simulation{n.ns}
-	if n.sidecar != nil {
-		sims = append(sims, n.sidecar)
-	}
-	if n.envoyFilter != nil {
-		sims = append(sims, n.envoyFilter)
-	}
-	if n.telemetry != nil {
-		sims = append(sims, n.telemetry)
-	}
-	if n.authorizationPolicy != nil {
-		sims = append(sims, n.authorizationPolicy)
-	}
-	if n.peerAuthentication != nil {
-		sims = append(sims, n.peerAuthentication)
-	}
-	if n.requestAuthentication != nil {
-		sims = append(sims, n.requestAuthentication)
-	}
 
+	for _, cfg := range n.configs {
+		sims = append(sims, cfg)
+	}
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}

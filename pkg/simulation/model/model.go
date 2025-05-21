@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
+	"golang.org/x/sync/errgroup"
+	"istio.io/istio/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"golang.org/x/sync/errgroup"
-
-	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -108,7 +108,7 @@ type ApplicationConfig struct {
 	Instances int               `json:"instances,omitempty"`
 	Gateways  GatewayConfig     `json:"gateways,omitempty"`
 	Labels    map[string]string `json:"labels,omitempty"`
-	Templates []ConfigTemplate  `json:"templates,omitempty"`
+	Templates []ConfigTemplate  `json:"configs,omitempty"`
 	GetNode   func() string     `json:"-"`
 }
 
@@ -135,6 +135,7 @@ type NamespaceConfig struct {
 	Name         string              `json:"name,omitempty"`
 	Replicas     int                 `json:"replicas,omitempty"`
 	Applications []ApplicationConfig `json:"applications,omitempty"`
+	Templates    []ConfigTemplate    `json:"configs,omitempty"`
 	Waypoint     string              `json:"waypoint,omitempty"`
 }
 
