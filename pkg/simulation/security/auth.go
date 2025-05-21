@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	pb "istio.io/api/security/v1alpha1"
 	pkiutil "istio.io/istio/security/pkg/pki/util"
@@ -96,7 +97,7 @@ func (a *AuthOptions) GrpcOptions(serviceAccount, namespace string) []grpc.DialO
 	}))
 	switch a.Type {
 	case AuthTypePlaintext:
-		return []grpc.DialOption{grpc.WithInsecure()}
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	case AuthTypeMTLS:
 		panic(AuthTypeMTLS + " is not currently implemented")
 	case AuthTypeJWT:
@@ -120,7 +121,7 @@ func (a *AuthOptions) GrpcOptions(serviceAccount, namespace string) []grpc.DialO
 				"authorization": "Bearer " + token,
 			}, nil
 		}
-		return []grpc.DialOption{grpc.WithInsecure(), grpc.WithPerRPCCredentials(grpcCredentials{fetch})}
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(grpcCredentials{fetch})}
 	default:
 		panic("unknown auth type: " + a.Type)
 	}
