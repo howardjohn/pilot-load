@@ -6,15 +6,17 @@ import (
 	"io"
 	"os"
 
-	"istio.io/istio/pkg/config/schema/collections"
-	"istio.io/istio/pkg/config/schema/resource"
-	"istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/controllers"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	"istio.io/istio/pkg/config/schema/collections"
+	"istio.io/istio/pkg/config/schema/resource"
+	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/log"
 )
 
 func ParseYamlFile(inputFile string) ([]controllers.Object, error) {
@@ -60,6 +62,7 @@ func ParseYaml(r io.Reader) ([]controllers.Object, error) {
 			tm.SetAPIVersion(s.APIVersion())
 			obj = raw
 		} else {
+			log.Errorf("howardjohn: not exist... %v", gvk)
 			obj, _, err = deserializer.Decode(chunk, &gvk, obj)
 			if err != nil {
 				return nil, fmt.Errorf("cannot parse message: %v", err)
@@ -67,6 +70,7 @@ func ParseYaml(r io.Reader) ([]controllers.Object, error) {
 		}
 
 		cobj := obj.(controllers.Object)
+		log.Errorf("howardjohn: set gvk to %+v %T", gvk, cobj)
 		cobj.GetObjectKind().SetGroupVersionKind(gvk)
 
 		resp = append(resp, cobj)

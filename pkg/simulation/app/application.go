@@ -1,12 +1,12 @@
 package app
 
 import (
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/maps"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"k8s.io/apimachinery/pkg/util/rand"
+
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/maps"
 )
 
 type ApplicationSpec struct {
@@ -16,7 +16,6 @@ type ApplicationSpec struct {
 	ServiceAccount      string
 	Instances           int
 	Type                model.AppType
-	GatewayConfig       model.GatewayConfig
 	TemplateDefinitions model.TemplateDefinitions
 	Templates           []model.ConfigTemplate
 	Labels              map[string]string
@@ -27,8 +26,6 @@ type Application struct {
 	pods          []*Pod
 	service       *Service
 	kgateways     []*config.KubeGateway
-	gateways      []*config.Gateway
-	secrets       []*config.Secret
 	workloadEntry *config.WorkloadEntry
 	workloadGroup *config.WorkloadGroup
 	serviceEntry  *config.ServiceEntry
@@ -100,32 +97,6 @@ func NewApplication(s ApplicationSpec) *Application {
 		Waypoint:  s.Type == model.WaypointType,
 	})
 
-	if s.Type == model.GatewayType {
-		for range s.GatewayConfig.Replicas {
-			name := s.GatewayConfig.Name
-			if s.GatewayConfig.Kubernetes {
-				name = s.App
-				gw := config.NewKubeGateway(config.KubeGatewaySpec{
-					Name:      s.GatewayConfig.Name,
-					App:       s.App,
-					Namespace: s.Namespace,
-				})
-				w.kgateways = append(w.kgateways, gw)
-			} else {
-				gw := config.NewGateway(config.GatewaySpec{
-					Name:      s.GatewayConfig.Name,
-					App:       s.App,
-					Namespace: s.Namespace,
-				})
-				w.gateways = append(w.gateways, gw)
-			}
-			w.secrets = append(w.secrets, config.NewSecret(config.SecretSpec{
-				Namespace: s.Namespace,
-				Name:      name,
-			}))
-		}
-	}
-
 	if s.Type == model.WaypointType {
 		gw := config.NewKubeGateway(config.KubeGatewaySpec{
 			App:       s.App,
@@ -147,14 +118,6 @@ func (w *Application) GetConfigs() []model.RefreshableSimulation {
 		sims = append(sims, cfg)
 	}
 
-	return sims
-}
-
-func (w *Application) GetSecrets() []model.RefreshableSimulation {
-	sims := []model.RefreshableSimulation{}
-	for _, scr := range w.secrets {
-		sims = append(sims, scr)
-	}
 	return sims
 }
 
@@ -189,12 +152,6 @@ func (w *Application) getSims() []model.Simulation {
 	}
 	for _, gw := range w.kgateways {
 		sims = append(sims, gw)
-	}
-	for _, gw := range w.gateways {
-		sims = append(sims, gw)
-	}
-	for _, scr := range w.secrets {
-		sims = append(sims, scr)
 	}
 	for _, p := range w.pods {
 		sims = append(sims, p)

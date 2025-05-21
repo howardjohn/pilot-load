@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lthibault/jitterbug"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/lthibault/jitterbug"
+
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterScaler struct {
@@ -37,7 +37,6 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 		defer close(s.done)
 		instanceJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Workloads))
 		configJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Config))
-		secretsJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Secrets))
 		for {
 			// TODO: more customization around everything here
 			select {
@@ -66,18 +65,6 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 					log.Errorf("failed to jitter configs: %v", err)
 				} else {
 					log.Infof("refreshed config %s (%T)", info, cfg)
-				}
-			case <-secretsJitterT:
-				secrets := s.Cluster.GetRefreshableSecrets()
-				if len(secrets) == 0 {
-					log.Warnf("no secrets to scale")
-					continue
-				}
-				cfg := secrets[rand.Intn(len(secrets))]
-				if info, err := cfg.Refresh(ctx); err != nil {
-					log.Errorf("failed to jitter secret: %v", err)
-				} else {
-					log.Infof("refreshed secret %s (%T)", info, cfg)
 				}
 			}
 		}

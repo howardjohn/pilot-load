@@ -6,19 +6,18 @@ import (
 	"runtime"
 	"time"
 
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/kube/kubetypes"
-	"istio.io/istio/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/app"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/app"
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterSpec struct {
@@ -26,17 +25,11 @@ type ClusterSpec struct {
 }
 
 type Cluster struct {
-	Name                  string
-	Spec                  *ClusterSpec
-	namespaces            []*Namespace
-	envoyFilter           *config.EnvoyFilter
-	sidecar               *config.Sidecar
-	telemetry             *config.Telemetry
-	peerAuthentication    *config.PeerAuthentication
-	requestAuthentication *config.RequestAuthentication
-	authorizationPolicy   *config.AuthorizationPolicy
-	nodes                 []*Node
-	running               chan struct{}
+	Name       string
+	Spec       *ClusterSpec
+	namespaces []*Namespace
+	nodes      []*Node
+	running    chan struct{}
 }
 
 var _ model.Simulation = &Cluster{}
@@ -96,16 +89,6 @@ func (c *Cluster) GetRefreshableConfig() []model.RefreshableSimulation {
 	for _, ns := range c.namespaces {
 		for _, w := range ns.deployments {
 			cfgs = append(cfgs, w.GetConfigs()...)
-		}
-	}
-	return cfgs
-}
-
-func (c *Cluster) GetRefreshableSecrets() []model.RefreshableSimulation {
-	var cfgs []model.RefreshableSimulation
-	for _, ns := range c.namespaces {
-		for _, w := range ns.deployments {
-			cfgs = append(cfgs, w.GetSecrets()...)
 		}
 	}
 	return cfgs
@@ -241,25 +224,6 @@ func (c *Cluster) watchPods(ctx model.Context) {
 
 func (c *Cluster) getIstioResources() []model.Simulation {
 	sims := []model.Simulation{}
-
-	if c.sidecar != nil {
-		sims = append(sims, c.sidecar)
-	}
-	if c.envoyFilter != nil {
-		sims = append(sims, c.envoyFilter)
-	}
-	if c.telemetry != nil {
-		sims = append(sims, c.telemetry)
-	}
-	if c.authorizationPolicy != nil {
-		sims = append(sims, c.authorizationPolicy)
-	}
-	if c.peerAuthentication != nil {
-		sims = append(sims, c.peerAuthentication)
-	}
-	if c.requestAuthentication != nil {
-		sims = append(sims, c.requestAuthentication)
-	}
 
 	return sims
 }

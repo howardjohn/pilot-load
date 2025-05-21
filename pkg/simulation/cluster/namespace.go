@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"istio.io/istio/pkg/maps"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+
+	"istio.io/istio/pkg/maps"
 )
 
 type NamespaceSpec struct {
@@ -92,7 +92,6 @@ func (n *Namespace) createApplication(args model.ApplicationConfig, suffix strin
 		ServiceAccount:      "default",
 		Instances:           args.Instances,
 		Type:                args.Type,
-		GatewayConfig:       args.Gateways,
 		Templates:           args.Templates,
 		TemplateDefinitions: n.Spec.TemplateDefinitions,
 		Labels:              args.Labels,

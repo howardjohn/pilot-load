@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
-	"golang.org/x/sync/errgroup"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"golang.org/x/sync/errgroup"
+
+	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -71,7 +71,6 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 type ClusterJitterConfig struct {
 	Workloads Duration `json:"workloads,omitempty"`
 	Config    Duration `json:"config,omitempty"`
-	Secrets   Duration `json:"secrets,omitempty"`
 }
 
 type AppType string
@@ -93,20 +92,11 @@ const (
 	VMType       AppType = "vm"
 )
 
-const (
-	Global APIScope = "global"
-
-	Namespace APIScope = "namespace"
-
-	Application APIScope = "application"
-)
-
 type ApplicationConfig struct {
 	Name      string            `json:"name,omitempty"`
 	Type      AppType           `json:"type,omitempty"`
 	Replicas  int               `json:"replicas,omitempty"`
 	Instances int               `json:"instances,omitempty"`
-	Gateways  GatewayConfig     `json:"gateways,omitempty"`
 	Labels    map[string]string `json:"labels,omitempty"`
 	Templates []ConfigTemplate  `json:"configs,omitempty"`
 	GetNode   func() string     `json:"-"`
@@ -137,13 +127,6 @@ type NamespaceConfig struct {
 	Applications []ApplicationConfig `json:"applications,omitempty"`
 	Templates    []ConfigTemplate    `json:"configs,omitempty"`
 	Waypoint     string              `json:"waypoint,omitempty"`
-}
-
-type GatewayConfig struct {
-	// Defaults to parent name. Setting allows a stable identifier
-	Name       string `json:"name,omitempty"`
-	Replicas   int    `json:"replicas,omitempty"`
-	Kubernetes bool   `json:"kubernetes,omitempty"`
 }
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
@@ -210,11 +193,8 @@ func (c ClusterConfig) ApplyDefaults() ClusterConfig {
 			if dp.Replicas == 0 {
 				dp.Replicas = 1
 			}
-			if len(dp.Gateways.Name) > 0 && dp.Gateways.Replicas == 0 {
-				dp.Gateways.Replicas = 1
-			}
 			if dp.Type == "" {
-				dp.Type = SidecarType
+				dp.Type = PlainType
 			}
 			ns.Applications[d] = dp
 		}
