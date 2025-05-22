@@ -47,8 +47,12 @@ func NewApplication(s ApplicationSpec) *Application {
 		if cfg == nil {
 			cfg = map[string]any{}
 		}
-		cfg[config.Namespace] = s.Namespace
-		cfg[config.Name] = s.App
+		if _, f := cfg[config.Namespace]; !f {
+			cfg[config.Namespace] = s.Namespace
+		}
+		if _, f := cfg[config.Name]; !f {
+			cfg[config.Name] = s.App
+		}
 		w.configs = append(w.configs, config.NewTemplated(config.TemplatedSpec{
 			Template: s.TemplateDefinitions.Get(tmpl.Name),
 			Config:   cfg,
