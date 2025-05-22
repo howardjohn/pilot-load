@@ -19,14 +19,6 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
-// Load testing pod startup
-func PodStartup(a model.Args) error {
-	if err := ExecuteSimulations(a, &PodStartupSimulation{a.StartupConfig}); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
-
 func Impersonate(a model.Args) error {
 	sim := impersonate.NewSimulation(impersonate.ImpersonateSpec{
 		Selector: model.Selector(a.ImpersonateConfig.Selector),

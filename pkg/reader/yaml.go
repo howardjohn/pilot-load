@@ -6,16 +6,15 @@ import (
 	"io"
 	"os"
 
+	"istio.io/istio/pkg/config/schema/collections"
+	"istio.io/istio/pkg/config/schema/resource"
+	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/yaml"
-
-	"istio.io/istio/pkg/config/schema/collections"
-	"istio.io/istio/pkg/config/schema/resource"
-	"istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/controllers"
 )
 
 func ParseYamlFile(inputFile string) ([]controllers.Object, error) {

@@ -5,6 +5,6 @@ import (
 	"github.com/howardjohn/pilot-load/sims/podstartup"
 )
 
-var commands = []flag.CommandBuilder {
+var commands = []flag.CommandBuilder{
 	podstartup.Command,
 }

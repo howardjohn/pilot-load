@@ -1,12 +1,12 @@
 package app
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/maps"
+	"k8s.io/apimachinery/pkg/util/rand"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/config"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type ApplicationSpec struct {
@@ -52,7 +52,7 @@ func NewApplication(s ApplicationSpec) *Application {
 		w.configs = append(w.configs, config.NewTemplated(config.TemplatedSpec{
 			Template: s.TemplateDefinitions.Get(tmpl.Name),
 			Config:   cfg,
-			Refresh: tmpl.Refresh,
+			Refresh:  tmpl.Refresh,
 		}))
 	}
 

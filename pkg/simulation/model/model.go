@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
+	"golang.org/x/sync/errgroup"
+	"istio.io/istio/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"golang.org/x/sync/errgroup"
-
-	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -289,7 +289,7 @@ type ProberConfig struct {
 	GatewayAddress string
 }
 
-type  Args struct {
+type Args struct {
 	PilotAddress      string
 	InjectAddress     string
 	Client            *kube.Client

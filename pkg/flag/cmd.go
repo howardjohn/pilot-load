@@ -1,14 +1,15 @@
 package flag
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/spf13/pflag"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type CommandBuilder = func(f *pflag.FlagSet) Command
 
 type Command struct {
-	Name string
+	Name        string
 	Description string
-	Build func() (model.DebuggableSimulation, error)
+	Build       func() (model.DebuggableSimulation, error)
 }

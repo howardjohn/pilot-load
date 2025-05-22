@@ -8,20 +8,20 @@ import (
 )
 
 type Parseable interface {
-comparable
+	comparable
 }
-type Var struct {
+type (
+	Var                     struct{}
+	GenericVar[T Parseable] struct {
+		Var
+	}
+)
 
-}
-type GenericVar[T Parseable] struct {
-Var
-}
-
-func Register[T Parseable](flags *pflag.FlagSet, val *T,  name string,description string) {
+func Register[T Parseable](flags *pflag.FlagSet, val *T, name string, description string) {
 	RegisterShort[T](flags, val, name, "", description)
 }
 
-func RegisterShort[T Parseable](flags *pflag.FlagSet, val *T, name, short string,  description string) {
+func RegisterShort[T Parseable](flags *pflag.FlagSet, val *T, name, short string, description string) {
 	defaultValue := *val
 	switch d := any(defaultValue).(type) {
 	case string:

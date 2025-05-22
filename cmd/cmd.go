@@ -5,13 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/yaml"
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 )
@@ -111,8 +111,7 @@ func init() {
 		isolatedCmd,
 	)
 	for _, cb := range commands {
-		cmd := &cobra.Command{
-		}
+		cmd := &cobra.Command{}
 		fs := cmd.Flags()
 		built := cb(fs)
 		cmd.Use = built.Name

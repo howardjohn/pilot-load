@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"istio.io/istio/pkg/maps"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-
-	"istio.io/istio/pkg/maps"
 )
 
 type NamespaceSpec struct {
