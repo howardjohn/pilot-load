@@ -21,6 +21,10 @@ type PodStartupSimulation struct {
 	Config model.StartupConfig
 }
 
+func (a *PodStartupSimulation) GetConfig() any {
+	return a.Config
+}
+
 func (a *PodStartupSimulation) createPod() (*v1.Pod, error) {
 	p := &v1.Pod{}
 	if err := yaml.Unmarshal([]byte(a.Config.Spec), p); err != nil {

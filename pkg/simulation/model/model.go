@@ -25,6 +25,12 @@ type Simulation interface {
 	Cleanup(ctx Context) error
 }
 
+type DebuggableSimulation interface {
+	Simulation
+	// GetConfig returns the config for the simulation
+	GetConfig() any
+}
+
 type RunningSimulation interface {
 	Simulation
 	Running() chan struct{}
@@ -283,7 +289,7 @@ type ProberConfig struct {
 	GatewayAddress string
 }
 
-type Args struct {
+type  Args struct {
 	PilotAddress      string
 	InjectAddress     string
 	Client            *kube.Client

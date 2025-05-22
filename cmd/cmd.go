@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -104,12 +105,32 @@ func init() {
 		adscCmd,
 		clusterCmd,
 		impersonateCmd,
-		startupCmd,
 		xdsLatencyCmd,
 		reproduceCmd,
 		dumpCmd,
 		isolatedCmd,
 	)
+	for _, cb := range commands {
+		cmd := &cobra.Command{
+		}
+		fs := cmd.Flags()
+		built := cb(fs)
+		cmd.Use = built.Name
+		cmd.Short = built.Description
+		cmd.RunE = func(_ *cobra.Command, _ []string) error {
+			args, err := GetArgs()
+			if err != nil {
+				return err
+			}
+			sim, err := built.Build()
+			if err != nil {
+				return err
+			}
+			logConfig(sim.GetConfig())
+			return simulation.ExecuteSimulations(args, sim)
+		}
+		rootCmd.AddCommand(cmd)
+	}
 }
 
 func Execute() {
