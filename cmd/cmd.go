@@ -85,7 +85,7 @@ func GetArgs() (model.Args, error) {
 
 var rootCmd = &cobra.Command{
 	Use:          "pilot-load",
-	Short:        "open XDS connections to pilot",
+	Short:        "toolkit for commands to load test Istiod and Kubernetes",
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return log.Configure(loggingOptions)
