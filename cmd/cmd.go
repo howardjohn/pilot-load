@@ -121,7 +121,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			sim, err := built.Build()
+			sim, err := built.Build(args)
 			if err != nil {
 				return err
 			}
