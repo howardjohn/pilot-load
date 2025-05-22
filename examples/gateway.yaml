@@ -1,0 +1,22 @@
+jitter:
+  workloads: "10s"
+  config: "1s"
+gracePeriod: 500ms
+namespaces:
+- name: gateway
+  applications:
+  - name: gateway
+    type: gateway
+    configs:
+      - tls-secret
+      - name: istio-gateway
+        config:
+          # Override name to be a stable one
+          NameOverride: gateway
+      - name: virtualservice
+        config:
+          gateways: [gateway]
+    pods: 1
+nodes:
+- name: node
+  count: 1

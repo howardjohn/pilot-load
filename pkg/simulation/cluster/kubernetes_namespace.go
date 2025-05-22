@@ -1,6 +1,10 @@
 package cluster
 
 import (
+	"time"
+
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/sleep"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -23,8 +27,19 @@ func NewKubernetesNamespace(s KubernetesNamespaceSpec) *KubernetesNamespace {
 	return &KubernetesNamespace{Spec: &s}
 }
 
-func (n *KubernetesNamespace) Run(ctx model.Context) (err error) {
-	return kube.Apply(ctx.Client, n.getKubernetesNamespace())
+func (n *KubernetesNamespace) Run(ctx model.Context) error {
+	var err error
+	// Retry in case it is still finalizing
+	for range 10 {
+		if err = kube.Apply(ctx.Client, n.getKubernetesNamespace()); err == nil {
+			return nil
+		}
+		log.Warnf("namespace failed, retrying...: %v", err)
+		if !sleep.UntilContext(ctx, time.Millisecond*500) {
+			return err
+		}
+	}
+	return err
 }
 
 func (n *KubernetesNamespace) Cleanup(ctx model.Context) error {

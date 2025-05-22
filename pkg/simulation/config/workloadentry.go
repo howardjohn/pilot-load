@@ -28,9 +28,9 @@ func NewWorkloadEntry(s WorkloadEntrySpec) *WorkloadEntry {
 	return &WorkloadEntry{Spec: &s}
 }
 
-func (v *WorkloadEntry) Refresh(ctx model.Context) error {
+func (v *WorkloadEntry) Refresh(ctx model.Context) (string, error) {
 	v.Spec.Weight = rand.Intn(100)
-	return v.Run(ctx)
+	return v.Spec.Namespace + "/" + v.Spec.App, v.Run(ctx)
 }
 
 func (v *WorkloadEntry) Run(ctx model.Context) (err error) {

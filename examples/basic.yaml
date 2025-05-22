@@ -1,6 +1,4 @@
 nodeMetadata: {}
-#istio:
-#  default: true # create all applicable istio resources for root namespace
 jitter:
   workloads: "10s"
   config: "0s"
@@ -10,5 +8,5 @@ namespaces:
   applications:
   - name: big
     replicas: 1
-    instances: 1
+    pods: 1
     type: sidecar

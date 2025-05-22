@@ -1,0 +1,25 @@
+#refresh=false
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: {{.NameOverride | default .Name}}
+spec:
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*.example.com"
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "*.example.com"
+      tls:
+        httpsRedirect: false
+        mode: SIMPLE
+        credentialName: {{.Name}}
+  selector:
+    app: {{.Name}}

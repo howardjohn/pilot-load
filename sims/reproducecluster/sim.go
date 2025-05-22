@@ -1,4 +1,4 @@
-package reproduce
+package reproducecluster
 
 import (
 	"bufio"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/pflag"
 	clientnetworkingalpha "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	clientnetworkingbeta "istio.io/client-go/pkg/apis/networking/v1beta1"
 	clientsecurity "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -27,16 +28,33 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
-type ReproduceSpec struct {
-	Delay      time.Duration
+type Config struct {
 	ConfigFile string
 	ConfigOnly bool
+	Delay      time.Duration
+}
+
+func Command(f *pflag.FlagSet) flag.Command {
+	cfg := Config{}
+
+	flag.Register(f, &cfg.Delay, "delay", "delay between each connection")
+	flag.RegisterShort(f, &cfg.ConfigOnly, "config-only", "n", "only apply config file, do not connect to XDS")
+	flag.RegisterShort(f, &cfg.ConfigFile, "file", "f", "config file")
+	return flag.Command{
+		Name:        "reproduce-cluster",
+		Description: "simulate a cluster by applying the configuration. Makes XDS connections where one would exist in-cluster.",
+		Details:     "Expected format: `kubectl get vs,gw,dr,sidecar,svc,endpoints,pod,namespace,sa -oyaml -A | kubectl grep`",
+		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+			return &ReproduceSimulation{Spec: cfg, running: make(chan struct{})}, nil
+		},
+	}
 }
 
 type ApiDetails struct {
@@ -45,16 +63,16 @@ type ApiDetails struct {
 }
 
 type ReproduceSimulation struct {
-	Spec    ReproduceSpec
+	Spec    Config
 	sims    []model.Simulation
 	running chan struct{}
 }
 
-var _ model.Simulation = &ReproduceSimulation{}
-
-func NewSimulation(spec ReproduceSpec) *ReproduceSimulation {
-	return &ReproduceSimulation{Spec: spec, running: make(chan struct{})}
+func (i *ReproduceSimulation) GetConfig() any {
+	return i.Spec
 }
+
+var _ model.Simulation = &ReproduceSimulation{}
 
 func toK8s(g config.GroupVersionKind) schema.GroupVersionKind {
 	return schema.GroupVersionKind{

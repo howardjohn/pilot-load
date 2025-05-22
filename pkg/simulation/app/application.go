@@ -2,6 +2,7 @@ package app
 
 import (
 	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/maps"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
@@ -9,36 +10,26 @@ import (
 )
 
 type ApplicationSpec struct {
-	App            string
-	Node           func() string
-	Namespace      string
-	ServiceAccount string
-	Instances      int
-	Type           model.AppType
-	GatewayConfig  model.GatewayConfig
-	Istio          model.IstioApplicationConfig
-	Labels         map[string]string
+	App                 string
+	Node                func() string
+	Namespace           string
+	ServiceAccount      string
+	Instances           int
+	Type                model.AppType
+	TemplateDefinitions model.TemplateDefinitions
+	Templates           []model.ConfigTemplate
+	Labels              map[string]string
 }
 
 type Application struct {
-	Spec                  *ApplicationSpec
-	pods                  []*Pod
-	service               *Service
-	kgateways             []*config.KubeGateway
-	virtualService        *config.VirtualService
-	httpRoute             *config.HTTPRoute
-	gateways              []*config.Gateway
-	secrets               []*config.Secret
-	destRule              *config.DestinationRule
-	workloadEntry         *config.WorkloadEntry
-	workloadGroup         *config.WorkloadGroup
-	serviceEntry          *config.ServiceEntry
-	envoyFilter           *config.EnvoyFilter
-	sidecar               *config.Sidecar
-	telemetry             *config.Telemetry
-	peerAuthentication    *config.PeerAuthentication
-	requestAuthentication *config.RequestAuthentication
-	authorizationPolicy   *config.AuthorizationPolicy
+	Spec          *ApplicationSpec
+	pods          []*Pod
+	service       *Service
+	kgateways     []*config.KubeGateway
+	workloadEntry *config.WorkloadEntry
+	workloadGroup *config.WorkloadGroup
+	serviceEntry  *config.ServiceEntry
+	configs       []*config.Templated
 }
 
 var (
@@ -51,60 +42,22 @@ func NewApplication(s ApplicationSpec) *Application {
 	w := &Application{Spec: &s}
 
 	// Apply common CRDs to all app types
-	if s.Istio.Default || s.Istio.VirtualService != nil {
-		var gateways []string
-		if s.Istio.VirtualService != nil && len(s.Istio.VirtualService.Gateways) != 0 {
-			gateways = s.Istio.VirtualService.Gateways
+	for _, tmpl := range s.Templates {
+		cfg := maps.Clone(tmpl.Config)
+		if cfg == nil {
+			cfg = map[string]any{}
 		}
-		w.virtualService = config.NewVirtualService(config.VirtualServiceSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			Gateways:  gateways,
-			Subsets:   []config.SubsetSpec{{Name: "a", Weight: 100}},
-		})
-	}
-	if s.Istio.HttpRoutes != nil {
-		gateways := s.Istio.HttpRoutes.Gateways
-		w.httpRoute = config.NewHTTPRoute(config.HTTPRouteSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			Gateways:  gateways,
-		})
-	}
-	if s.Istio.Default || s.Istio.DestinationRule != nil {
-		w.destRule = config.NewDestinationRule(config.DestinationRuleSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			Subsets:   []string{"a"},
-		})
-	}
-	if s.Istio.Default || s.Istio.Telemetry != nil {
-		w.telemetry = config.NewTelemetry(config.TelemetrySpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			APIScope:  model.Application,
-		})
-	}
-	if s.Istio.Default || s.Istio.RequestAuthentication != nil {
-		w.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			APIScope:  model.Application,
-		})
-	}
-	if s.Istio.Default || s.Istio.PeerAuthentication != nil {
-		w.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			APIScope:  model.Application,
-		})
-	}
-	if s.Istio.Default || s.Istio.AuthorizationPolicy != nil {
-		w.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			APIScope:  model.Application,
-		})
+		if _, f := cfg[config.Namespace]; !f {
+			cfg[config.Namespace] = s.Namespace
+		}
+		if _, f := cfg[config.Name]; !f {
+			cfg[config.Name] = s.App
+		}
+		w.configs = append(w.configs, config.NewTemplated(config.TemplatedSpec{
+			Template: s.TemplateDefinitions.Get(tmpl.Name),
+			Config:   cfg,
+			Refresh:  tmpl.Refresh,
+		}))
 	}
 
 	// Apply CRDs for External app type and return
@@ -137,22 +90,6 @@ func NewApplication(s ApplicationSpec) *Application {
 		return w
 	}
 
-	// Apply CRDs for sidecar and GW app type
-	if s.Istio.Default || s.Istio.EnvoyFilter != nil {
-		w.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			APIScope:  model.Application,
-		})
-	}
-	if s.Istio.Default || s.Istio.Sidecar != nil {
-		w.sidecar = config.NewSidecar(config.SidecarSpec{
-			App:       s.App,
-			Namespace: s.Namespace,
-			APIScope:  model.Application,
-		})
-	}
-
 	// Currently we never use Deployment since its pretty slow - create Pods manually instead
 	for i := 0; i < s.Instances; i++ {
 		w.pods = append(w.pods, w.makePod())
@@ -164,32 +101,6 @@ func NewApplication(s ApplicationSpec) *Application {
 		Labels:    s.Labels,
 		Waypoint:  s.Type == model.WaypointType,
 	})
-
-	if s.Type == model.GatewayType {
-		for range s.GatewayConfig.Replicas {
-			name := s.GatewayConfig.Name
-			if s.GatewayConfig.Kubernetes {
-				name = s.App
-				gw := config.NewKubeGateway(config.KubeGatewaySpec{
-					Name:      s.GatewayConfig.Name,
-					App:       s.App,
-					Namespace: s.Namespace,
-				})
-				w.kgateways = append(w.kgateways, gw)
-			} else {
-				gw := config.NewGateway(config.GatewaySpec{
-					Name:      s.GatewayConfig.Name,
-					App:       s.App,
-					Namespace: s.Namespace,
-				})
-				w.gateways = append(w.gateways, gw)
-			}
-			w.secrets = append(w.secrets, config.NewSecret(config.SecretSpec{
-				Namespace: s.Namespace,
-				Name:      name,
-			}))
-		}
-	}
 
 	if s.Type == model.WaypointType {
 		gw := config.NewKubeGateway(config.KubeGatewaySpec{
@@ -205,42 +116,13 @@ func NewApplication(s ApplicationSpec) *Application {
 
 func (w *Application) GetConfigs() []model.RefreshableSimulation {
 	sims := []model.RefreshableSimulation{}
-	if w.virtualService != nil {
-		sims = append(sims, w.virtualService)
-	}
-	if w.httpRoute != nil {
-		sims = append(sims, w.httpRoute)
-	}
-	if w.destRule != nil {
-		sims = append(sims, w.destRule)
-	}
-	if w.envoyFilter != nil {
-		sims = append(sims, w.envoyFilter)
-	}
-	if w.sidecar != nil {
-		sims = append(sims, w.sidecar)
-	}
 	if w.workloadEntry != nil {
 		sims = append(sims, w.workloadEntry)
 	}
-	if w.telemetry != nil {
-		sims = append(sims, w.telemetry)
-	}
-	if w.authorizationPolicy != nil {
-		sims = append(sims, w.authorizationPolicy)
-	}
-	if w.peerAuthentication != nil {
-		sims = append(sims, w.peerAuthentication)
+	for _, cfg := range w.configs {
+		sims = append(sims, cfg)
 	}
 
-	return sims
-}
-
-func (w *Application) GetSecrets() []model.RefreshableSimulation {
-	sims := []model.RefreshableSimulation{}
-	for _, scr := range w.secrets {
-		sims = append(sims, scr)
-	}
 	return sims
 }
 
@@ -258,14 +140,11 @@ func (w *Application) makePod() *Pod {
 func (w *Application) getSims() []model.Simulation {
 	sims := []model.Simulation{}
 
+	for _, cfg := range w.configs {
+		sims = append(sims, cfg)
+	}
 	if w.service != nil {
 		sims = append(sims, w.service)
-	}
-	if w.sidecar != nil {
-		sims = append(sims, w.sidecar)
-	}
-	if w.envoyFilter != nil {
-		sims = append(sims, w.envoyFilter)
 	}
 	if w.serviceEntry != nil {
 		sims = append(sims, w.serviceEntry)
@@ -276,37 +155,8 @@ func (w *Application) getSims() []model.Simulation {
 	if w.workloadGroup != nil {
 		sims = append(sims, w.workloadGroup)
 	}
-	if w.telemetry != nil {
-		sims = append(sims, w.telemetry)
-	}
-	if w.authorizationPolicy != nil {
-		sims = append(sims, w.authorizationPolicy)
-	}
-	if w.peerAuthentication != nil {
-		sims = append(sims, w.peerAuthentication)
-	}
-	if w.requestAuthentication != nil {
-		sims = append(sims, w.requestAuthentication)
-	}
-
-	if w.virtualService != nil {
-		sims = append(sims, w.virtualService)
-	}
-
-	if w.httpRoute != nil {
-		sims = append(sims, w.httpRoute)
-	}
-	if w.destRule != nil {
-		sims = append(sims, w.destRule)
-	}
 	for _, gw := range w.kgateways {
 		sims = append(sims, gw)
-	}
-	for _, gw := range w.gateways {
-		sims = append(sims, gw)
-	}
-	for _, scr := range w.secrets {
-		sims = append(sims, scr)
 	}
 	for _, p := range w.pods {
 		sims = append(sims, p)
@@ -322,10 +172,10 @@ func (w *Application) Cleanup(ctx model.Context) error {
 	return model.AggregateSimulation{Simulations: model.ReverseSimulations(w.getSims())}.CleanupParallel(ctx)
 }
 
-func (w *Application) Refresh(ctx model.Context) error {
+func (w *Application) Refresh(ctx model.Context) (string, error) {
 	// TODO: implement for Deployment
 	if len(w.pods) == 0 {
-		return nil
+		return "skipped, no pods", nil
 	}
 
 	i := 0
@@ -338,14 +188,14 @@ func (w *Application) Refresh(ctx model.Context) error {
 
 	w.pods[i] = newPod
 	if err := newPod.Run(ctx); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := removed.Cleanup(ctx); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return newPod.Spec.Namespace + "/" + newPod.Name(), nil
 }
 
 func (w *Application) Scale(ctx model.Context, delta int) error {

@@ -105,26 +105,43 @@ func ApplyFast[T controllers.Object](c *Client, o T) error {
 func ApplyRealSSA[T controllers.Object](c *Client, o T) error {
 	name := o.GetName()
 	ns := o.GetNamespace()
-	cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+	var patcher func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) error
+	if !TypeIsConcrete[T]() {
+		cl, _ := dynamicClient(c, o)
+		patcher = func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) error {
+			_, err := cl.Patch(ctx, name, pt, data, opts)
+			return err
+		}
+	} else {
+		cl := kubeclient.GetWriteClient[T](c, ns).(API[T])
+		patcher = func(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) error {
+			_, err := cl.Patch(ctx, name, pt, data, opts)
+			return err
+		}
+	}
 	t := ptr.TypeName[T]()
 
 	buf := &bytes.Buffer{}
-	if err := kube.IstioCodec.LegacyCodec(kubetypes2.MustGVRFromType[T]().GroupVersion()).Encode(o, buf); err != nil {
-		return err
+	gv := o.GetObjectKind().GroupVersionKind().GroupVersion()
+	if gv.Version == "" {
+		gv = kubetypes2.MustGVRFromType[T]().GroupVersion()
+	}
+	if err := kube.IstioCodec.LegacyCodec(gv).Encode(o, buf); err != nil {
+		return fmt.Errorf("encode: %v", err)
 	}
 	b := buf.Bytes()
 	opts := metav1.PatchOptions{
 		Force:        ptr.Of(true),
 		FieldManager: "pilot-load",
 	}
-	_, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts)
+	err := patcher(context.TODO(), name, types.ApplyPatchType, b, opts)
 	if err != nil {
 		return fmt.Errorf("failed to ssa %s/%s/%s: %v", t, name, ns, err)
 	}
 	scope.Debugf("fast ssa resource: %s/%s/%s", t, name, ns)
 	if hasStatus(c, o) {
 		scope.Debugf("fast ssa resource status: %s/%s.%s", t, name, ns)
-		if _, err := cl.Patch(context.TODO(), name, types.ApplyPatchType, b, opts, "status"); err != nil {
+		if err := patcher(context.TODO(), name, types.ApplyPatchType, b, opts, "status"); err != nil {
 			return fmt.Errorf("ssa status %s/%s/%s: %v", t, name, ns, err)
 		}
 	}

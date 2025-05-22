@@ -11,45 +11,11 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/dump"
-	"github.com/howardjohn/pilot-load/pkg/simulation/impersonate"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
-	"github.com/howardjohn/pilot-load/pkg/simulation/reproduce"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
-
-// Load testing pod startup
-func PodStartup(a model.Args) error {
-	if err := ExecuteSimulations(a, &PodStartupSimulation{a.StartupConfig}); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
-
-func Impersonate(a model.Args) error {
-	sim := impersonate.NewSimulation(impersonate.ImpersonateSpec{
-		Selector: model.Selector(a.ImpersonateConfig.Selector),
-		Replicas: a.ImpersonateConfig.Replicas,
-		Delay:    a.ImpersonateConfig.Delay,
-	})
-	if err := ExecuteSimulations(a, sim); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
-
-func Reproduce(a model.Args) error {
-	sim := reproduce.NewSimulation(reproduce.ReproduceSpec{
-		Delay:      a.ReproduceConfig.Delay,
-		ConfigFile: a.ReproduceConfig.ConfigFile,
-		ConfigOnly: a.ReproduceConfig.ConfigOnly,
-	})
-	if err := ExecuteSimulations(a, sim); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
 
 func Cluster(a model.Args) error {
 	sim := cluster.NewCluster(cluster.ClusterSpec{Config: a.ClusterConfig})
@@ -92,18 +58,6 @@ func Adsc(a model.Args) error {
 		})
 	}
 	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims, Delay: a.AdsConfig.Delay})
-}
-
-func Latency(a model.Args) error {
-	opts := a.Auth.GrpcOptions("default", "default")
-
-	return ExecuteSimulations(a, &XdsLatencySimulation{
-		Namespace: "default",
-		Name:      "adsc",
-		IP:        util.GetIP(),
-		Cluster:   "Kubernetes",
-		GrpcOpts:  opts,
-	})
 }
 
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {

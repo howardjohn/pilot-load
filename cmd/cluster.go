@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"text/template"
 
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/templates"
 )
 
 var configFile = ""
@@ -45,7 +47,7 @@ var clusterCmd = WithProfiling(&cobra.Command{
 
 var defaultConfig = model.ClusterConfig{
 	Namespaces: []model.NamespaceConfig{{
-		Applications: []model.ApplicationConfig{{Instances: 1}},
+		Applications: []model.ApplicationConfig{{Pods: 1}},
 	}},
 }
 
@@ -61,6 +63,16 @@ func readConfigFile(filename string) (model.ClusterConfig, error) {
 	if err := yaml.Unmarshal(bytes, &config); err != nil {
 		return config, fmt.Errorf("failed to unmarshall configFile: %v", err)
 	}
+	if config.Templates.Inner == nil {
+		config.Templates.Inner = map[string]*template.Template{}
+	}
+	for k, v := range templates.LoadBuiltin() {
+		if _, f := config.Templates.Inner[k]; f {
+			log.Warnf("warning: overriding default template %q", k)
+			continue
+		}
+		config.Templates.Inner[k] = v
+	}
 	return config, err
 }
 
@@ -70,7 +82,7 @@ func logClusterConfig(config model.ClusterConfig) {
 		namespaces += ns.Replicas
 		for _, app := range ns.Applications {
 			applications += app.Replicas * ns.Replicas
-			pods += app.Replicas * app.Instances * ns.Replicas
+			pods += app.Replicas * app.Pods * ns.Replicas
 		}
 	}
 	log.Infof("Initial configuration: %d namespaces, %d applications, and %d pods", namespaces, applications, pods)

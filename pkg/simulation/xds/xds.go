@@ -54,11 +54,15 @@ func (x *Simulation) Run(ctx model.Context) error {
 		meta[k] = v
 	}
 	go func() {
+		nt := string(x.AppType)
+		if nt == "gateway" {
+			nt = "router"
+		}
 		adsc.Connect(ctx.Args.PilotAddress, &adsc.Config{
 			Namespace: x.Namespace,
 			Workload:  x.Name + "-" + x.IP,
 			Meta:      meta,
-			NodeType:  string(x.AppType),
+			NodeType:  nt,
 			IP:        x.IP,
 			Context:   c,
 			GrpcOpts:  x.GrpcOpts,

@@ -1,20 +1,59 @@
-package simulation
+package xdslatency
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
-	"istio.io/client-go/pkg/apis/networking/v1alpha3"
+	v1 "istio.io/client-go/pkg/apis/networking/v1"
 	"istio.io/istio/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/howardjohn/pilot-load/adsc"
+	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
+
+type StartupConfig struct {
+	Namespace   string
+	Concurrency int
+	Inject      bool
+	Cooldown    time.Duration
+	Spec        string
+}
+
+func Command(f *pflag.FlagSet) flag.Command {
+	startupConfig := model.StartupConfig{
+		Concurrency: 1,
+		Cooldown:    time.Millisecond * 10,
+	}
+
+	var specFile string
+	flag.Register(f, &startupConfig.Inject, "inject", "if true, we will inject the pod")
+	flag.Register(f, &startupConfig.Concurrency, "concurrency", "number of pods to start concurrently")
+	flag.Register(f, &startupConfig.Namespace, "namespace", "namespace to run in")
+	flag.Register(f, &startupConfig.Cooldown, "cooldown", "time to wait after starting each pod (per worker)")
+	flag.Register(f, &specFile, "spec", "pod spec")
+	return flag.Command{
+		Name:        "xds-latency",
+		Description: "measure end to end XDS latency",
+		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+			opts := args.Auth.GrpcOptions("default", "default")
+			return &XdsLatencySimulation{
+				Namespace: "default",
+				Name:      "adsc",
+				IP:        util.GetIP(),
+				Cluster:   "Kubernetes",
+				GrpcOpts:  opts,
+			}, nil
+		},
+	}
+}
 
 type XdsLatencySimulation struct {
 	Labels    map[string]string
@@ -29,6 +68,10 @@ type XdsLatencySimulation struct {
 
 	cancel context.CancelFunc
 	done   chan struct{}
+}
+
+func (x XdsLatencySimulation) GetConfig() any {
+	return x
 }
 
 var _ model.Simulation = &XdsLatencySimulation{}
@@ -134,8 +177,8 @@ func (x XdsLatencySimulation) Cleanup(ctx model.Context) error {
 	return nil
 }
 
-func createConfig(index int) *v1alpha3.ServiceEntry {
-	return &v1alpha3.ServiceEntry{
+func createConfig(index int) *v1.ServiceEntry {
+	return &v1.ServiceEntry{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("cfg-%d", index),
 			Namespace: "default",

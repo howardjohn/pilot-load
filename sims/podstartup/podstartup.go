@@ -1,27 +1,75 @@
-package simulation
+package podstartup
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/spf13/pflag"
 	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 
+	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
-type PodStartupSimulation struct {
+type StartupConfig struct {
+	Namespace   string
+	Concurrency int
+	Inject      bool
+	Cooldown    time.Duration
+	Spec        string
+}
+
+func Command(f *pflag.FlagSet) flag.Command {
+	startupConfig := model.StartupConfig{
+		Concurrency: 1,
+		Cooldown:    time.Millisecond * 10,
+	}
+
+	var specFile string
+	flag.Register(f, &startupConfig.Inject, "inject", "if true, we will inject the pod")
+	flag.Register(f, &startupConfig.Concurrency, "concurrency", "number of pods to start concurrently")
+	flag.Register(f, &startupConfig.Namespace, "namespace", "namespace to run in")
+	flag.Register(f, &startupConfig.Cooldown, "cooldown", "time to wait after starting each pod (per worker)")
+	flag.Register(f, &specFile, "spec", "pod spec")
+	return flag.Command{
+		Name:        "pod-startup",
+		Description: "measure the time for pods to start",
+		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+			if startupConfig.Namespace == "" {
+				return nil, fmt.Errorf("--namespace required")
+			}
+			if specFile == "" {
+				return nil, fmt.Errorf("--spec required")
+			}
+			f, err := os.ReadFile(specFile)
+			if err != nil {
+				return nil, err
+			}
+			startupConfig.Spec = string(f)
+
+			return &Simulation{Config: startupConfig}, nil
+		},
+	}
+}
+
+type Simulation struct {
 	Config model.StartupConfig
 }
 
-func (a *PodStartupSimulation) createPod() (*v1.Pod, error) {
+func (a *Simulation) GetConfig() any {
+	return a.Config
+}
+
+func (a *Simulation) createPod() (*v1.Pod, error) {
 	p := &v1.Pod{}
 	if err := yaml.Unmarshal([]byte(a.Config.Spec), p); err != nil {
 		return nil, err
@@ -54,7 +102,7 @@ type result struct {
 
 const cleanupDelay = time.Second * 0
 
-func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) {
+func (a *Simulation) runWorker(ctx model.Context, report chan result) {
 	work := func() (res result) {
 		pod, err := a.createPod()
 		if err != nil {
@@ -135,7 +183,7 @@ func (a *PodStartupSimulation) runWorker(ctx model.Context, report chan result) 
 	}
 }
 
-func (a *PodStartupSimulation) Run(ctx model.Context) error {
+func (a *Simulation) Run(ctx model.Context) error {
 	c := make(chan result)
 	wg := sync.WaitGroup{}
 	for i := 0; i < a.Config.Concurrency; i++ {
@@ -189,11 +237,11 @@ complete: time until it was actually observed as Ready\n`)
 	}
 }
 
-func (a *PodStartupSimulation) Cleanup(ctx model.Context) error {
+func (a *Simulation) Cleanup(ctx model.Context) error {
 	return nil
 }
 
-var _ model.Simulation = &PodStartupSimulation{}
+var _ model.Simulation = &Simulation{}
 
 // copy from kubernetes/pkg/api/v1/pod/utils.go
 func IsPodReady(pod *v1.Pod) bool {

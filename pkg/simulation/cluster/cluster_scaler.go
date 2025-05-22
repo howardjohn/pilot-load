@@ -37,7 +37,6 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 		defer close(s.done)
 		instanceJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Workloads))
 		configJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Config))
-		secretsJitterT := makeTicker(time.Duration(s.Cluster.Spec.Config.Jitter.Secrets))
 		for {
 			// TODO: more customization around everything here
 			select {
@@ -50,9 +49,10 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 					continue
 				}
 				wl := wls[rand.Intn(len(wls))]
-				log.Infof("refresh workload %s", wl.Spec.App)
-				if err := wl.Refresh(ctx); err != nil {
-					log.Errorf("failed to jitter workload: %v", err)
+				if info, err := wl.Refresh(ctx); err != nil {
+					log.Errorf("failed to jitter workloads: %v", err)
+				} else {
+					log.Infof("refreshed workload %s (%T)", info, wl)
 				}
 			case <-configJitterT:
 				cfgs := s.Cluster.GetRefreshableConfig()
@@ -61,20 +61,10 @@ func (s *ClusterScaler) Run(ctx model.Context) error {
 					continue
 				}
 				cfg := cfgs[rand.Intn(len(cfgs))]
-				log.Infof("refresh config %T", cfg)
-				if err := cfg.Refresh(ctx); err != nil {
+				if info, err := cfg.Refresh(ctx); err != nil {
 					log.Errorf("failed to jitter configs: %v", err)
-				}
-			case <-secretsJitterT:
-				secrets := s.Cluster.GetRefreshableSecrets()
-				if len(secrets) == 0 {
-					log.Warnf("no secrets to scale")
-					continue
-				}
-				cfg := secrets[rand.Intn(len(secrets))]
-				log.Infof("refresh secret %T", cfg)
-				if err := cfg.Refresh(ctx); err != nil {
-					log.Errorf("failed to jitter secret: %v", err)
+				} else {
+					log.Infof("refreshed config %s (%T)", info, cfg)
 				}
 			}
 		}

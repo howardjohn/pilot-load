@@ -83,7 +83,7 @@ func (v *KubeGateway) getGateway() *gateway.Gateway {
 			Namespace: v.Spec.Namespace,
 		},
 		Spec: gateway.GatewaySpec{
-			Addresses: []gateway.GatewayAddress{{
+			Addresses: []gateway.GatewaySpecAddress{{
 				Type:  ptr.Of(gateway.HostnameAddressType),
 				Value: fmt.Sprintf("%s.%s.svc.cluster.local", v.Spec.App, v.Spec.Namespace),
 			}},

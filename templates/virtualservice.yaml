@@ -1,0 +1,14 @@
+#refresh=true
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{.Name}}
+spec:
+  hosts: [{{.Name}}.example.com]
+  gateways: {{.gateways}}
+  http:
+  - route:
+    - destination:
+        host: {{.Name}}
+        port:
+          number: {{if .Rand}}80{{else}}443{{end}}

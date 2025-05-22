@@ -16,7 +16,6 @@ import (
 
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
-	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
@@ -26,17 +25,11 @@ type ClusterSpec struct {
 }
 
 type Cluster struct {
-	Name                  string
-	Spec                  *ClusterSpec
-	namespaces            []*Namespace
-	envoyFilter           *config.EnvoyFilter
-	sidecar               *config.Sidecar
-	telemetry             *config.Telemetry
-	peerAuthentication    *config.PeerAuthentication
-	requestAuthentication *config.RequestAuthentication
-	authorizationPolicy   *config.AuthorizationPolicy
-	nodes                 []*Node
-	running               chan struct{}
+	Name       string
+	Spec       *ClusterSpec
+	namespaces []*Namespace
+	nodes      []*Node
+	running    chan struct{}
 }
 
 var _ model.Simulation = &Cluster{}
@@ -59,43 +52,6 @@ func NewCluster(s ClusterSpec) *Cluster {
 		}
 	}
 
-	if s.Config.Istio.Default || s.Config.Istio.EnvoyFilter != nil {
-		cluster.envoyFilter = config.NewEnvoyFilter(config.EnvoyFilterSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.Sidecar != nil {
-		cluster.sidecar = config.NewSidecar(config.SidecarSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.Telemetry != nil {
-		cluster.telemetry = config.NewTelemetry(config.TelemetrySpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.RequestAuthentication != nil {
-		cluster.requestAuthentication = config.NewRequestAuthentication(config.RequestAuthenticationSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.PeerAuthentication != nil {
-		cluster.peerAuthentication = config.NewPeerAuthentication(config.PeerAuthenticationSpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-	if s.Config.Istio.Default || s.Config.Istio.AuthorizationPolicy != nil {
-		cluster.authorizationPolicy = config.NewAuthorizationPolicy(config.AuthorizationPolicySpec{
-			Namespace: "istio-system",
-			APIScope:  model.Global,
-		})
-	}
-
 	for nsId, ns := range s.Config.Namespaces {
 		for r := 0; r < ns.Replicas; r++ {
 			deployments := ns.Applications
@@ -108,11 +64,12 @@ func NewCluster(s ClusterSpec) *Cluster {
 				name = fmt.Sprintf("%s-%s", name, util.GenUIDOrStableIdentifier(s.Config.StableNames, nsId, r))
 			}
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
-				Name:        name,
-				Deployments: deployments,
-				Istio:       ns.Istio,
-				StableNames: s.Config.StableNames,
-				Waypoint:    ns.Waypoint,
+				Name:                name,
+				Deployments:         deployments,
+				TemplateDefinitions: s.Config.Templates,
+				Templates:           ns.Templates,
+				StableNames:         s.Config.StableNames,
+				Waypoint:            ns.Waypoint,
 			}))
 		}
 	}
@@ -131,17 +88,11 @@ func (c *Cluster) GetRefreshableConfig() []model.RefreshableSimulation {
 	var cfgs []model.RefreshableSimulation
 	for _, ns := range c.namespaces {
 		for _, w := range ns.deployments {
-			cfgs = append(cfgs, w.GetConfigs()...)
-		}
-	}
-	return cfgs
-}
-
-func (c *Cluster) GetRefreshableSecrets() []model.RefreshableSimulation {
-	var cfgs []model.RefreshableSimulation
-	for _, ns := range c.namespaces {
-		for _, w := range ns.deployments {
-			cfgs = append(cfgs, w.GetSecrets()...)
+			for _, cfg := range w.GetConfigs() {
+				if model.IsRefreshable(cfg) {
+					cfgs = append(cfgs, cfg)
+				}
+			}
 		}
 	}
 	return cfgs
@@ -277,25 +228,6 @@ func (c *Cluster) watchPods(ctx model.Context) {
 
 func (c *Cluster) getIstioResources() []model.Simulation {
 	sims := []model.Simulation{}
-
-	if c.sidecar != nil {
-		sims = append(sims, c.sidecar)
-	}
-	if c.envoyFilter != nil {
-		sims = append(sims, c.envoyFilter)
-	}
-	if c.telemetry != nil {
-		sims = append(sims, c.telemetry)
-	}
-	if c.authorizationPolicy != nil {
-		sims = append(sims, c.authorizationPolicy)
-	}
-	if c.peerAuthentication != nil {
-		sims = append(sims, c.peerAuthentication)
-	}
-	if c.requestAuthentication != nil {
-		sims = append(sims, c.requestAuthentication)
-	}
 
 	return sims
 }
