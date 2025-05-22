@@ -1,8 +1,9 @@
 package flag
 
 import (
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/spf13/pflag"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
 
 type CommandBuilder = func(f *pflag.FlagSet) Command

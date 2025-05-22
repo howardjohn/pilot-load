@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/pflag"
+	"google.golang.org/grpc"
+	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	v1 "istio.io/client-go/pkg/apis/networking/v1"
+	"istio.io/istio/pkg/log"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/howardjohn/pilot-load/adsc"
 	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
-	"github.com/spf13/pflag"
-	"google.golang.org/grpc"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
-	v1 "istio.io/client-go/pkg/apis/networking/v1"
-	"istio.io/istio/pkg/log"
 )
 
 type StartupConfig struct {
