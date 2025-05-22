@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
-	"golang.org/x/sync/errgroup"
-	"istio.io/istio/pkg/log"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	"golang.org/x/sync/errgroup"
+
+	"istio.io/istio/pkg/log"
 )
 
 type Simulation interface {
@@ -282,27 +282,16 @@ type StartupConfig struct {
 	Spec        string
 }
 
-type ProberConfig struct {
-	Replicas       int
-	DelayThreshold int
-	Delay          time.Duration
-	GatewayAddress string
-}
-
 type Args struct {
-	PilotAddress      string
-	InjectAddress     string
-	Client            *kube.Client
-	Auth              *security.AuthOptions
-	ClusterConfig     ClusterConfig
-	AdsConfig         AdscConfig
-	ImpersonateConfig ImpersonateConfig
-	ReproduceConfig   ReproduceConfig
-	StartupConfig     StartupConfig
-	ProberConfig      ProberConfig
-	Metadata          map[string]string
-	DeltaXDS          bool
-	DumpConfig        DumpConfig
+	PilotAddress  string
+	InjectAddress string
+	Client        *kube.Client
+	Auth          *security.AuthOptions
+	ClusterConfig ClusterConfig
+	AdsConfig     AdscConfig
+	Metadata      map[string]string
+	DeltaXDS      bool
+	DumpConfig    DumpConfig
 }
 
 type Context struct {

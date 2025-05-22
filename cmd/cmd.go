@@ -5,15 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"sigs.k8s.io/yaml"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/spf13/cobra"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"sigs.k8s.io/yaml"
+
+	"istio.io/istio/pkg/log"
 )
 
 var (
@@ -104,11 +104,7 @@ func init() {
 	rootCmd.AddCommand(
 		adscCmd,
 		clusterCmd,
-		impersonateCmd,
-		xdsLatencyCmd,
-		reproduceCmd,
 		dumpCmd,
-		isolatedCmd,
 	)
 	for _, cb := range commands {
 		cmd := &cobra.Command{}
@@ -116,6 +112,7 @@ func init() {
 		built := cb(fs)
 		cmd.Use = built.Name
 		cmd.Short = built.Description
+		cmd.Long = built.Description + "\n" + built.Details
 		cmd.RunE = func(_ *cobra.Command, _ []string) error {
 			args, err := GetArgs()
 			if err != nil {
