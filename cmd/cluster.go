@@ -47,7 +47,7 @@ var clusterCmd = WithProfiling(&cobra.Command{
 
 var defaultConfig = model.ClusterConfig{
 	Namespaces: []model.NamespaceConfig{{
-		Applications: []model.ApplicationConfig{{Instances: 1}},
+		Applications: []model.ApplicationConfig{{Pods: 1}},
 	}},
 }
 
@@ -82,7 +82,7 @@ func logClusterConfig(config model.ClusterConfig) {
 		namespaces += ns.Replicas
 		for _, app := range ns.Applications {
 			applications += app.Replicas * ns.Replicas
-			pods += app.Replicas * app.Instances * ns.Replicas
+			pods += app.Replicas * app.Pods * ns.Replicas
 		}
 	}
 	log.Infof("Initial configuration: %d namespaces, %d applications, and %d pods", namespaces, applications, pods)

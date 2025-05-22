@@ -7,16 +7,17 @@ import (
 	"strings"
 	"text/template"
 
-	"istio.io/istio/pkg/kube/controllers"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/reader"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+
+	"istio.io/istio/pkg/kube/controllers"
 )
 
 // Template inputs
 const (
 	RandNumber = "RandNumber"
+	Rand       = "Rand"
 	Namespace  = "Namespace"
 	Name       = "Name"
 )
@@ -35,7 +36,7 @@ type Templated struct {
 var _ model.Simulation = &Templated{}
 
 func NewTemplated(s TemplatedSpec) *Templated {
-	s.Config[RandNumber] = rand.Intn(10000) + 1
+	setupConfig(&s)
 	res := &Templated{Spec: &s}
 	if s.Refresh != nil {
 		res.Refreshable = *s.Refresh
@@ -45,11 +46,21 @@ func NewTemplated(s TemplatedSpec) *Templated {
 	return res
 }
 
+func setupConfig(s *TemplatedSpec) {
+	s.Config[RandNumber] = rand.Intn(10000) + 1
+	if b, f := s.Config[Rand]; f {
+		s.Config[Rand] = !b.(bool)
+	} else {
+		s.Config[Rand] = false
+	}
+}
+
 func (v *Templated) IsRefreshable() bool {
 	return v.Refreshable
 }
 
 func (v *Templated) Refresh(ctx model.Context) (string, error) {
+	setupConfig(v.Spec)
 	v.Spec.Config[RandNumber] = rand.Intn(10000) + 1
 	obj, err := v.getTemplated()
 	if err != nil {

@@ -8,7 +8,7 @@ namespaces:
     applications:
     - name: app
       replicas: 100
-      instances: 1
+      pods: 1
       type: plain
       istio:
         # Create a route for that app
@@ -19,8 +19,8 @@ namespaces:
     applications:
     - name: ingress
       replicas: 1
-      instances: 10 # 10 gateway pods
-      type: router
+      pods: 10 # 10 gateway pods
+      type: gateway
       gateways: # create Kubernetes gateway for 'ingress' application
         name: main
         kubernetes: true

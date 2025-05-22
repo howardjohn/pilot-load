@@ -104,7 +104,7 @@ const (
 	SidecarType  AppType = "sidecar"
 	AmbientType  AppType = "ambient"
 	WaypointType AppType = "waypoint"
-	GatewayType  AppType = "router"
+	GatewayType  AppType = "gateway"
 	ExternalType AppType = "external"
 	ZtunnelType  AppType = "ztunnel"
 	VMType       AppType = "vm"
@@ -113,9 +113,9 @@ const (
 type ApplicationConfig struct {
 	Name      string            `json:"name,omitempty"`
 	Type      AppType           `json:"type,omitempty"`
-	Replicas  int               `json:"replicas,omitempty"`
-	Instances int               `json:"instances,omitempty"`
-	Labels    map[string]string `json:"labels,omitempty"`
+	Replicas int               `json:"replicas,omitempty"`
+	Pods     int               `json:"pods,omitempty"`
+	Labels   map[string]string `json:"labels,omitempty"`
 	Templates []ConfigTemplate  `json:"configs,omitempty"`
 	GetNode   func() string     `json:"-"`
 }
@@ -227,7 +227,7 @@ func (c ClusterConfig) PodCount() int {
 	for _, ns := range c.Namespaces {
 		apps := 0
 		for _, app := range ns.Applications {
-			apps += app.Replicas * app.Instances
+			apps += app.Replicas * app.Pods
 		}
 		cnt += apps * ns.Replicas
 	}

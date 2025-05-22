@@ -12,15 +12,15 @@ namespaces:
   applications:
   - name: big
     replicas: 1
-    instances: 2
+    pods: 2
     type: ambient # No sidecar needed
   - name: med
     replicas: 1
-    instances: 1
+    pods: 1
     type: ambient # No sidecar needed
   - name: small
     replicas: 1
-    instances: 1
+    pods: 1
     type: ambient # No sidecar needed
 nodes:
 - name: node

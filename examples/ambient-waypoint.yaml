@@ -10,11 +10,11 @@ namespaces:
     waypoint: waypoint
     applications:
       - name: waypoint
-        instances: 2 # HA
+        pods: 2 # HA
         type: waypoint
       - name: app
         replicas: 10
-        instances: 10
+        pods: 10
         type: ambient
 nodes:
   - name: node

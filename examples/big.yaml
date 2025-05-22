@@ -8,7 +8,7 @@ namespaces:
   applications:
   - name: big
     replicas: 200
-    instances: 10
+    pods: 10
 nodes:
 - name: node
   count: 10

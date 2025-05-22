@@ -91,7 +91,7 @@ func (n *Namespace) createApplication(args model.ApplicationConfig, suffix strin
 		Namespace: n.Spec.Name,
 		// TODO implement different service accounts
 		ServiceAccount:      "default",
-		Instances:           args.Instances,
+		Instances:           args.Pods,
 		Type:                args.Type,
 		Templates:           args.Templates,
 		TemplateDefinitions: n.Spec.TemplateDefinitions,
