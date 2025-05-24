@@ -6,22 +6,22 @@ import (
 	"runtime"
 	"time"
 
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kclient"
-	"istio.io/istio/pkg/kube/kubetypes"
-	"istio.io/istio/pkg/log"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/howardjohn/pilot-load/pkg/kube"
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
 )
 
 type ClusterSpec struct {
-	Config model.ClusterConfig
+	Config Config
 }
 
 type Cluster struct {
@@ -30,6 +30,10 @@ type Cluster struct {
 	namespaces []*Namespace
 	nodes      []*Node
 	running    chan struct{}
+}
+
+func (c *Cluster) GetConfig() any {
+	return c.Spec.Config
 }
 
 var _ model.Simulation = &Cluster{}

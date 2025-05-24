@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"strings"
 
-	"istio.io/istio/pkg/maps"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
+
+	"istio.io/istio/pkg/maps"
 )
 
 type NamespaceSpec struct {
 	Name                string
 	TemplateDefinitions model.TemplateDefinitions
-	Deployments         []model.ApplicationConfig
+	Deployments         []ApplicationConfig
 	Templates           []model.ConfigTemplate
 	StableNames         bool
 	Waypoint            string
@@ -84,7 +84,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	return ns
 }
 
-func (n *Namespace) createApplication(args model.ApplicationConfig, suffix string) *app.Application {
+func (n *Namespace) createApplication(args ApplicationConfig, suffix string) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), suffix),
 		Node:      args.GetNode,

@@ -7,23 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"istio.io/istio/pkg/log"
-
-	"github.com/howardjohn/pilot-load/pkg/simulation/cluster"
 	"github.com/howardjohn/pilot-load/pkg/simulation/dump"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
-)
 
-func Cluster(a model.Args) error {
-	sim := cluster.NewCluster(cluster.ClusterSpec{Config: a.ClusterConfig})
-	if err := ExecuteSimulations(a, sim); err != nil {
-		return fmt.Errorf("error executing: %v", err)
-	}
-	return nil
-}
+	"istio.io/istio/pkg/log"
+)
 
 func Dump(a model.Args) error {
 	sim := dump.NewSimulation(dump.DumpSpec{

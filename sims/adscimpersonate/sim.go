@@ -3,19 +3,19 @@ package adscimpersonate
 import (
 	"time"
 
+	"github.com/howardjohn/pilot-load/pkg/flag"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 	"github.com/spf13/pflag"
+	v1 "k8s.io/api/core/v1"
+	klabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+
 	"istio.io/istio/pkg/config"
 	kubelib "istio.io/istio/pkg/kube"
 	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/istio/pkg/kube/kclient"
 	"istio.io/istio/pkg/log"
-	v1 "k8s.io/api/core/v1"
-	klabels "k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/howardjohn/pilot-load/pkg/flag"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
 )
 
 type Config struct {
@@ -37,7 +37,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 	return flag.Command{
 		Name:        "adsc-impersonate",
 		Description: "simulate ADS connections from real pods running in the cluster",
-		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+		Build: func(args *model.Args) (model.DebuggableSimulation, error) {
 			return &Simulation{
 				Spec: Spec{
 					Selector: model.Selector(cfg.Selector),

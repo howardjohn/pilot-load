@@ -3,13 +3,13 @@ package cluster
 import (
 	"time"
 
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/sleep"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/sleep"
 )
 
 type KubernetesNamespaceSpec struct {
