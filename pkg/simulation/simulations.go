@@ -51,6 +51,32 @@ func Adsc(a model.Args) error {
 	return ExecuteSimulations(a, model.AggregateSimulation{Simulations: sims, Delay: a.AdsConfig.Delay})
 }
 
+type Running struct {
+	ch chan error
+}
+
+func (r Running) Wait() error {
+	if r.ch == nil {
+		return nil
+	}
+	return <-r.ch
+}
+
+func RunSimulation(ctx model.Context, simulation model.Simulation) Running {
+	result := Running{ch: make(chan error)}
+	go func() {
+		if err := simulation.Run(ctx); err != nil {
+			log.Errorf("failed: %v, starting cleanup", err)
+			cleanupErr := simulation.Cleanup(ctx)
+			result.ch <- fmt.Errorf("failed to run: %v; cleanup: %v", err, cleanupErr)
+			return
+		}
+		<-ctx.Done()
+		result.ch <- simulation.Cleanup(ctx)
+	}()
+	return result
+}
+
 func ExecuteSimulations(a model.Args, simulation model.Simulation) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	go CaptureTermination(ctx, cancel)

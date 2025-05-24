@@ -4,16 +4,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 type Parseable interface{}
 
-func Register[T Parseable](flags *pflag.FlagSet, val *T, name string, description string) {
-	RegisterShort[T](flags, val, name, "", description)
+type Registration struct {
+	flags *pflag.FlagSet
+	name  string
 }
 
-func RegisterShort[T Parseable](flags *pflag.FlagSet, val *T, name, short string, description string) {
+func (f Registration) Required() Registration {
+	f.flags.SetAnnotation(f.name, cobra.BashCompOneRequiredFlag, []string{"true"})
+	return f
+}
+
+func Register[T Parseable](flags *pflag.FlagSet, val *T, name string, description string) Registration {
+	return RegisterShort[T](flags, val, name, "", description)
+}
+
+func RegisterShort[T Parseable](flags *pflag.FlagSet, val *T, name, short string, description string) Registration {
 	defaultValue := *val
 	switch d := any(defaultValue).(type) {
 	case string:
@@ -29,4 +40,5 @@ func RegisterShort[T Parseable](flags *pflag.FlagSet, val *T, name, short string
 	default:
 		panic(fmt.Sprintf("unknown type %T", d))
 	}
+	return Registration{flags: flags, name: name}
 }

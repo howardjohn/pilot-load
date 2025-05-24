@@ -212,6 +212,11 @@ type Context struct {
 	Cancel context.CancelFunc
 }
 
+func (c Context) WithCancel() Context {
+	c.Context, c.Cancel = context.WithCancel(c.Context)
+	return c
+}
+
 func ReverseSimulations(sims []Simulation) []Simulation {
 	for i := 0; i < len(sims)/2; i++ {
 		j := len(sims) - i - 1

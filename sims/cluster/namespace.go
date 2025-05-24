@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
@@ -19,6 +20,7 @@ type NamespaceSpec struct {
 	Templates           []model.ConfigTemplate
 	StableNames         bool
 	Waypoint            string
+	GracePeriod         model.Duration
 }
 
 type Namespace struct {
@@ -108,6 +110,10 @@ func (n *Namespace) getSims() []model.Simulation {
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}
+	return sims
+}
+func (n *Namespace) getAllSims() []model.Simulation {
+	sims := n.getSims()
 	for _, w := range n.deployments {
 		sims = append(sims, w)
 	}
@@ -115,9 +121,22 @@ func (n *Namespace) getSims() []model.Simulation {
 }
 
 func (n *Namespace) Run(ctx model.Context) error {
-	return model.AggregateSimulation{Simulations: n.getSims()}.Run(ctx)
+	if err := (model.AggregateSimulation{Simulations: n.getSims()}).Run(ctx); err != nil {
+		return err
+	}
+	for _, dep := range n.deployments {
+		if err := (model.AggregateSimulation{Simulations: []model.Simulation{dep}}.Run(ctx)); err != nil {
+			return fmt.Errorf("failed to run deployment: %v", err)
+		}
+		select {
+		case <-time.After(time.Duration(n.Spec.GracePeriod)):
+		case <-ctx.Done():
+			return nil
+		}
+	}
+	return nil
 }
 
 func (n *Namespace) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{Simulations: model.ReverseSimulations(n.getSims())}.Cleanup(ctx)
+	return model.AggregateSimulation{Simulations: model.ReverseSimulations(n.getAllSims())}.Cleanup(ctx)
 }

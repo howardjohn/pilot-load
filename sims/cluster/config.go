@@ -27,6 +27,8 @@ type Config struct {
 }
 
 type NamespaceConfig struct {
+	// Time between each application creation at startup
+	GracePeriod  model.Duration         `json:"gracePeriod,omitempty"`
 	Name         string                 `json:"name,omitempty"`
 	Replicas     int                    `json:"replicas,omitempty"`
 	Applications []ApplicationConfig    `json:"applications,omitempty"`

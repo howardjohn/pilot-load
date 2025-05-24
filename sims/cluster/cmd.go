@@ -22,16 +22,16 @@ func Command(f *pflag.FlagSet) flag.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to read config file: %v", err)
 			}
-			return Build(args, config)
+			return Build(args, config), nil
 		},
 	}
 }
 
-func Build(args *model.Args, config Config) (model.DebuggableSimulation, error) {
+func Build(args *model.Args, config Config) *Cluster {
 	if len(config.NodeMetadata) > 0 {
 		args.Metadata = config.NodeMetadata
 	}
 	logClusterConfig(config)
 	log.Infof("Starting cluster, total size: %v pods", config.PodCount())
-	return NewCluster(ClusterSpec{Config: config}), nil
+	return NewCluster(ClusterSpec{Config: config})
 }

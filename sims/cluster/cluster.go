@@ -73,6 +73,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 				TemplateDefinitions: s.Config.Templates,
 				Templates:           ns.Templates,
 				StableNames:         s.Config.StableNames,
+				GracePeriod: s.Config.GracePeriod,
 				Waypoint:            ns.Waypoint,
 			}))
 		}
