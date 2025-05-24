@@ -1,7 +1,6 @@
 package gatewayapi
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/sims/cluster"
 	"github.com/spf13/pflag"
+	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/slices"
@@ -103,65 +103,58 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 
 	wasReady := false
 	wasProcessed := false
-	q := controllers.NewQueue("attachedroutes",
-		controllers.WithReconciler(func(key types.NamespacedName) error {
-			gtw := gtws.Get(key.Name, key.Namespace)
-			if gtw == nil {
-				return nil
-			}
-			if len(gtw.Status.Listeners) == 0 {
-				return nil
-			}
-			ar := int(gtw.Status.Listeners[0].AttachedRoutes)
-			log.Errorf("howardjohn: %v: %v", key, ar)
-			cur, f := a.State[key]
-			if !f {
-				// not watching
-				return nil
-			}
-			cur.Last = ar
-			if cur.Samples == nil {
-				cur.Samples = []Sample{}
-			}
-			if !wasReady {
-				//if err := a.AllEqual(0); err != nil {
-				//	if !strings.Contains(err.Error(), "not initialized") {
-				//		errCh <- fmt.Errorf("initial state invalid: %v", err)
-				//		return nil
-				//	}
-				//	log.Infof("not yet ready: %v", err)
-				//	return nil
-				//}
-				initCh <- struct{}{}
-				wasReady = true
-				return nil
-			}
-			cur.Samples = append(cur.Samples, Sample{
-				Time:           time.Now(),
-				AttachedRoutes: ar,
-			})
-			if !wasProcessed {
-				if err := a.AllEqual(a.Config.Routes); err != nil {
-					log.Infof("not yet processed: %v", err)
-					return nil
-				}
-				log.Infof("processing done")
-				processedCh <- struct{}{}
-				wasProcessed = true
-				return nil
-			}
-			if err := a.AllEqual(0); err != nil {
-				log.Infof("not yet torn down: %v", err)
-				return nil
-			}
-			teardownProcessedCh <- struct{}{}
-			return nil
-		}))
 
-	qctx, qctxcancel := context.WithCancel(context.Background())
-	defer qctxcancel()
-	go q.Run(qctx.Done())
-	gtws.AddEventHandler(controllers.ObjectHandler(q.AddObject))
+	gtws.AddEventHandler(controllers.ObjectHandler(func(o controllers.Object) {
+		gtw := o.(*gateway.Gateway)
+		if len(gtw.Status.Listeners) == 0 {
+			return
+		}
+		key := config.NamespacedName(gtw)
+		ar := int(gtw.Status.Listeners[0].AttachedRoutes)
+		log.Errorf("howardjohn: %v: %v", key, ar)
+		cur, f := a.State[key]
+		if !f {
+			// not watching
+			return
+		}
+		cur.Last = ar
+		if cur.Samples == nil {
+			cur.Samples = []Sample{}
+		}
+		if !wasReady {
+			//if err := a.AllEqual(0); err != nil {
+			//	if !strings.Contains(err.Error(), "not initialized") {
+			//		errCh <- fmt.Errorf("initial state invalid: %v", err)
+			//		return nil
+			//	}
+			//	log.Infof("not yet ready: %v", err)
+			//	return nil
+			//}
+			initCh <- struct{}{}
+			wasReady = true
+			return
+		}
+		cur.Samples = append(cur.Samples, Sample{
+			Time:           time.Now(),
+			AttachedRoutes: ar,
+		})
+		if !wasProcessed {
+			if err := a.AllEqual(a.Config.Routes); err != nil {
+				log.Infof("not yet processed: %v", err)
+				return
+			}
+			log.Infof("processing done")
+			processedCh <- struct{}{}
+			wasProcessed = true
+			return
+		}
+		if err := a.AllEqual(0); err != nil {
+			log.Infof("not yet torn down: %v", err)
+			return
+		}
+		teardownProcessedCh <- struct{}{}
+		return
+	}))
 
 	cfg := tmpl.MustEvaluate(cfgTemplate, a.Config)
 	clsCfg, err := cluster.ReadConfig(cfg)
@@ -183,8 +176,6 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 			running = nil
 		case <-ctx.Done():
 			clsCtx.Cancel()
-			qctxcancel()
-			q.WaitForClose(time.Second)
 			handle.Wait()
 			return nil
 		case <-initCh:
@@ -198,8 +189,6 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 			clsCtx.Cancel()
 			teardownstart = time.Since(startTime)
 		case <-teardownProcessedCh:
-			qctxcancel()
-			q.WaitForClose(time.Second)
 			if err := handle.Wait(); err != nil {
 				return err
 			}
