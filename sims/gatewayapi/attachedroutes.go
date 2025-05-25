@@ -1,7 +1,10 @@
 package gatewayapi
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -23,9 +26,10 @@ import (
 )
 
 type Config struct {
-	Gateways    []string
-	GracePeriod time.Duration
-	Routes      int
+	Gateways     []string
+	GracePeriod  time.Duration
+	VictoriaLogs string
+	Routes       int
 }
 
 func Command(f *pflag.FlagSet) flag.Command {
@@ -35,6 +39,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 
 	flag.Register(f, &cfg.Gateways, "gateways", "delay between each connection").Required()
 	flag.Register(f, &cfg.Routes, "routes", "number of routes")
+	flag.Register(f, &cfg.VictoriaLogs, "victoria", "victoria-logs address")
 	flag.Register(f, &cfg.GracePeriod, "gracePeriod", "delay between each application")
 	return flag.Command{
 		Name:        "gatewayapi-attachedroutes",
@@ -68,6 +73,10 @@ type ApiDetails struct {
 type AttachedRoutes struct {
 	Config Config
 	State  map[types.NamespacedName]*Watcher
+
+	startTime time.Time
+	ready time.Duration
+	teardownStart time.Duration
 }
 
 var _ model.Simulation = &AttachedRoutes{}
@@ -88,8 +97,8 @@ namespaces:
         gateways: {{.Gateways | toJson }}
 `
 
-func (i *AttachedRoutes) GetConfig() any {
-	return i.Config
+func (a *AttachedRoutes) GetConfig() any {
+	return a.Config
 }
 
 func (a *AttachedRoutes) Run(ctx model.Context) error {
@@ -111,7 +120,6 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 		}
 		key := config.NamespacedName(gtw)
 		ar := int(gtw.Status.Listeners[0].AttachedRoutes)
-		log.Errorf("howardjohn: %v: %v", key, ar)
 		cur, f := a.State[key]
 		if !f {
 			// not watching
@@ -122,14 +130,14 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 			cur.Samples = []Sample{}
 		}
 		if !wasReady {
-			//if err := a.AllEqual(0); err != nil {
-			//	if !strings.Contains(err.Error(), "not initialized") {
-			//		errCh <- fmt.Errorf("initial state invalid: %v", err)
-			//		return nil
-			//	}
-			//	log.Infof("not yet ready: %v", err)
-			//	return nil
-			//}
+			if err := a.AllEqual(key, 0); err != nil {
+				if !strings.Contains(err.Error(), "not initialized") {
+					errCh <- fmt.Errorf("initial state invalid: %v", err)
+					return
+				}
+				log.Infof("not yet ready: %v", err)
+				return
+			}
 			initCh <- struct{}{}
 			wasReady = true
 			return
@@ -139,7 +147,7 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 			AttachedRoutes: ar,
 		})
 		if !wasProcessed {
-			if err := a.AllEqual(a.Config.Routes); err != nil {
+			if err := a.AllEqual(key, a.Config.Routes); err != nil {
 				log.Infof("not yet processed: %v", err)
 				return
 			}
@@ -148,7 +156,7 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 			wasProcessed = true
 			return
 		}
-		if err := a.AllEqual(0); err != nil {
+		if err := a.AllEqual(key, 0); err != nil {
 			log.Infof("not yet torn down: %v", err)
 			return
 		}
@@ -163,16 +171,13 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 	}
 	clsSim := cluster.Build(&ctx.Args, clsCfg)
 	running := clsSim.Running()
-	var routeReady time.Duration
-	var teardownstart time.Duration
 
 	clsCtx := ctx.WithCancel()
 	var handle simulation.Running
-	var startTime time.Time
 	for {
 		select {
 		case <-running:
-			routeReady = time.Since(startTime)
+			a.ready = time.Since(a.startTime)
 			running = nil
 		case <-ctx.Done():
 			clsCtx.Cancel()
@@ -180,19 +185,19 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 			return nil
 		case <-initCh:
 			// Start the routes
-			startTime = time.Now()
+			a.startTime = time.Now()
 			handle = simulation.RunSimulation(clsCtx, clsSim)
 		case err := <-errCh:
 			return err
 		case <-processedCh:
 			// We are done, close things out
 			clsCtx.Cancel()
-			teardownstart = time.Since(startTime)
+			a.teardownStart = time.Since(a.startTime)
 		case <-teardownProcessedCh:
 			if err := handle.Wait(); err != nil {
 				return err
 			}
-			a.Report(startTime, routeReady, teardownstart)
+
 			ctx.Cancel()
 			return nil
 		}
@@ -200,34 +205,84 @@ func (a *AttachedRoutes) Run(ctx model.Context) error {
 }
 
 func (a *AttachedRoutes) Cleanup(ctx model.Context) error {
+	a.Report()
 	return nil
 }
 
-func (i *AttachedRoutes) AllEqual(want int) error {
-	for _, w := range i.State {
+func (a *AttachedRoutes) AllEqual(key types.NamespacedName, want int) error {
+	processed := func(w *Watcher) error {
 		if w.Samples == nil {
 			return fmt.Errorf("%v not initialized", w.Name)
 		}
 		if w.Last != want {
 			return fmt.Errorf("want %d, got %d for %v", want, w.Last, w.Name)
 		}
+		return nil
+	}
+	// Check the one we are currently processing to avoid confusing logs
+	if err := processed(a.State[key]); err != nil {
+		return err
+	}
+	for _, w := range a.State {
+		if err := processed(w); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (i *AttachedRoutes) Report(t0 time.Time, ready time.Duration, teardownstart time.Duration) {
+func (a *AttachedRoutes) Report() {
 
-	log.WithLabels("ready time", ready, "teardown time", teardownstart).Infof("Test complete")
-	for name, w := range i.State {
+	log.WithLabels("ready time", a.ready, "teardown time", a.teardownStart).Infof("Test complete")
+	for name, w := range a.State {
 		top := slices.IndexFunc(w.Samples, func(x Sample) bool {
-			return x.AttachedRoutes == i.Config.Routes
+			return x.AttachedRoutes == a.Config.Routes
 		})
+		if top == -1 {
+			log.WithLabels("name", name).Errorf("failed to complete test")
+			continue
+		}
 		last := w.Samples[len(w.Samples)-1]
 
-		topT := w.Samples[top].Time.Sub(t0) - ready
-		bottomT := last.Time.Sub(t0) - teardownstart
+		topT := w.Samples[top].Time.Sub(a.startTime) - a.ready
+		bottomT := last.Time.Sub(a.startTime) - a.teardownStart
 		log.WithLabels("name", name, "add-all", topT, "remove-all", bottomT, "writes", len(w.Samples)).Infof("complete")
 	}
+
+	if a.Config.VictoriaLogs != "" {
+		var entries []VicLogEntry
+		for name, w := range a.State {
+			for _, sample := range w.Samples {
+				entries = append(entries, VicLogEntry{
+					Message: "event",
+					Gateway: name.String(),
+					Time:    sample.Time.UnixNano(),
+					Value:   sample.AttachedRoutes,
+				})
+			}
+		}
+		r, w := io.Pipe()
+		go func() {
+			enc := json.NewEncoder(w)
+			for _, item := range entries {
+				enc.Encode(item)
+			}
+			w.Close()
+		}()
+		resp, err := http.DefaultClient.Post(a.Config.VictoriaLogs+"/insert/jsonline?_stream_fields=gateway", "application/stream+json", r)
+		if err != nil {
+			log.Errorf("error posting victoria logs: %v", err)
+		} else {
+			log.Infof("victoria logs: %s", resp.Status)
+		}
+	}
+}
+
+type VicLogEntry struct {
+	Message string `json:"_msg"`
+	Gateway string `json:"gateway"`
+	Time    int64  `json:"_time"`
+	Value   int    `json:"value"`
 }
 
 type Watcher struct {

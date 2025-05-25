@@ -30,7 +30,7 @@ func NewKubernetesNamespace(s KubernetesNamespaceSpec) *KubernetesNamespace {
 func (n *KubernetesNamespace) Run(ctx model.Context) error {
 	var err error
 	// Retry in case it is still finalizing
-	for range 10 {
+	for range 100 {
 		if err = kube.Apply(ctx.Client, n.getKubernetesNamespace()); err == nil {
 			return nil
 		}
