@@ -112,6 +112,7 @@ func (n *Namespace) getSims() []model.Simulation {
 	}
 	return sims
 }
+
 func (n *Namespace) getAllSims() []model.Simulation {
 	sims := n.getSims()
 	for _, w := range n.deployments {

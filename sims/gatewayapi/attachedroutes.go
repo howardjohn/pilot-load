@@ -1,27 +1,25 @@
 package gatewayapi
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/victoria"
 	"github.com/howardjohn/pilot-load/sims/cluster"
 	"github.com/spf13/pflag"
-	"istio.io/istio/pkg/config"
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/slices"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	gateway "sigs.k8s.io/gateway-api/apis/v1beta1"
 
+	"istio.io/istio/pkg/config"
+	"istio.io/istio/pkg/kube/controllers"
 	"istio.io/istio/pkg/kube/kclient"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/slices"
 	"istio.io/istio/pkg/test/util/tmpl"
 )
 
@@ -44,7 +42,6 @@ func Command(f *pflag.FlagSet) flag.Command {
 	return flag.Command{
 		Name:        "gatewayapi-attachedroutes",
 		Description: "apply routes and measure time for attachedRoutes to be valid",
-		Details:     "Expected format: `kubectl get vs,gw,dr,sidecar,svc,endpoints,pod,namespace,sa -oyaml -A | kubectl grep`",
 		Build: func(args *model.Args) (model.DebuggableSimulation, error) {
 			st := map[types.NamespacedName]*Watcher{}
 			for _, gw := range cfg.Gateways {
@@ -74,8 +71,8 @@ type AttachedRoutes struct {
 	Config Config
 	State  map[types.NamespacedName]*Watcher
 
-	startTime time.Time
-	ready time.Duration
+	startTime     time.Time
+	ready         time.Duration
 	teardownStart time.Duration
 }
 
@@ -232,7 +229,6 @@ func (a *AttachedRoutes) AllEqual(key types.NamespacedName, want int) error {
 }
 
 func (a *AttachedRoutes) Report() {
-
 	log.WithLabels("ready time", a.ready, "teardown time", a.teardownStart).Infof("Test complete")
 	for name, w := range a.State {
 		top := slices.IndexFunc(w.Samples, func(x Sample) bool {
@@ -255,25 +251,17 @@ func (a *AttachedRoutes) Report() {
 			for _, sample := range w.Samples {
 				entries = append(entries, VicLogEntry{
 					Message: "event",
+					Test:    "attachedroutes",
 					Gateway: name.String(),
 					Time:    sample.Time.UnixNano(),
 					Value:   sample.AttachedRoutes,
 				})
 			}
 		}
-		r, w := io.Pipe()
-		go func() {
-			enc := json.NewEncoder(w)
-			for _, item := range entries {
-				enc.Encode(item)
-			}
-			w.Close()
-		}()
-		resp, err := http.DefaultClient.Post(a.Config.VictoriaLogs+"/insert/jsonline?_stream_fields=gateway", "application/stream+json", r)
-		if err != nil {
-			log.Errorf("error posting victoria logs: %v", err)
+		if err := victoria.Report(a.Config.VictoriaLogs, entries); err != nil {
+			log.Errorf("failed to report victoria logs: %v", err)
 		} else {
-			log.Infof("victoria logs: %s", resp.Status)
+			log.Infof("reported victoria logs")
 		}
 	}
 }
@@ -281,6 +269,7 @@ func (a *AttachedRoutes) Report() {
 type VicLogEntry struct {
 	Message string `json:"_msg"`
 	Gateway string `json:"gateway"`
+	Test    string `json:"test"`
 	Time    int64  `json:"_time"`
 	Value   int    `json:"value"`
 }

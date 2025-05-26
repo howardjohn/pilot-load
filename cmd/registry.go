@@ -5,6 +5,7 @@ import (
 	"github.com/howardjohn/pilot-load/sims/adscimpersonate"
 	"github.com/howardjohn/pilot-load/sims/cluster"
 	"github.com/howardjohn/pilot-load/sims/gatewayapi"
+	"github.com/howardjohn/pilot-load/sims/gatewayapiprobe"
 	"github.com/howardjohn/pilot-load/sims/inmemoryistiod"
 	"github.com/howardjohn/pilot-load/sims/podstartup"
 	"github.com/howardjohn/pilot-load/sims/reproducecluster"
@@ -17,6 +18,7 @@ var commands = []flag.CommandBuilder{
 	reproducecluster.Command,
 	inmemoryistiod.Command,
 	adscimpersonate.Command,
+	gatewayapiprobe.Command,
 	gatewayapi.Command,
 	cluster.Command,
 }

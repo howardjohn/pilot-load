@@ -9,6 +9,22 @@ import (
 	"strings"
 	"time"
 
+	authenticationv1 "k8s.io/api/authentication/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
+
 	"istio.io/istio/pkg/cluster"
 	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/config/schema/gvk"
@@ -20,20 +36,7 @@ import (
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/ptr"
 	"istio.io/istio/pkg/test/scopes"
-	authenticationv1 "k8s.io/api/authentication/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/dynamic"
-	kubefake "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/retry"
+	"istio.io/istio/pkg/test/util/tmpl"
 )
 
 type Client struct {
@@ -99,6 +102,34 @@ func Apply[T controllers.Object](c *Client, o T) error {
 
 func ApplyFast[T controllers.Object](c *Client, o T) error {
 	_, err := internalApply(c, o, true)
+	return err
+}
+
+func ApplyTemplate(c *Client, namespace, tmp string, data any) error {
+	spec, err := tmpl.Evaluate(tmp, data)
+	if err != nil {
+		return err
+	}
+	return ApplyRawSSA(c, namespace, spec)
+}
+
+func ApplyRawSSA(c *Client, namespace, o string) error {
+	return c.Client.(kube.CLIClient).ApplyYAMLContents(namespace, o)
+}
+
+func DeleteRaw(c *Client, namespace, o string) error {
+	obj, dr, err := buildObject(c.Client.(kube.CLIClient), o, namespace)
+	if err != nil {
+		if runtime.IsMissingKind(err) {
+			log.Infof("skip delete, not a Kubernetes kind")
+			return nil
+		}
+		return err
+	}
+	err = dr.Delete(context.Background(), obj.GetName(), metav1.DeleteOptions{})
+	if errors.IsNotFound(err) {
+		return nil
+	}
 	return err
 }
 
@@ -443,4 +474,20 @@ func toUnstructured(o runtime.Object) *unstructured.Unstructured {
 		return nil
 	}
 	return &unstructured.Unstructured{Object: unsObj}
+}
+
+var decUnstructured = yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+
+func buildObject(c kube.CLIClient, cfg string, namespace string) (*unstructured.Unstructured, dynamic.ResourceInterface, error) {
+	obj := &unstructured.Unstructured{}
+	_, gvk, err := decUnstructured.Decode([]byte(cfg), nil, obj)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	dc, err := c.DynamicClientFor(*gvk, obj, namespace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get dynamic client: %v", err)
+	}
+	return obj, dc, nil
 }
