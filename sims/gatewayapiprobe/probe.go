@@ -28,6 +28,7 @@ type Config struct {
 	GracePeriod  time.Duration
 	VictoriaLogs string
 	Routes       int
+	InitialRoute int
 }
 
 func Command(f *pflag.FlagSet) flag.Command {
@@ -37,6 +38,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 
 	flag.Register(f, &cfg.Gateways, "gateways", "delay between each connection").Required()
 	flag.Register(f, &cfg.Routes, "routes", "number of routes")
+	flag.Register(f, &cfg.InitialRoute, "initial-route", "which route to start tests on")
 	flag.Register(f, &cfg.VictoriaLogs, "victoria", "victoria-logs address")
 	flag.Register(f, &cfg.GracePeriod, "gracePeriod", "delay between each application")
 	return flag.Command{
@@ -197,6 +199,14 @@ func (a *ProbeTest) Run(ctx model.Context) error {
 		if err := kube.ApplyTemplate(ctx.Client, "default", cfgTemplate, data); err != nil {
 			return nil
 		}
+		if r == a.Config.InitialRoute-1 {
+			log.Infof("applied last route, waiting...")
+			time.Sleep(time.Second * 10)
+		}
+		if r < a.Config.InitialRoute {
+			log.Infof("skipping, initial route not yet hit")
+			continue
+		}
 		g := errgroup.Group{}
 		for _, gw := range a.State {
 			hostname := fmt.Sprintf("%d-route.example.com", r)
@@ -319,7 +329,7 @@ func (w *Watcher) Probe(ctx context.Context, hostname string, r int) error {
 	t0 := time.Now()
 	delay := time.Millisecond * 5
 	errors := 0
-	for range 1000 {
+	for range 10000 {
 		url := fmt.Sprintf("http://%s/%d", w.Address, r)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -330,8 +340,6 @@ func (w *Watcher) Probe(ctx context.Context, hostname string, r int) error {
 		if err != nil {
 			return err
 		}
-		// b, _ := httputil.DumpResponse(resp, true)
-		// fmt.Println(string(b))
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		c := resp.StatusCode
