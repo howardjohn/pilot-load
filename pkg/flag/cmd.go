@@ -57,6 +57,10 @@ func BuildCobra(cb CommandBuilder) *cobra.Command {
 	cmd.Use = built.Name
 	cmd.Short = built.Description
 	cmd.Long = built.Description + "\n" + built.Details
+	cmd.SilenceUsage = true
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		return log.Configure(loggingOptions)
+	}
 	cmd.RunE = func(_ *cobra.Command, _ []string) error {
 		args, err := GetArgs()
 		if err != nil {
