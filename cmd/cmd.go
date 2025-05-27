@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/spf13/cobra"
@@ -105,38 +105,14 @@ func init() {
 		adscCmd,
 		dumpCmd,
 	)
+	flag.AttachGlobalFlags(rootCmd)
 	for _, cb := range commands {
-		cmd := &cobra.Command{}
-		fs := cmd.Flags()
-		built := cb(fs)
-		cmd.Use = built.Name
-		cmd.Short = built.Description
-		cmd.Long = built.Description + "\n" + built.Details
-		cmd.RunE = func(_ *cobra.Command, _ []string) error {
-			args, err := GetArgs()
-			if err != nil {
-				return err
-			}
-			sim, err := built.Build(&args)
-			if err != nil {
-				return err
-			}
-			logConfig(sim.GetConfig())
-			return simulation.ExecuteSimulations(args, sim)
-		}
+		cmd := flag.BuildCobra(cb)
 		rootCmd.AddCommand(cmd)
 	}
 }
 
 func Execute() {
-	loggingOptions.AttachCobraFlags(rootCmd)
-	hiddenFlags := []string{
-		"log_as_json", "log_rotate", "log_rotate_max_age", "log_rotate_max_backups",
-		"log_rotate_max_size", "log_stacktrace_level", "log_target", "log_caller",
-	}
-	for _, opt := range hiddenFlags {
-		_ = rootCmd.PersistentFlags().MarkHidden(opt)
-	}
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
