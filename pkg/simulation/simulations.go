@@ -7,13 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"istio.io/istio/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/simulation/dump"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/monitoring"
 	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/howardjohn/pilot-load/pkg/simulation/xds"
-
-	"istio.io/istio/pkg/log"
 )
 
 func Dump(a model.Args) error {

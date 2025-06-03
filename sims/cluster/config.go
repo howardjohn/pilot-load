@@ -2,14 +2,15 @@ package cluster
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"text/template"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/templates"
+	"istio.io/istio/pkg/log"
 	"sigs.k8s.io/yaml"
 
-	"istio.io/istio/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/templates"
 )
 
 // Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
@@ -113,7 +114,13 @@ func ReadConfigFile(filename string) (Config, error) {
 	if filename == "" {
 		return defaultConfig, nil
 	}
-	bytes, err := os.ReadFile(filename)
+	var bytes []byte
+	var err error
+	if filename == "-" {
+		bytes, err = io.ReadAll(os.Stdin)
+	} else {
+		bytes, err = os.ReadFile(filename)
+	}
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to read configFile file: %v", filename)
 	}

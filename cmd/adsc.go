@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
@@ -25,7 +26,7 @@ var adscCmd = &cobra.Command{
 	Use:   "adsc",
 	Short: "open simple ADS connection to Istiod",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		args, err := GetArgs()
+		args, err := flag.GetArgs()
 		if err != nil {
 			return err
 		}

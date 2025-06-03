@@ -3,9 +3,10 @@ package inmemoryistiod
 import (
 	"fmt"
 
+	"github.com/spf13/pflag"
+
 	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/spf13/pflag"
 )
 
 func Command(f *pflag.FlagSet) flag.Command {

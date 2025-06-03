@@ -9,6 +9,18 @@ import (
 	"strings"
 	"time"
 
+	"istio.io/istio/pkg/cluster"
+	"istio.io/istio/pkg/config"
+	"istio.io/istio/pkg/config/schema/gvk"
+	"istio.io/istio/pkg/config/schema/kubeclient"
+	kubetypes2 "istio.io/istio/pkg/config/schema/kubetypes"
+	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/kube/controllers"
+	"istio.io/istio/pkg/kube/kubetypes"
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/pkg/ptr"
+	"istio.io/istio/pkg/test/scopes"
+	"istio.io/istio/pkg/test/util/tmpl"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,19 +36,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
-
-	"istio.io/istio/pkg/cluster"
-	"istio.io/istio/pkg/config"
-	"istio.io/istio/pkg/config/schema/gvk"
-	"istio.io/istio/pkg/config/schema/kubeclient"
-	kubetypes2 "istio.io/istio/pkg/config/schema/kubetypes"
-	"istio.io/istio/pkg/kube"
-	"istio.io/istio/pkg/kube/controllers"
-	"istio.io/istio/pkg/kube/kubetypes"
-	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/ptr"
-	"istio.io/istio/pkg/test/scopes"
-	"istio.io/istio/pkg/test/util/tmpl"
 )
 
 type Client struct {

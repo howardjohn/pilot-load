@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
+
+	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 )
 
 var (
@@ -29,7 +30,6 @@ func defaultLogOptions() *log.Options {
 
 	return o
 }
-
 
 func defaultAddress() string {
 	_, inCluster := os.LookupEnv("KUBERNETES_SERVICE_HOST")

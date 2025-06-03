@@ -7,17 +7,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/howardjohn/pilot-load/pkg/flag"
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 	"github.com/spf13/pflag"
+	"istio.io/istio/pkg/log"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 
-	"istio.io/istio/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/flag"
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type StartupConfig struct {

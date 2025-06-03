@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 )
@@ -21,7 +22,7 @@ var dumpCmd = &cobra.Command{
 	Use:   "dump",
 	Short: "dump XDS for a pod to file, rewritten to be runnable with only files",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		args, err := GetArgs()
+		args, err := flag.GetArgs()
 		if err != nil {
 			return err
 		}

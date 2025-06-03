@@ -3,11 +3,11 @@ package cluster
 import (
 	"fmt"
 
+	"github.com/spf13/pflag"
+	"istio.io/istio/pkg/log"
+
 	"github.com/howardjohn/pilot-load/pkg/flag"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/spf13/pflag"
-
-	"istio.io/istio/pkg/log"
 )
 
 func Command(f *pflag.FlagSet) flag.Command {

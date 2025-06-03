@@ -4,14 +4,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"istio.io/istio/pkg/log"
 	"sigs.k8s.io/yaml"
+
+	"github.com/howardjohn/pilot-load/pkg/kube"
+	"github.com/howardjohn/pilot-load/pkg/simulation"
+	"github.com/howardjohn/pilot-load/pkg/simulation/model"
+	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 )
 
 type CommandBuilder = func(f *pflag.FlagSet) Command

@@ -1,95 +1,19 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 
-	"github.com/howardjohn/pilot-load/pkg/flag"
-	"github.com/howardjohn/pilot-load/pkg/kube"
-	"github.com/howardjohn/pilot-load/pkg/simulation/model"
-	"github.com/howardjohn/pilot-load/pkg/simulation/security"
 	"github.com/spf13/cobra"
+	"istio.io/istio/pkg/log"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/yaml"
 
-	"istio.io/istio/pkg/log"
+	"github.com/howardjohn/pilot-load/pkg/flag"
 )
-
-var (
-	pilotAddress   = defaultAddress()
-	xdsMetadata    = map[string]string{}
-	auth           = string(security.AuthTypeDefault)
-	delta          = true
-	kubeconfig     = os.Getenv("KUBECONFIG")
-	loggingOptions = defaultLogOptions()
-
-	qps = 100000
-)
-
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&pilotAddress, "pilot-address", "p", pilotAddress, "address to pilot")
-	rootCmd.PersistentFlags().StringVarP(&auth, "auth", "a", auth,
-		fmt.Sprintf("auth type use. If not set, default based on port number. Supported options: %v", security.AuthTypeOptions()))
-	rootCmd.PersistentFlags().StringVarP(&kubeconfig, "kubeconfig", "k", kubeconfig, "kubeconfig")
-	rootCmd.PersistentFlags().IntVar(&qps, "qps", qps, "qps for kube client")
-	rootCmd.PersistentFlags().StringToStringVarP(&xdsMetadata, "metadata", "m", xdsMetadata, "xds metadata")
-
-	rootCmd.PersistentFlags().BoolVar(&delta, "delta", delta, "use delta XDS")
-}
-
-func defaultAddress() string {
-	_, inCluster := os.LookupEnv("KUBERNETES_SERVICE_HOST")
-	if inCluster {
-		return "istiod.istio-system.svc:15010"
-	}
-	return "localhost:15010"
-}
-
-func defaultLogOptions() *log.Options {
-	o := log.DefaultOptions()
-
-	// These scopes are, at the default "INFO" level, too chatty for command line use
-	o.SetDefaultOutputLevel("dump", log.WarnLevel)
-	o.SetDefaultOutputLevel("token", log.ErrorLevel)
-
-	return o
-}
-
-func GetArgs() (model.Args, error) {
-	var err error
-	if kubeconfig == "" {
-		kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/config")
-	}
-	cl, err := kube.NewClient(kubeconfig, qps)
-	if err != nil {
-		return model.Args{}, err
-	}
-	auth := security.AuthType(auth)
-	if auth == "" {
-		auth = security.DefaultAuthForAddress(pilotAddress)
-	}
-	authOpts := &security.AuthOptions{
-		Type:   auth,
-		Client: cl,
-	}
-	args := model.Args{
-		PilotAddress: pilotAddress,
-		DeltaXDS:     delta,
-		Metadata:     xdsMetadata,
-		Client:       cl,
-		Auth:         authOpts,
-	}
-	return args, nil
-}
 
 var rootCmd = &cobra.Command{
-	Use:          "pilot-load",
-	Short:        "toolkit for commands to load test Istiod and Kubernetes",
-	SilenceUsage: true,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return log.Configure(loggingOptions)
-	},
+	Use:   "pilot-load",
+	Short: "toolkit for commands to load test Istiod and Kubernetes",
 }
 
 func logConfig(config interface{}) {
