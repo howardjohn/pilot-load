@@ -43,7 +43,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 	return flag.Command{
 		Name:        "pod-startup",
 		Description: "measure the time for pods to start",
-		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+		Build: func(args *model.Args) (model.DebuggableSimulation, error) {
 			if startupConfig.Namespace == "" {
 				return nil, fmt.Errorf("--namespace required")
 			}

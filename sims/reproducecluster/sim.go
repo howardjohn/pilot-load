@@ -51,7 +51,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 		Name:        "reproduce-cluster",
 		Description: "simulate a cluster by applying the configuration. Makes XDS connections where one would exist in-cluster.",
 		Details:     "Expected format: `kubectl get vs,gw,dr,sidecar,svc,endpoints,pod,namespace,sa -oyaml -A | kubectl grep`",
-		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+		Build: func(args *model.Args) (model.DebuggableSimulation, error) {
 			return &ReproduceSimulation{Spec: cfg, running: make(chan struct{})}, nil
 		},
 	}

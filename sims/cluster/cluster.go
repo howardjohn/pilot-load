@@ -21,7 +21,7 @@ import (
 )
 
 type ClusterSpec struct {
-	Config model.ClusterConfig
+	Config Config
 }
 
 type Cluster struct {
@@ -30,6 +30,10 @@ type Cluster struct {
 	namespaces []*Namespace
 	nodes      []*Node
 	running    chan struct{}
+}
+
+func (c *Cluster) GetConfig() any {
+	return c.Spec.Config
 }
 
 var _ model.Simulation = &Cluster{}
@@ -69,6 +73,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 				TemplateDefinitions: s.Config.Templates,
 				Templates:           ns.Templates,
 				StableNames:         s.Config.StableNames,
+				GracePeriod:         ns.GracePeriod,
 				Waypoint:            ns.Waypoint,
 			}))
 		}

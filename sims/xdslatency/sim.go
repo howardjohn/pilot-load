@@ -42,7 +42,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 	return flag.Command{
 		Name:        "xds-latency",
 		Description: "measure end to end XDS latency",
-		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+		Build: func(args *model.Args) (model.DebuggableSimulation, error) {
 			opts := args.Auth.GrpcOptions("default", "default")
 			return &XdsLatencySimulation{
 				Namespace: "default",

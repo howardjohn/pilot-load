@@ -37,7 +37,7 @@ func Command(f *pflag.FlagSet) flag.Command {
 	return flag.Command{
 		Name:        "adsc-impersonate",
 		Description: "simulate ADS connections from real pods running in the cluster",
-		Build: func(args model.Args) (model.DebuggableSimulation, error) {
+		Build: func(args *model.Args) (model.DebuggableSimulation, error) {
 			return &Simulation{
 				Spec: Spec{
 					Selector: model.Selector(cfg.Selector),

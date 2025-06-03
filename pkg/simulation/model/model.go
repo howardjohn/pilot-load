@@ -86,11 +86,6 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	}
 }
 
-type ClusterJitterConfig struct {
-	Workloads Duration `json:"workloads,omitempty"`
-	Config    Duration `json:"config,omitempty"`
-}
-
 type AppType string
 
 type APIScope string
@@ -110,16 +105,6 @@ const (
 	VMType       AppType = "vm"
 )
 
-type ApplicationConfig struct {
-	Name      string            `json:"name,omitempty"`
-	Type      AppType           `json:"type,omitempty"`
-	Replicas  int               `json:"replicas,omitempty"`
-	Pods      int               `json:"pods,omitempty"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	Templates []ConfigTemplate  `json:"configs,omitempty"`
-	GetNode   func() string     `json:"-"`
-}
-
 type ConfigTemplate struct {
 	Name    string         `json:"name,omitempty"`
 	Config  map[string]any `json:"config,omitempty"`
@@ -138,28 +123,6 @@ func (r *ConfigTemplate) UnmarshalJSON(data []byte) error {
 	// If that didn't work, try to unmarshal as an object
 	type ConfigTemplateAlias ConfigTemplate // Create alias to avoid infinite recursion
 	return json.Unmarshal(data, (*ConfigTemplateAlias)(r))
-}
-
-type NamespaceConfig struct {
-	Name         string              `json:"name,omitempty"`
-	Replicas     int                 `json:"replicas,omitempty"`
-	Applications []ApplicationConfig `json:"applications,omitempty"`
-	Templates    []ConfigTemplate    `json:"configs,omitempty"`
-	Waypoint     string              `json:"waypoint,omitempty"`
-}
-
-// Cluster defines one single cluster. There is likely only one of these, unless we support multicluster
-// A cluster consists of various namespaces
-type ClusterConfig struct {
-	// Time between each namespace creation at startup
-	GracePeriod Duration            `json:"gracePeriod,omitempty"`
-	Jitter      ClusterJitterConfig `json:"jitter,omitempty"`
-	Namespaces  []NamespaceConfig   `json:"namespaces,omitempty"`
-	Nodes       []NodeConfig        `json:"nodes,omitempty"`
-	// If true, consistent names will be used across iterations.
-	StableNames  bool                `json:"stableNames,omitempty"`
-	NodeMetadata map[string]string   `json:"nodeMetadata,omitempty"`
-	Templates    TemplateDefinitions `json:"templates,omitempty"`
 }
 
 type TemplateDefinitions struct {
@@ -188,58 +151,6 @@ func (t *TemplateDefinitions) Get(name string) *template.Template {
 		panic("unknown template name: " + name)
 	}
 	return tt
-}
-
-type NodeConfig struct {
-	Name    string             `json:"name,omitempty"`
-	Ztunnel *NodeZtunnelConfig `json:"ztunnel,omitempty"`
-	Count   int                `json:"count,omitempty"`
-}
-
-type NodeZtunnelConfig struct{}
-
-func (c ClusterConfig) ApplyDefaults() ClusterConfig {
-	cpy := c
-	ret := &cpy
-	if len(ret.Nodes) == 0 {
-		ret.Nodes = []NodeConfig{{Count: 1, Name: "default"}}
-	}
-	for n, ns := range ret.Namespaces {
-		if ns.Replicas == 0 {
-			ns.Replicas = 1
-		}
-		for d, dp := range ns.Applications {
-			if dp.Replicas == 0 {
-				dp.Replicas = 1
-			}
-			if dp.Type == "" {
-				dp.Type = PlainType
-			}
-			ns.Applications[d] = dp
-		}
-		ret.Namespaces[n] = ns
-	}
-	return *ret
-}
-
-func (c ClusterConfig) PodCount() int {
-	cnt := 0
-	for _, ns := range c.Namespaces {
-		apps := 0
-		for _, app := range ns.Applications {
-			apps += app.Replicas * app.Pods
-		}
-		cnt += apps * ns.Replicas
-	}
-	return cnt
-}
-
-func (c ClusterConfig) NodeCount() int {
-	cnt := 0
-	for _, n := range c.Nodes {
-		cnt += n.Count
-	}
-	return cnt
 }
 
 type DumpConfig struct {
@@ -287,7 +198,6 @@ type Args struct {
 	InjectAddress string
 	Client        *kube.Client
 	Auth          *security.AuthOptions
-	ClusterConfig ClusterConfig
 	AdsConfig     AdscConfig
 	Metadata      map[string]string
 	DeltaXDS      bool
@@ -300,6 +210,11 @@ type Context struct {
 	Args   Args
 	Client *kube.Client
 	Cancel context.CancelFunc
+}
+
+func (c Context) WithCancel() Context {
+	c.Context, c.Cancel = context.WithCancel(c.Context)
+	return c
 }
 
 func ReverseSimulations(sims []Simulation) []Simulation {

@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"istio.io/istio/pkg/maps"
 
@@ -15,10 +16,11 @@ import (
 type NamespaceSpec struct {
 	Name                string
 	TemplateDefinitions model.TemplateDefinitions
-	Deployments         []model.ApplicationConfig
+	Deployments         []ApplicationConfig
 	Templates           []model.ConfigTemplate
 	StableNames         bool
 	Waypoint            string
+	GracePeriod         model.Duration
 }
 
 type Namespace struct {
@@ -84,7 +86,7 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	return ns
 }
 
-func (n *Namespace) createApplication(args model.ApplicationConfig, suffix string) *app.Application {
+func (n *Namespace) createApplication(args ApplicationConfig, suffix string) *app.Application {
 	return app.NewApplication(app.ApplicationSpec{
 		App:       fmt.Sprintf("%s-%s", util.StringDefault(args.Name, "app"), suffix),
 		Node:      args.GetNode,
@@ -108,6 +110,11 @@ func (n *Namespace) getSims() []model.Simulation {
 	for _, sa := range n.sa {
 		sims = append(sims, sa)
 	}
+	return sims
+}
+
+func (n *Namespace) getAllSims() []model.Simulation {
+	sims := n.getSims()
 	for _, w := range n.deployments {
 		sims = append(sims, w)
 	}
@@ -115,9 +122,22 @@ func (n *Namespace) getSims() []model.Simulation {
 }
 
 func (n *Namespace) Run(ctx model.Context) error {
-	return model.AggregateSimulation{Simulations: n.getSims()}.Run(ctx)
+	if err := (model.AggregateSimulation{Simulations: n.getSims()}).Run(ctx); err != nil {
+		return err
+	}
+	for _, dep := range n.deployments {
+		if err := (model.AggregateSimulation{Simulations: []model.Simulation{dep}}.Run(ctx)); err != nil {
+			return fmt.Errorf("failed to run deployment: %v", err)
+		}
+		select {
+		case <-time.After(time.Duration(n.Spec.GracePeriod)):
+		case <-ctx.Done():
+			return nil
+		}
+	}
+	return nil
 }
 
 func (n *Namespace) Cleanup(ctx model.Context) error {
-	return model.AggregateSimulation{Simulations: model.ReverseSimulations(n.getSims())}.Cleanup(ctx)
+	return model.AggregateSimulation{Simulations: model.ReverseSimulations(n.getAllSims())}.Cleanup(ctx)
 }
