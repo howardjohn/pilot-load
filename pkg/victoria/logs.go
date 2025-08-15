@@ -14,7 +14,7 @@ func Report[T any](address string, entries []T) error {
 	go func() {
 		enc := json.NewEncoder(w)
 		for _, item := range entries {
-			enc.Encode(item)
+			_ = enc.Encode(item)
 		}
 		w.Close()
 	}()

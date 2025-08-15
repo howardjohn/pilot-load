@@ -79,7 +79,7 @@ func (v *KubeGateway) getGateway() *gateway.Gateway {
 	}
 	return &gateway.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      v.Spec.Name,
+			Name:      v.Spec.App,
 			Namespace: v.Spec.Namespace,
 		},
 		Spec: gateway.GatewaySpec{

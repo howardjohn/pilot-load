@@ -52,23 +52,28 @@ func NewFakeClient(kf kube.Client) *Client {
 
 func NewClient(kubeconfig string, qps int) (*Client, error) {
 	var clusterName string
+	var rc *rest.Config
 	if _, err := os.Stat(kubeconfig); err == nil {
 		loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}, nil)
-		rc, err := loader.RawConfig()
+		raw, err := loader.RawConfig()
 		if err != nil {
 			return nil, err
 		}
-		clusterName = rc.Contexts[rc.CurrentContext].Cluster
+		rc, err = kube.DefaultRestConfig(kubeconfig, "", func(config *rest.Config) {
+			config.QPS = float32(qps)
+			config.Burst = qps * 2
+		})
+		if err != nil {
+			return nil, err
+		}
+		clusterName = raw.Contexts[raw.CurrentContext].Cluster
 	} else {
 		log.Infof("using in cluster kubeconfig")
-	}
-	rc, err := kube.DefaultRestConfig(kubeconfig, "", func(config *rest.Config) {
-		config.QPS = float32(qps)
-		config.Burst = qps * 2
-	})
-	if err != nil {
-		return nil, err
+		rc, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	kf, err := kube.NewClient(kube.NewClientConfigForRestConfig(rc), cluster.ID(clusterName))
