@@ -16,7 +16,7 @@ type Registration struct {
 }
 
 func (f Registration) Required() Registration {
-	f.flags.SetAnnotation(f.name, cobra.BashCompOneRequiredFlag, []string{"true"})
+	_ = f.flags.SetAnnotation(f.name, cobra.BashCompOneRequiredFlag, []string{"true"})
 	return f
 }
 

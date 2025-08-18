@@ -41,11 +41,11 @@ test:
 
 .PHONY: docker
 docker:
-	docker buildx build . -t ${HUB}/pilot-load --load
+	docker buildx build . -t ${HUB}/pilot-load --load --platform=linux/arm64,linux/amd64
 
 .PHONY: push
 push:
-	docker buildx build . -t ${HUB}/pilot-load --push
+	docker buildx build . -t ${HUB}/pilot-load --push --platform=linux/arm64,linux/amd64
 
 .PHONY: setup
 setup:
