@@ -2,6 +2,7 @@ package reader
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -35,6 +36,9 @@ func ParseYaml(r io.Reader) ([]controllers.Object, error) {
 		chunk, err := reader.Read()
 		if err == io.EOF {
 			break
+		}
+		if len(bytes.TrimSpace(chunk)) == 0 {
+			continue
 		}
 		gvkp, err := yamlserializer.DefaultMetaFactory.Interpret(chunk)
 		if err != nil {

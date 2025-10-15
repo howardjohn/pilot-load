@@ -67,7 +67,7 @@ func (v *KubeGateway) getGateway() *gateway.Gateway {
 				AllowedRoutes: &gateway.AllowedRoutes{
 					Namespaces: &gateway.RouteNamespaces{From: ptr.Of(gateway.FromNamespaces("All"))},
 				},
-				TLS: &gateway.GatewayTLSConfig{
+				TLS: &gateway.ListenerTLSConfig{
 					Mode: ptr.Of(gateway.TLSModeType("Terminate")),
 					CertificateRefs: []gateway.SecretObjectReference{{
 						Name:      gateway.ObjectName(v.Spec.App),

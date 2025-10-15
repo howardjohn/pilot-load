@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"strings"
 	"text/template"
@@ -62,29 +61,47 @@ func (v *Templated) IsRefreshable() bool {
 func (v *Templated) Refresh(ctx model.Context) (string, error) {
 	setupConfig(v.Spec)
 	v.Spec.Config[RandNumber] = rand.Intn(10000) + 1
-	obj, err := v.getTemplated()
+	objs, err := v.getTemplated()
 	if err != nil {
 		return "", err
 	}
-	k := obj.GetObjectKind().GroupVersionKind().Kind
-	name := k + "/" + obj.GetNamespace() + "/" + obj.GetName()
-	return name, kube.ApplyRealSSA(ctx.Client, obj)
+	names := []string{}
+	for _, obj := range objs {
+		k := obj.GetObjectKind().GroupVersionKind().Kind
+		name := k + "/" + obj.GetNamespace() + "/" + obj.GetName()
+		names = append(names, name)
+		if err := kube.ApplyRealSSA(ctx.Client, obj); err != nil {
+			return "", err
+		}
+	}
+	return strings.Join(names, ","), nil
 }
 
 func (v *Templated) Run(ctx model.Context) (err error) {
-	obj, err := v.getTemplated()
+	objs, err := v.getTemplated()
 	if err != nil {
 		return err
 	}
-	return kube.ApplyRealSSA(ctx.Client, obj)
+	for _, obj := range objs {
+		if err := kube.ApplyRealSSA(ctx.Client, obj); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (v *Templated) Cleanup(ctx model.Context) error {
-	obj, err := v.getTemplated()
+	objs, err := v.getTemplated()
 	if err != nil {
 		return err
 	}
-	return kube.Delete(ctx.Client, obj)
+
+	for _, obj := range objs {
+		if err := kube.Delete(ctx.Client, obj); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (v *Templated) getDefaultRefresh() (bool, error) {
@@ -101,7 +118,7 @@ func (v *Templated) getDefaultRefresh() (bool, error) {
 	return false, nil
 }
 
-func (v *Templated) getTemplated() (controllers.Object, error) {
+func (v *Templated) getTemplated() ([]controllers.Object, error) {
 	var b bytes.Buffer
 	if err := v.Spec.Template.Execute(&b, v.Spec.Config); err != nil {
 		return nil, err
@@ -110,9 +127,8 @@ func (v *Templated) getTemplated() (controllers.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(objs) != 1 {
-		return nil, fmt.Errorf("expected 1 object, got %d", len(objs))
+	for _, obj := range objs {
+		obj.SetNamespace(v.Spec.Config[Namespace].(string))
 	}
-	objs[0].SetNamespace(v.Spec.Config[Namespace].(string))
-	return objs[0], nil
+	return objs, nil
 }
