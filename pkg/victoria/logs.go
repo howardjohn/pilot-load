@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 var client = &http.Client{}
 
-func Report[T any](address string, entries []T) error {
+func Report[T any](address string, streamFields []string, entries []T) error {
+	sf := strings.Join(streamFields, ",")
 	r, w := io.Pipe()
 	go func() {
 		enc := json.NewEncoder(w)
@@ -18,7 +20,7 @@ func Report[T any](address string, entries []T) error {
 		}
 		w.Close()
 	}()
-	resp, err := client.Post(address+"/insert/jsonline?_stream_fields=gateway,test", "application/stream+json", r)
+	resp, err := client.Post(address+"/insert/jsonline?_stream_fields="+sf, "application/stream+json", r)
 	if err != nil {
 		return fmt.Errorf("error posting victoria logs: %v", err)
 	}

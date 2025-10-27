@@ -7,6 +7,7 @@ import (
 	"github.com/howardjohn/pilot-load/sims/inmemoryistiod"
 	"github.com/howardjohn/pilot-load/sims/podstartup"
 	"github.com/howardjohn/pilot-load/sims/reproducecluster"
+	"github.com/howardjohn/pilot-load/sims/victoriapush"
 	"github.com/howardjohn/pilot-load/sims/xdslatency"
 )
 
@@ -17,4 +18,5 @@ var commands = []flag.CommandBuilder{
 	inmemoryistiod.Command,
 	adscimpersonate.Command,
 	cluster.Command,
+	victoriapush.Command,
 }
