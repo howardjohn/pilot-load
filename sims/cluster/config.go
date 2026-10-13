@@ -30,6 +30,8 @@ type Config struct {
 }
 
 type NamespaceConfig struct {
+	// Existing reuses a namespace without modifying or deleting it or its default service account.
+	Existing bool `json:"existing,omitempty"`
 	// Time between each application creation at startup
 	GracePeriod  model.Duration         `json:"gracePeriod,omitempty"`
 	Name         string                 `json:"name,omitempty"`

@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"fmt"
 	"time"
 
 	"istio.io/istio/pkg/log"
@@ -13,8 +14,9 @@ import (
 )
 
 type KubernetesNamespaceSpec struct {
-	Name   string
-	Labels map[string]string
+	Existing bool
+	Name     string
+	Labels   map[string]string
 }
 
 type KubernetesNamespace struct {
@@ -28,6 +30,13 @@ func NewKubernetesNamespace(s KubernetesNamespaceSpec) *KubernetesNamespace {
 }
 
 func (n *KubernetesNamespace) Run(ctx model.Context) error {
+	if n.Spec.Existing {
+		_, err := ctx.Client.Kube().CoreV1().Namespaces().Get(ctx, n.Spec.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("get existing namespace %q: %w", n.Spec.Name, err)
+		}
+		return nil
+	}
 	var err error
 	// Retry in case it is still finalizing
 	for range 100 {
@@ -43,6 +52,9 @@ func (n *KubernetesNamespace) Run(ctx model.Context) error {
 }
 
 func (n *KubernetesNamespace) Cleanup(ctx model.Context) error {
+	if n.Spec.Existing || n.Spec.Name == "default" {
+		return nil
+	}
 	if err := kube.Delete(ctx.Client, n.getKubernetesNamespace()); err != nil {
 		return err
 	}

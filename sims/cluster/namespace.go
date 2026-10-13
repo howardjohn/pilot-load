@@ -14,6 +14,7 @@ import (
 )
 
 type NamespaceSpec struct {
+	Existing            bool
 	Name                string
 	TemplateDefinitions model.TemplateDefinitions
 	Deployments         []ApplicationConfig
@@ -63,8 +64,9 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 		}
 	}
 	ns.ns = NewKubernetesNamespace(KubernetesNamespaceSpec{
-		Name:   s.Name,
-		Labels: nsLabels,
+		Name:     s.Name,
+		Labels:   nsLabels,
+		Existing: s.Existing,
 	})
 	// Explicitly make a service account, sometimes its too slow to make one...
 	ns.sa = map[string]*app.ServiceAccount{
@@ -107,8 +109,10 @@ func (n *Namespace) getSims() []model.Simulation {
 	for _, cfg := range n.configs {
 		sims = append(sims, cfg)
 	}
-	for _, sa := range n.sa {
-		sims = append(sims, sa)
+	if !n.Spec.Existing {
+		for _, sa := range n.sa {
+			sims = append(sims, sa)
+		}
 	}
 	return sims
 }

@@ -128,7 +128,9 @@ func (v *Templated) getTemplated() ([]controllers.Object, error) {
 		return nil, err
 	}
 	for _, obj := range objs {
-		obj.SetNamespace(v.Spec.Config[Namespace].(string))
+		if obj.GetNamespace() == "" {
+			obj.SetNamespace(v.Spec.Config[Namespace].(string))
+		}
 	}
 	return objs, nil
 }

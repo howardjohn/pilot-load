@@ -70,6 +70,7 @@ func NewCluster(s ClusterSpec) *Cluster {
 			}
 			cluster.namespaces = append(cluster.namespaces, NewNamespace(NamespaceSpec{
 				Name:                name,
+				Existing:            ns.Existing,
 				Deployments:         deployments,
 				TemplateDefinitions: s.Config.Templates,
 				Templates:           ns.Templates,
