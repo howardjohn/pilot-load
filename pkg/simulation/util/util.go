@@ -61,15 +61,46 @@ func GenUID() string {
 	return b.String()
 }
 
+// DefaultIPRange is the range GetIP hands out addresses from: starting at
+// 10.0.0.10, within 10.0.0.0/8.
+const DefaultIPRange = "10.0.0.10/8"
+
 var (
 	ipMutex sync.Mutex
 	nextIp  = net.ParseIP("10.0.0.10")
+	ipRange *net.IPNet
 )
 
+// SetIPRange sets the range GetIP hands out addresses from, in CIDR
+// notation: the address is the first one handed out and the prefix bounds
+// the range (10.64.0.10/16 hands out 10.64.0.10 to 10.64.255.255). Separate
+// pilot-load processes against one cluster can use disjoint ranges this way,
+// so the pods, nodes and workload entries they simulate never share an
+// address.
+func SetIPRange(cidr string) error {
+	ip, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return fmt.Errorf("invalid IP range %q: %v", cidr, err)
+	}
+	if ip.To4() == nil {
+		return fmt.Errorf("invalid IP range %q: only IPv4 is supported", cidr)
+	}
+	ipMutex.Lock()
+	defer ipMutex.Unlock()
+	nextIp = ip.To4()
+	ipRange = ipNet
+	return nil
+}
+
+// GetIP returns the next simulated IP. It panics when the range set by
+// SetIPRange is exhausted rather than handing out an address outside it.
 func GetIP() string {
 	ipMutex.Lock()
 	defer ipMutex.Unlock()
 	i := nextIp.To4()
+	if ipRange != nil && !ipRange.Contains(i) {
+		panic(fmt.Sprintf("simulated IP range %v exhausted", ipRange))
+	}
 	ret := i.String()
 	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])
 	v += 1
