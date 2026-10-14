@@ -8,6 +8,7 @@ import (
 	"istio.io/istio/pkg/log"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 var (
@@ -19,6 +20,8 @@ var (
 	loggingOptions = defaultLogOptions()
 
 	qps = 100000
+
+	ipRange = util.DefaultIPRange
 )
 
 func defaultLogOptions() *log.Options {
@@ -48,6 +51,10 @@ func AttachGlobalFlags(c *cobra.Command) {
 	c.PersistentFlags().StringToStringVarP(&xdsMetadata, "metadata", "m", xdsMetadata, "xds metadata")
 
 	c.PersistentFlags().BoolVar(&delta, "delta", delta, "use delta XDS")
+	c.PersistentFlags().StringVar(&ipRange, "ip-range", ipRange,
+		"IPv4 range for simulated pods, nodes and workload entries, in CIDR notation: the address is the first "+
+			"one assigned, the prefix bounds the range; give concurrent pilot-load instances against one cluster "+
+			"disjoint ranges")
 
 	loggingOptions.AttachCobraFlags(c)
 	hiddenFlags := []string{

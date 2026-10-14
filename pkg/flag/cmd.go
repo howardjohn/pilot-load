@@ -14,6 +14,7 @@ import (
 	"github.com/howardjohn/pilot-load/pkg/simulation"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
 	"github.com/howardjohn/pilot-load/pkg/simulation/security"
+	"github.com/howardjohn/pilot-load/pkg/simulation/util"
 )
 
 type CommandBuilder = func(f *pflag.FlagSet) Command
@@ -27,6 +28,9 @@ type Command struct {
 
 func GetArgs() (model.Args, error) {
 	var err error
+	if err := util.SetIPRange(ipRange); err != nil {
+		return model.Args{}, err
+	}
 	if kubeconfig == "" {
 		kubeconfig = filepath.Join(os.Getenv("HOME"), "/.kube/config")
 	}
