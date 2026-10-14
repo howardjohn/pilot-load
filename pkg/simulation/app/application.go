@@ -2,7 +2,6 @@ package app
 
 import (
 	"istio.io/istio/pkg/log"
-	"istio.io/istio/pkg/maps"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
@@ -43,21 +42,14 @@ func NewApplication(s ApplicationSpec) *Application {
 
 	// Apply common CRDs to all app types
 	for _, tmpl := range s.Templates {
-		cfg := maps.Clone(tmpl.Config)
-		if cfg == nil {
-			cfg = map[string]any{}
-		}
-		if _, f := cfg[config.Namespace]; !f {
-			cfg[config.Namespace] = s.Namespace
-		}
-		if _, f := cfg[config.Name]; !f {
-			cfg[config.Name] = s.App
-		}
-		w.configs = append(w.configs, config.NewTemplated(config.TemplatedSpec{
-			Template: s.TemplateDefinitions.Get(tmpl.Name),
-			Config:   cfg,
-			Refresh:  tmpl.Refresh,
-		}))
+		w.configs = append(w.configs, config.NewTemplatedCopies(tmpl, s.TemplateDefinitions.Get(tmpl.Name), func(cfg map[string]any) {
+			if _, f := cfg[config.Namespace]; !f {
+				cfg[config.Namespace] = s.Namespace
+			}
+			if _, f := cfg[config.Name]; !f {
+				cfg[config.Name] = s.App
+			}
+		})...)
 	}
 
 	// Apply CRDs for External app type and return

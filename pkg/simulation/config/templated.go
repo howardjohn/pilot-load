@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"maps"
 	"math/rand"
 	"strings"
 	"text/template"
@@ -19,6 +20,7 @@ const (
 	Rand       = "Rand"
 	Namespace  = "Namespace"
 	Name       = "Name"
+	Index      = "Index"
 )
 
 type TemplatedSpec struct {
@@ -33,6 +35,29 @@ type Templated struct {
 }
 
 var _ model.Simulation = &Templated{}
+
+// NewTemplatedCopies expands a ConfigTemplate into ConfigTemplate.Count independent simulations (at least 1).
+// Each copy gets its own Config, with Index set to its position; setDefaults is applied to each copy.
+func NewTemplatedCopies(tmpl model.ConfigTemplate, t *template.Template, setDefaults func(cfg map[string]any)) []*Templated {
+	count := max(tmpl.Count, 1)
+	res := make([]*Templated, 0, count)
+	for i := range count {
+		cfg := maps.Clone(tmpl.Config)
+		if cfg == nil {
+			cfg = map[string]any{}
+		}
+		if _, f := cfg[Index]; !f || count > 1 {
+			cfg[Index] = i
+		}
+		setDefaults(cfg)
+		res = append(res, NewTemplated(TemplatedSpec{
+			Template: t,
+			Config:   cfg,
+			Refresh:  tmpl.Refresh,
+		}))
+	}
+	return res
+}
 
 func NewTemplated(s TemplatedSpec) *Templated {
 	setupConfig(&s)

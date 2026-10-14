@@ -31,6 +31,17 @@ pilot-load cluster --config examples/basic.yaml
 
 See other examples for more complex usage.
 
+A config template can be stamped out multiple times with `count`. Each copy is its own simulation (so refreshes touch one copy at a time),
+and gets an `Index` input from `0` to `count-1`:
+
+```yaml
+configs:
+- name: route
+  count: 16
+  config: {...}
+# template uses `name: {{.Name}}-{{.Index}}`
+```
+
 Under [`install`](./install) there are some examples of running this in-cluster.
 However, I never use this so its likely out of date and broken.
 

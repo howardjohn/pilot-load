@@ -94,6 +94,11 @@ func (c *Cluster) GetRefreshableInstances() []*app.Application {
 func (c *Cluster) GetRefreshableConfig() []model.RefreshableSimulation {
 	var cfgs []model.RefreshableSimulation
 	for _, ns := range c.namespaces {
+		for _, cfg := range ns.configs {
+			if model.IsRefreshable(cfg) {
+				cfgs = append(cfgs, cfg)
+			}
+		}
 		for _, w := range ns.deployments {
 			for _, cfg := range w.GetConfigs() {
 				if model.IsRefreshable(cfg) {

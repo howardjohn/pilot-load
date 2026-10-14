@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"istio.io/istio/pkg/maps"
-
 	"github.com/howardjohn/pilot-load/pkg/simulation/app"
 	"github.com/howardjohn/pilot-load/pkg/simulation/config"
 	"github.com/howardjohn/pilot-load/pkg/simulation/model"
@@ -42,16 +40,9 @@ func NewNamespace(s NamespaceSpec) *Namespace {
 	}
 
 	for _, tmpl := range s.Templates {
-		cfg := maps.Clone(tmpl.Config)
-		if cfg == nil {
-			cfg = map[string]any{}
-		}
-		cfg[config.Namespace] = s.Name
-		ns.configs = append(ns.configs, config.NewTemplated(config.TemplatedSpec{
-			Template: s.TemplateDefinitions.Get(tmpl.Name),
-			Config:   cfg,
-			Refresh:  tmpl.Refresh,
-		}))
+		ns.configs = append(ns.configs, config.NewTemplatedCopies(tmpl, s.TemplateDefinitions.Get(tmpl.Name), func(cfg map[string]any) {
+			cfg[config.Namespace] = s.Name
+		})...)
 	}
 
 	if s.Waypoint != "" {

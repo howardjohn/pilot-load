@@ -5,7 +5,9 @@ metadata:
   name: {{.Name}}
 spec:
   hostnames:
-    - {{.Name}}.example.com
+  {{range $i := until (int .Hostnames | default 1)}}
+    - {{$.Name}}.{{$i}}.example.com
+  {{end}}
   parentRefs:
   {{ range $gw := .gateways }}
   {{ $spl := split "/" $gw }}

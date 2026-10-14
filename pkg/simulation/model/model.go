@@ -109,6 +109,9 @@ type ConfigTemplate struct {
 	Name    string         `json:"name,omitempty"`
 	Config  map[string]any `json:"config,omitempty"`
 	Refresh *bool          `json:"refresh,omitempty"`
+	// Count creates this many independent copies of the template. Each copy is its own simulation
+	// (refreshed independently), and gets an `Index` input from 0..Count-1.
+	Count int `json:"count,omitempty"`
 }
 
 func (r *ConfigTemplate) UnmarshalJSON(data []byte) error {
