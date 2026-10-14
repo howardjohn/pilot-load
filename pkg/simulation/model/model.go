@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"golang.org/x/sync/errgroup"
 	"istio.io/istio/pkg/log"
 
